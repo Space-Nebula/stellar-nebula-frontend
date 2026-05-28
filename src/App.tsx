@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import { NebulaCanvas } from './components/Canvas'
 import ErrorBoundary from './components/ErrorBoundary'
-import { WalletProvider } from './contexts/WalletContext'
-import { WalletDisplay } from './components/Wallet'
-import { ConnectModal } from './components/Wallet'
+import { WalletProvider, useWallet } from './contexts/WalletContext'
+import { NetworkProvider } from './contexts/NetworkContext'
+import { WalletDisplay, ConnectModal, NetworkSelector, NetworkSwitchModal } from './components/Wallet'
 import { isDev } from './config'
 import { useGraphicsStore } from '@/store'
+import type { StellarNetwork } from './types'
 import './App.css'
 
 function VisualSettingsPanel() {
@@ -83,6 +85,15 @@ function VisualSettingsPanel() {
 
 function AppInner() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [networkModalOpen, setNetworkModalOpen] = useState(false)
+  const { disconnect } = useWallet()
+
+  const handleNetworkChange = useCallback(async (network: StellarNetwork) => {
+    // Disconnect wallet when switching networks
+    disconnect()
+    toast.success(`Switched to ${network} network`)
+    setNetworkModalOpen(false)
+  }, [disconnect])
 
   return (
     <>
@@ -97,12 +108,17 @@ function AppInner() {
           top: 16,
           right: 16,
           zIndex: 10,
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
         }}
       >
+        <NetworkSelector />
         <WalletDisplay onOpenConnectModal={() => setModalOpen(true)} />
       </div>
 
       <ConnectModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+      <NetworkSwitchModal onClose={() => setNetworkModalOpen(false)} />
       <VisualSettingsPanel />
 
       <Toaster
@@ -127,11 +143,18 @@ function AppInner() {
 }
 
 function App() {
+  const handleNetworkChange = useCallback(async (network: StellarNetwork) => {
+    // This callback is passed to NetworkProvider to handle side effects
+    // when the network changes
+  }, [])
+
   return (
     <ErrorBoundary>
-      <WalletProvider>
-        <AppInner />
-      </WalletProvider>
+      <NetworkProvider onNetworkChange={handleNetworkChange}>
+        <WalletProvider>
+          <AppInner />
+        </WalletProvider>
+      </NetworkProvider>
     </ErrorBoundary>
   )
 }
