@@ -3,13 +3,14 @@ import {
   TransactionBuilder,
   BASE_FEE,
   nativeToScVal,
-  scValToNative,
   rpc,
 } from '@stellar/stellar-sdk'
 import { getActiveStellarConfig } from '@/config/stellar'
 import type { StellarNetworkConfig } from '@/config/stellar'
 import type { ResourceType } from '@/types/game'
 import type { XDR } from '@/types'
+import { parseContractResponseXdr } from '@/utils/stellar/responseParser'
+import { retryAsync, isRetryableStellarError } from '@/utils/stellar/retry'
 
 export interface ScanNebulaParams {
   nebulaId: string
@@ -86,7 +87,13 @@ export class SorobanContractClient {
 
   async submitScanTransaction(signedXdr: XDR): Promise<ScanNebulaResult> {
     const tx = TransactionBuilder.fromXDR(signedXdr, this.config.networkPassphrase)
-    const sendResult = await this.server.sendTransaction(tx)
+    const sendResult = await retryAsync(
+      async () => this.server.sendTransaction(tx),
+      {
+        retries: 2,
+        shouldRetry: (error) => isRetryableStellarError(error),
+      }
+    )
 
     if (sendResult.status === 'ERROR') {
       const errXdr = (sendResult as { errorResult?: { toXDR: (fmt: string) => string } })
@@ -124,10 +131,19 @@ export class SorobanContractClient {
       throw new ContractError('Contract returned no value')
     }
 
-    const native = scValToNative(result.returnValue) as {
-      resource_type: string
-      amount: bigint | number
+    const responseXdr =
+      typeof (result.returnValue as { toXDR?: (format: string) => string }).toXDR === 'function'
+        ? (result.returnValue as { toXDR: (format: string) => string }).toXDR('base64')
+        : null
+
+    if (!responseXdr) {
+      throw new ContractError('Unable to decode contract return value')
     }
+
+    const native = parseContractResponseXdr<{
+      resource_type: string
+      amount: bigint | number | string
+    }>(responseXdr).value
 
     const resourceType = RESOURCE_TYPE_MAP[native.resource_type] ?? 'nebulite'
     const amount = Number(native.amount)

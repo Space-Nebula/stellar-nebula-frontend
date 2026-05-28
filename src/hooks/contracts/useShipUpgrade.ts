@@ -14,11 +14,13 @@ import {
   type ShipUpgradeStats,
 } from '../../services/contracts/shipUpgrade'
 import { fetchShipNFT, type ShipNFTRecord } from '../../services/nft/shipNFT'
+import { retryAsync, isRetryableStellarError } from '@utils/stellar/retry'
 
 interface UseShipUpgradeResult {
   shipNFT: ShipNFTRecord | null
   resourceSnapshot: ResourceAssetSnapshot | null
   quote: ShipUpgradeQuote | null
+  simulation: ShipUpgradeBuildResult['simulation'] | null
   updatedStats: ShipUpgradeStats | null
   isLoading: boolean
   error: string | null
@@ -48,6 +50,7 @@ export function useShipUpgrade(
   const [shipNFT, setShipNFT] = useState<ShipNFTRecord | null>(null)
   const [resourceSnapshot, setResourceSnapshot] = useState<ResourceAssetSnapshot | null>(null)
   const [quote, setQuote] = useState<ShipUpgradeQuote | null>(null)
+  const [simulation, setSimulation] = useState<ShipUpgradeBuildResult['simulation'] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -70,6 +73,7 @@ export function useShipUpgrade(
 
       setShipNFT(nextShip)
       setResourceSnapshot(nextResources)
+      setSimulation(null)
 
       const requirements = calculateUpgradeRequirements(shipId, nextShip)
       const updatedStats = calculateUpgradedStats(nextShip)
@@ -90,7 +94,11 @@ export function useShipUpgrade(
   }, [config, resolvedAccountId, shipId])
 
   useEffect(() => {
-    void refresh()
+    const timer = window.setTimeout(() => {
+      void refresh()
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [refresh])
 
   const buildUpgradeTransaction = useCallback(async () => {
@@ -100,6 +108,7 @@ export function useShipUpgrade(
     }
 
     try {
+      setError(null)
       const nextResources =
         resourceSnapshot ??
         (await fetchResourceAssetSnapshot(resolvedAccountId, config, { forceRefresh: true }))
@@ -108,6 +117,7 @@ export function useShipUpgrade(
 
       setShipNFT(nextShip)
       setResourceSnapshot(nextResources)
+      setSimulation(null)
 
       const result = await buildShipUpgradeTransaction({
         accountId: resolvedAccountId,
@@ -120,6 +130,14 @@ export function useShipUpgrade(
       setShipNFT(nextShip)
       setResourceSnapshot(nextResources)
       setQuote(result.quote)
+      setSimulation(result.simulation)
+
+      if (result.simulation.status === 'error') {
+        const simulationError = result.simulation.error ?? 'Contract simulation failed.'
+        setError(simulationError)
+        return null
+      }
+
       return result
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to build upgrade transaction')
@@ -145,7 +163,13 @@ export function useShipUpgrade(
         signedXdr,
         config?.networkPassphrase ?? env.STELLAR_PASSPHRASE
       )
-      const sendResult = await rpcServer.sendTransaction(transaction)
+      const sendResult = await retryAsync(
+        async () => rpcServer.sendTransaction(transaction),
+        {
+          retries: 2,
+          shouldRetry: (error) => isRetryableStellarError(error),
+        }
+      )
 
       if (sendResult.status !== 'PENDING') {
         throw new Error(`Upgrade submission failed: ${sendResult.status}`)
@@ -177,6 +201,7 @@ export function useShipUpgrade(
     shipNFT,
     resourceSnapshot,
     quote,
+    simulation,
     updatedStats: quote?.updatedStats ?? null,
     isLoading,
     error,

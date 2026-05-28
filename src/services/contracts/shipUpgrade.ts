@@ -3,6 +3,8 @@ import type { StellarNetworkConfig } from '@config/stellar'
 import { env } from '@config/env'
 import type { ResourceAssetBalance } from '@services/assets/resources'
 import type { ShipNFTRecord } from '@services/nft/shipNFT'
+import { simulateContractTransaction } from '@utils/stellar/simulate'
+import type { ContractNativeValue, ParsedSimulationResult } from '@utils/stellar/responseParser'
 
 export interface ShipUpgradeStats {
   hull: number
@@ -30,6 +32,7 @@ export interface ShipUpgradeBuildResult {
   xdr: string
   transaction: Transaction
   quote: ShipUpgradeQuote
+  simulation: ParsedSimulationResult<ContractNativeValue>
 }
 
 function asNumber(value: string | number | undefined): number {
@@ -158,10 +161,15 @@ export async function buildShipUpgradeTransaction(params: {
     .build()
 
   const prepared = await rpcServer.prepareTransaction(tx)
+  const simulation = await simulateContractTransaction<ContractNativeValue>(prepared.toXDR(), {
+    config,
+    instructionLeeway: 3_000_000,
+  })
 
   return {
     xdr: prepared.toXDR(),
     transaction: prepared,
     quote,
+    simulation,
   }
 }

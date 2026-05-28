@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import NotificationCenter from './Notifications/NotificationCenter'
 
 const navigationItems = [
   { label: 'Home', to: '/' },
@@ -29,6 +30,10 @@ function Navigation() {
           </NavLink>
         ))}
       </nav>
+
+      <div className="header-tools">
+        <NotificationCenter />
+      </div>
     </header>
   )
 }

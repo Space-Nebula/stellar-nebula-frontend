@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react'
-import { ContractEventFeed, TrustlineManager } from '@/components/Transaction'
+import { useMemo, type CSSProperties } from 'react'
+import { ContractEventFeed, GasPriceMonitor, TrustlineManager } from '@/components/Transaction'
 import { TransactionHistory } from '../components/History'
 import { getActiveStellarConfig } from '../config/stellar'
 import { useWallet } from '../contexts/WalletContext'
@@ -9,9 +9,17 @@ function ShipDashboard() {
   const { walletState } = useWallet()
   const accountId = walletState.publicKey
   const shipId = accountId ?? null
-  const stellarConfig = getActiveStellarConfig()
-  const { shipNFT, resourceSnapshot, quote, updatedStats, isLoading, error, executeUpgrade } =
-    useShipUpgrade(shipId, accountId, stellarConfig)
+  const stellarConfig = useMemo(() => getActiveStellarConfig(), [])
+  const {
+    shipNFT,
+    resourceSnapshot,
+    quote,
+    simulation,
+    updatedStats,
+    isLoading,
+    error,
+    executeUpgrade,
+  } = useShipUpgrade(shipId, accountId, stellarConfig)
 
   return (
     <section className="page-panel" style={dashboardShellStyle}>
@@ -89,6 +97,22 @@ function ShipDashboard() {
             </dl>
           )}
 
+          <div style={simulationCardStyle}>
+            <p style={simulationLabelStyle}>Simulation</p>
+            <p style={simulationCopyStyle}>
+              {simulation?.status === 'error'
+                ? simulation.error ?? 'Simulation failed.'
+                : simulation
+                  ? `Latest ledger ${simulation.latestLedger}. Min resource fee ${simulation.minResourceFee ?? 'n/a'}.`
+                  : 'Run an upgrade preview to see the simulated contract response.'}
+            </p>
+            {simulation && simulation.value !== null && (
+              <pre style={simulationValueStyle}>
+                {JSON.stringify(simulation.value, null, 2)}
+              </pre>
+            )}
+          </div>
+
           <button type="button" onClick={() => void executeUpgrade()} style={upgradeButtonStyle}>
             Execute upgrade
           </button>
@@ -108,6 +132,7 @@ function ShipDashboard() {
         </div>
 
         <div style={opsGridStyle}>
+          <GasPriceMonitor config={stellarConfig} />
           <TrustlineManager />
           <ContractEventFeed />
         </div>
@@ -241,6 +266,41 @@ const statsGridStyle: CSSProperties = {
   gap: 10,
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   margin: 0,
+}
+
+const simulationCardStyle: CSSProperties = {
+  display: 'grid',
+  gap: 8,
+  padding: 14,
+  borderRadius: 18,
+  background: 'rgba(255, 255, 255, 0.03)',
+  border: '1px solid rgba(255, 255, 255, 0.06)',
+}
+
+const simulationLabelStyle: CSSProperties = {
+  margin: 0,
+  color: '#9fd8ff',
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+}
+
+const simulationCopyStyle: CSSProperties = {
+  margin: 0,
+  color: '#c8d4e6',
+  fontSize: '0.92rem',
+}
+
+const simulationValueStyle: CSSProperties = {
+  margin: 0,
+  padding: 12,
+  borderRadius: 14,
+  background: 'rgba(0, 0, 0, 0.2)',
+  border: '1px solid rgba(255,255,255,0.06)',
+  color: '#f8fbff',
+  overflowX: 'auto',
+  fontSize: '0.82rem',
 }
 
 const statItemStyle: CSSProperties = {

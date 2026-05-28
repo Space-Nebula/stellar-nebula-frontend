@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import AppLayout from '../layouts/AppLayout'
+import LoadingScreen from '../components/Loading/LoadingScreen'
 
 const Home = lazy(() => import('../pages/Home'))
 const Marketplace = lazy(() => import('../pages/Marketplace'))
@@ -9,7 +10,15 @@ const NotFound = lazy(() => import('../pages/NotFound'))
 const ShipDashboard = lazy(() => import('../pages/ShipDashboard'))
 
 const withSuspense = (component: ReactNode) => (
-  <Suspense fallback={<div className="route-loader">Charting course...</div>}>
+  <Suspense
+    fallback={
+      <LoadingScreen
+        stageLabel="Plotting route"
+        message="Charting course to the requested sector..."
+        progress={35}
+      />
+    }
+  >
     {component}
   </Suspense>
 )
