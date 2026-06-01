@@ -1,0 +1,7 @@
+{
+  "projectId": "stellar-nebula-frontend",
+  "buildScriptName": "build-storybook",
+  "onlyChanged": true,
+  "externals": ["public/**"],
+  "skip": "dependabot/**"
+}

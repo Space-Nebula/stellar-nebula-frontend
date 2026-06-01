@@ -24,7 +24,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "release": "semantic-release",
-    "release:dry-run": "semantic-release --dry-run"
+    "release:dry-run": "semantic-release --dry-run",
+    "chromatic": "chromatic --build-script-name=build-storybook --only-changed"
   },
   "dependencies": {
     "@albedo-link/intent": "^0.13.0",
@@ -69,6 +70,7 @@
     "@vitest/browser-playwright": "^4.1.7",
     "@vitest/coverage-v8": "^4.1.7",
     "autoprefixer": "^10.5.0",
+    "chromatic": "^17.2.0",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",

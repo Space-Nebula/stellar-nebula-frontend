@@ -45,7 +45,7 @@ export interface WalletContextValue {
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
-const WalletContext = createContext<WalletContextValue | null>(null)
+export const WalletContext = createContext<WalletContextValue | null>(null)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -171,7 +171,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         setWalletState(restored)
         persistWallet({
           publicKey: restored.publicKey ?? persisted.publicKey,
-          walletType: restored.walletType,
+          walletType: restored.walletType ?? persisted.walletType,
           network: restored.network ?? persisted.network,
         })
         
