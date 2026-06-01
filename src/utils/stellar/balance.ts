@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createHorizonServer } from '@config/stellar'
 import type { StellarNetworkConfig } from '@config/stellar'
+import { toast } from 'react-hot-toast'
 
 export interface FormattedBalance {
   assetCode: string
@@ -17,6 +18,8 @@ interface UseAccountBalancesResult {
   error: string | null
   isUnfunded: boolean
   refresh: () => Promise<void>
+  isStreaming: boolean
+  balanceChanged: boolean
 }
 
 /**
@@ -58,6 +61,10 @@ export function useAccountBalances(
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [isUnfunded, setIsUnfunded] = useState<boolean>(false)
+  const [isStreaming, setIsStreaming] = useState<boolean>(false)
+  const [balanceChanged, setBalanceChanged] = useState<boolean>(false)
+  const previousBalancesRef = useRef<FormattedBalance[]>([])
+  const balanceChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const fetchBalances = useCallback(async () => {
     if (!accountId) {
@@ -79,6 +86,34 @@ export function useAccountBalances(
       // Sort XLM first
       formatted.sort((a, b) => (a.isNative === b.isNative ? 0 : a.isNative ? -1 : 1))
 
+      // Check for balance changes
+      const hasChanges = formatted.some((newBalance, idx) => {
+        const oldBalance = previousBalancesRef.current[idx]
+        return !oldBalance || oldBalance.balance !== newBalance.balance
+      })
+
+      if (hasChanges && previousBalancesRef.current.length > 0) {
+        setBalanceChanged(true)
+
+        // Show toast notification for balance change
+        const xlmBalance = formatted.find((b) => b.isNative)
+        if (xlmBalance) {
+          toast.success(`Balance updated: ${parseFloat(xlmBalance.balance).toFixed(2)} XLM`, {
+            duration: 3000,
+            icon: '💰',
+          })
+        }
+
+        // Reset indicator after 2 seconds
+        if (balanceChangeTimerRef.current) {
+          clearTimeout(balanceChangeTimerRef.current)
+        }
+        balanceChangeTimerRef.current = setTimeout(() => {
+          setBalanceChanged(false)
+        }, 2000)
+      }
+
+      previousBalancesRef.current = formatted
       setBalances(formatted)
     } catch (err: unknown) {
       const status =
@@ -106,7 +141,7 @@ export function useAccountBalances(
 
     if (!accountId) return
 
-    let closeStream: () => void
+    let closeStream: (() => void) | undefined
 
     try {
       const server = createHorizonServer(config)
@@ -118,22 +153,43 @@ export function useAccountBalances(
         .cursor('now')
         .stream({
           onmessage: () => {
-            fetchBalances()
+            setIsStreaming(true)
+            void fetchBalances()
           },
           onerror: (err) => {
             console.error('Error in payment stream:', err)
+            setIsStreaming(false)
+            // Attempt to reconnect after 5 seconds
+            setTimeout(() => {
+              void loadBalances()
+            }, 5000)
           },
         })
+
+      setIsStreaming(true)
     } catch (err) {
       console.error('Failed to setup stream', err)
+      setIsStreaming(false)
     }
 
     return () => {
       if (closeStream) {
         closeStream()
+        setIsStreaming(false)
+      }
+      if (balanceChangeTimerRef.current) {
+        clearTimeout(balanceChangeTimerRef.current)
       }
     }
   }, [accountId, fetchBalances, config])
 
-  return { balances, isLoading, error, isUnfunded, refresh: fetchBalances }
+  return {
+    balances,
+    isLoading,
+    error,
+    isUnfunded,
+    refresh: fetchBalances,
+    isStreaming,
+    balanceChanged,
+  }
 }

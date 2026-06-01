@@ -3,6 +3,8 @@ import { useEffect } from 'react'
 import ErrorBoundary from './components/ErrorBoundary'
 import { WalletProvider } from './contexts/WalletContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { InstallPrompt } from './components/PWA/InstallPrompt'
+import { OfflineIndicator } from './components/PWA/OfflineIndicator'
 import { router } from './routes'
 import './App.css'
 import { createScopedLogger } from './services/logging'
@@ -43,6 +45,8 @@ function App() {
       <ErrorBoundary>
         <WalletProvider>
           <RouterProvider router={router} />
+          <InstallPrompt />
+          <OfflineIndicator />
         </WalletProvider>
       </ErrorBoundary>
     </ThemeProvider>
