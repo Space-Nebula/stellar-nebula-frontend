@@ -23,10 +23,13 @@ function isValidIssuer(issuer: string): boolean {
 
 export function TrustlineManager() {
   const { walletState, signTransaction } = useWallet()
+  const config = getActiveStellarConfig()
   const [assetCode, setAssetCode] = useState('GAME')
   const [issuer, setIssuer] = useState('')
   const [limit, setLimit] = useState('')
-  const [statusMessage, setStatusMessage] = useState<string>('Choose an asset to inspect its trustline status.')
+  const [statusMessage, setStatusMessage] = useState<string>(
+    'Choose an asset to inspect its trustline status.'
+  )
   const [statusError, setStatusError] = useState<string | null>(null)
   const [isChecking, setIsChecking] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
@@ -79,11 +82,11 @@ export function TrustlineManager() {
 
       if (status.exists) {
         setStatusMessage(
-          `Trustline already exists with a balance of ${status.balance} and a limit of ${status.limit}.`,
+          `Trustline already exists with a balance of ${status.balance} and a limit of ${status.limit}.`
         )
       } else {
         setStatusMessage(
-          `No trustline found yet. Creating one will consume ${status.reserveDeltaXlm} XLM of reserve.`,
+          `No trustline found yet. Creating one will consume ${status.reserveDeltaXlm} XLM of reserve.`
         )
       }
     } catch (error) {
@@ -104,6 +107,13 @@ export function TrustlineManager() {
       return
     }
 
+    if (walletState.network !== config.network) {
+      setStatusError(
+        'Wallet network does not match the active Horizon configuration. Switch your wallet network before preparing this transaction.'
+      )
+      return
+    }
+
     setIsPreparing(true)
     setStatusError(null)
     setWalletError(null)
@@ -113,7 +123,7 @@ export function TrustlineManager() {
       const draft = await buildTrustlineTransaction(
         walletState.publicKey,
         asset,
-        limit.trim() || undefined,
+        limit.trim() || undefined
       )
       setDraftXdr(draft.xdr)
 
@@ -122,13 +132,19 @@ export function TrustlineManager() {
       setEstimatedFeeStroops(fee.stroops)
       setConfirmOpen(true)
     } catch (error) {
-      setStatusError(error instanceof Error ? error.message : 'Unable to prepare trustline transaction.')
+      setStatusError(
+        error instanceof Error ? error.message : 'Unable to prepare trustline transaction.'
+      )
     } finally {
       setIsPreparing(false)
     }
   }
 
   const handleConfirmTrustline = async () => {
+    if (isSubmitting) {
+      return
+    }
+
     if (!draftXdr || !asset) {
       setStatusError('No draft transaction available.')
       return
@@ -155,14 +171,14 @@ export function TrustlineManager() {
         setTrustlineStatus(refreshed)
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to submit trustline transaction.'
+      const message =
+        error instanceof Error ? error.message : 'Failed to submit trustline transaction.'
       setWalletError(message)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const config = getActiveStellarConfig()
   const networkLabel = walletState.network ?? config.network
 
   return (
@@ -215,10 +231,20 @@ export function TrustlineManager() {
       </div>
 
       <div style={buttonRowStyle}>
-        <button type="button" onClick={handleInspectTrustline} style={secondaryButtonStyle} disabled={isChecking}>
+        <button
+          type="button"
+          onClick={handleInspectTrustline}
+          style={secondaryButtonStyle}
+          disabled={isChecking}
+        >
           {isChecking ? 'Inspecting…' : 'Inspect trustline'}
         </button>
-        <button type="button" onClick={handlePrepareTrustline} style={primaryButtonStyle} disabled={isPreparing}>
+        <button
+          type="button"
+          onClick={handlePrepareTrustline}
+          style={primaryButtonStyle}
+          disabled={isPreparing}
+        >
           {isPreparing ? 'Preparing…' : 'Prepare trustline'}
         </button>
       </div>
@@ -237,14 +263,23 @@ export function TrustlineManager() {
         )}
         {reserveCheck && (
           <p style={reserveNoteStyle}>
-            Available reserve: {reserveCheck.availableXlm} XLM. Required reserve: {reserveCheck.requiredXlm} XLM.
+            Available reserve: {reserveCheck.availableXlm} XLM. Required reserve:{' '}
+            {reserveCheck.requiredXlm} XLM.
           </p>
         )}
         {estimatedFeeStroops !== null && (
           <p style={reserveNoteStyle}>Estimated fee: {formatFeeInXlm(estimatedFeeStroops)}.</p>
         )}
-        {statusError && <p role="alert" style={errorStyle}>{statusError}</p>}
-        {walletError && <p role="alert" style={errorStyle}>{walletError}</p>}
+        {statusError && (
+          <p role="alert" style={errorStyle}>
+            {statusError}
+          </p>
+        )}
+        {walletError && (
+          <p role="alert" style={errorStyle}>
+            {walletError}
+          </p>
+        )}
         {submitResult && <p style={successStyle}>{submitResult}</p>}
       </div>
 
@@ -262,7 +297,9 @@ export function TrustlineManager() {
           },
           {
             label: 'Wallet',
-            value: walletState.publicKey ? `${walletState.publicKey.slice(0, 6)}…${walletState.publicKey.slice(-6)}` : 'Disconnected',
+            value: walletState.publicKey
+              ? `${walletState.publicKey.slice(0, 6)}…${walletState.publicKey.slice(-6)}`
+              : 'Disconnected',
           },
         ]}
         isSubmitting={isSubmitting}

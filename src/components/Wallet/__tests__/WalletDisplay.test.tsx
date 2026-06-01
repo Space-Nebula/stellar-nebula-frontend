@@ -7,7 +7,9 @@ import { WalletDisplay } from '../WalletDisplay'
 // Must be a plain string literal — vi.mock is hoisted and cannot close over variables
 vi.mock('@services/wallets', () => ({
   isFreighterInstalled: vi.fn().mockResolvedValue(true),
-  connectFreighter: vi.fn().mockResolvedValue('GABCDE1234567890KLMNOPQRSTUVWXYZ1234567890ABCDE123456'),
+  connectFreighter: vi
+    .fn()
+    .mockResolvedValue('GABCDE1234567890KLMNOPQRSTUVWXYZ1234567890ABCDE123456'),
   getFreighterNetwork: vi.fn().mockResolvedValue('testnet'),
   isAlbedoAvailable: vi.fn().mockReturnValue(true),
   connectAlbedo: vi.fn(),
@@ -30,20 +32,24 @@ const TEST_PUBKEY = 'GABCDE1234567890KLMNOPQRSTUVWXYZ1234567890ABCDE123456'
 function renderWithPersistedWallet() {
   localStorage.setItem(
     'stellar-nebula:wallet',
-    JSON.stringify({ publicKey: TEST_PUBKEY, walletType: 'freighter', network: 'testnet' }),
+    JSON.stringify({ publicKey: TEST_PUBKEY, walletType: 'freighter', network: 'testnet' })
   )
   return render(
     <WalletProvider>
       <WalletDisplay onOpenConnectModal={vi.fn()} />
-    </WalletProvider>,
+    </WalletProvider>
   )
+}
+
+async function waitForConnectedWalletUI() {
+  await screen.findByRole('button', { name: /disconnect wallet/i })
 }
 
 function renderDisconnected(onOpen = vi.fn()) {
   return render(
     <WalletProvider>
       <WalletDisplay onOpenConnectModal={onOpen} />
-    </WalletProvider>,
+    </WalletProvider>
   )
 }
 
@@ -65,18 +71,21 @@ describe('WalletDisplay', () => {
     expect(onOpen).toHaveBeenCalledOnce()
   })
 
-  it('shows truncated address when connected via persisted state', () => {
+  it('shows truncated address when connected via persisted state', async () => {
     renderWithPersistedWallet()
+    await waitForConnectedWalletUI()
     expect(screen.getByText(/GABCDE/)).toBeInTheDocument()
   })
 
-  it('shows XLM balance when connected', () => {
+  it('shows XLM balance when connected', async () => {
     renderWithPersistedWallet()
+    await waitForConnectedWalletUI()
     expect(screen.getByText(/100\.50/)).toBeInTheDocument()
   })
 
-  it('has a disconnect button when connected', () => {
+  it('has a disconnect button when connected', async () => {
     renderWithPersistedWallet()
+    await waitForConnectedWalletUI()
     expect(screen.getByRole('button', { name: /disconnect wallet/i })).toBeInTheDocument()
   })
 
@@ -89,6 +98,7 @@ describe('WalletDisplay', () => {
     })
 
     renderWithPersistedWallet()
+    await waitForConnectedWalletUI()
 
     const copyBtn = screen.getByRole('button', { name: /copy full address/i })
     await userEvent.click(copyBtn)

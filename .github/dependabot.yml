@@ -1,0 +1,78 @@
+version: 2
+updates:
+  # NPM dependency updates - daily with security prioritization
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "UTC"
+    # Group updates for better organization and reduced noise
+    groups:
+      # Security updates grouped separately for priority handling
+      security-updates:
+        dependency-type: "security"
+        update-types:
+          - "patch"
+      # Development dependencies
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      # Production minor and patch updates
+      prod-updates:
+        dependency-type: "production"
+        update-types:
+          - "patch"
+          - "minor"
+    # Prioritize security updates by checking frequently
+    allow:
+      - dependency-type: "security"
+    # Rebase strategy to keep PRs clean
+    rebase-strategy: "auto"
+    # Commit message configuration
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    # Labels for PR organization and filtering
+    labels:
+      - "dependencies"
+      - "automation"
+      - "chore"
+      - "devops"
+    # Versioning strategy
+    versioning-strategy: "semver"
+    # Open pull requests for out-of-range updates
+    pull-request-branch-name:
+      separator: "/"
+
+  # GitHub Actions updates - weekly schedule
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "UTC"
+    # Group all actions updates
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    # Commit message configuration for actions
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    # Labels for CI/CD tracking
+    labels:
+      - "ci/cd"
+      - "automation"
+      - "github-actions"
+      - "devops"
+    # Versioning strategy
+    versioning-strategy: "semver"
+    # Open pull requests for out-of-range updates
+    pull-request-branch-name:
+      separator: "/"

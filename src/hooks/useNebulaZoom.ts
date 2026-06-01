@@ -45,6 +45,16 @@ function distanceToZoomLevel(dist: number): ZoomLevel {
   return 'detail'
 }
 
+/**
+ * React hook that synchronises the Three.js camera zoom level with the
+ * graphics store and adjusts starfield density accordingly.
+ *
+ * @param controlsRef - Reference to the OrbitControls instance
+ *
+ * @example
+ * const controlsRef = useRef<OrbitControls>(null)
+ * const { currentZoomLevel, jumpToLevel } = useNebulaZoom(controlsRef)
+ */
 export function useNebulaZoom(controlsRef: React.RefObject<OrbitControlsImpl | null>) {
   const { camera } = useThree()
   const setStarfieldDensity = useGraphicsStore((s) => s.setStarfieldDensity)
@@ -65,6 +75,7 @@ export function useNebulaZoom(controlsRef: React.RefObject<OrbitControlsImpl | n
     }
   })
 
+  /** Programmatically jump to a specific zoom level. */
   const jumpToLevel = useCallback(
     (level: ZoomLevel) => {
       const controls = controlsRef.current

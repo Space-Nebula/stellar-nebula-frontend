@@ -22,9 +22,7 @@ interface UseAccountBalancesResult {
 /**
  * Format a Horizon balance line into a more usable UI format
  */
-export const formatBalance = (
-  balance: Horizon.HorizonApi.BalanceLine
-): FormattedBalance => {
+export const formatBalance = (balance: Horizon.HorizonApi.BalanceLine): FormattedBalance => {
   if (balance.asset_type === 'native') {
     return {
       assetCode: 'XLM',
@@ -41,7 +39,10 @@ export const formatBalance = (
     assetCode: code,
     assetIssuer: issuer,
     balance: balance.balance,
-    assetType: balance.asset_type as 'credit_alphanum4' | 'credit_alphanum12' | 'liquidity_pool_shares',
+    assetType: balance.asset_type as
+      | 'credit_alphanum4'
+      | 'credit_alphanum12'
+      | 'liquidity_pool_shares',
     isNative: false,
   }
 }
@@ -73,11 +74,11 @@ export function useAccountBalances(
     try {
       const server = createHorizonServer(config)
       const account = await server.accounts().accountId(accountId).call()
-      
+
       const formatted = account.balances.map(formatBalance)
       // Sort XLM first
       formatted.sort((a, b) => (a.isNative === b.isNative ? 0 : a.isNative ? -1 : 1))
-      
+
       setBalances(formatted)
     } catch (err: unknown) {
       const status =
@@ -109,9 +110,10 @@ export function useAccountBalances(
 
     try {
       const server = createHorizonServer(config)
-      
+
       // Auto-refresh on transactions via Horizon streaming
-      closeStream = server.payments()
+      closeStream = server
+        .payments()
         .forAccount(accountId)
         .cursor('now')
         .stream({
@@ -120,7 +122,7 @@ export function useAccountBalances(
           },
           onerror: (err) => {
             console.error('Error in payment stream:', err)
-          }
+          },
         })
     } catch (err) {
       console.error('Failed to setup stream', err)

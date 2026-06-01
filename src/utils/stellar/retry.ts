@@ -31,6 +31,11 @@ function isLikelyUserCancellation(error: unknown): boolean {
   )
 }
 
+/**
+ * Check whether an error is transient and the operation can be retried.
+ *
+ * Does not retry user cancellations. Retries network/timeout/server errors.
+ */
 export function isRetryableStellarError(error: unknown): boolean {
   if (isLikelyUserCancellation(error)) return false
 
@@ -62,6 +67,18 @@ export function isRetryableStellarError(error: unknown): boolean {
   return false
 }
 
+/**
+ * Execute an async operation with exponential backoff retry.
+ *
+ * @param operation - The async function to retry
+ * @param options   - Retry configuration
+ *
+ * @example
+ * const result = await retryAsync(() => rpcServer.sendTransaction(tx), {
+ *   retries: 3,
+ *   shouldRetry: (err) => isRetryableStellarError(err),
+ * })
+ */
 export async function retryAsync<T>(
   operation: (context: RetryableOperationContext) => Promise<T>,
   options: RetryOptions = {}

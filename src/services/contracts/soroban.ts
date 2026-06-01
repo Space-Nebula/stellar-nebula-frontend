@@ -1,10 +1,4 @@
-import {
-  Contract,
-  TransactionBuilder,
-  BASE_FEE,
-  nativeToScVal,
-  rpc,
-} from '@stellar/stellar-sdk'
+import { Contract, TransactionBuilder, BASE_FEE, nativeToScVal, rpc } from '@stellar/stellar-sdk'
 import { getActiveStellarConfig } from '@/config/stellar'
 import type { StellarNetworkConfig } from '@/config/stellar'
 import type { ResourceType } from '@/types/game'
@@ -45,6 +39,15 @@ const RESOURCE_TYPE_MAP: Record<string, ResourceType> = {
 const POLL_INTERVAL_MS = 1000
 const MAX_POLL_ATTEMPTS = 20
 
+/**
+ * Client for interacting with Soroban smart contracts.
+ *
+ * Handles building, signing, submitting, and polling contract transactions.
+ *
+ * @example
+ * const client = new SorobanContractClient(contractId, config)
+ * const xdr = await client.buildScanTransaction({ nebulaId, scannerPublicKey })
+ */
 export class SorobanContractClient {
   private readonly server: rpc.Server
   private readonly config: StellarNetworkConfig
@@ -56,6 +59,10 @@ export class SorobanContractClient {
     this.server = new rpc.Server(config.rpcUrl)
   }
 
+  /**
+   * Build an unsigned XDR for a scan_nebula contract call.
+   * The caller must sign the returned XDR via a wallet.
+   */
   async buildScanTransaction(
     params: ScanNebulaParams,
     options: ContractCallOptions = {}
@@ -85,15 +92,15 @@ export class SorobanContractClient {
     return prepared.toXDR()
   }
 
+  /**
+   * Submit a signed scan_nebula transaction and poll for the result.
+   */
   async submitScanTransaction(signedXdr: XDR): Promise<ScanNebulaResult> {
     const tx = TransactionBuilder.fromXDR(signedXdr, this.config.networkPassphrase)
-    const sendResult = await retryAsync(
-      async () => this.server.sendTransaction(tx),
-      {
-        retries: 2,
-        shouldRetry: (error) => isRetryableStellarError(error),
-      }
-    )
+    const sendResult = await retryAsync(async () => this.server.sendTransaction(tx), {
+      retries: 2,
+      shouldRetry: (error) => isRetryableStellarError(error),
+    })
 
     if (sendResult.status === 'ERROR') {
       const errXdr = (sendResult as { errorResult?: { toXDR: (fmt: string) => string } })
@@ -109,6 +116,7 @@ export class SorobanContractClient {
     return { ...parsed, transactionHash: sendResult.hash }
   }
 
+  /** Poll the network until a transaction is confirmed or times out. */
   private async pollTransaction(hash: string): Promise<rpc.Api.GetSuccessfulTransactionResponse> {
     for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
@@ -124,6 +132,7 @@ export class SorobanContractClient {
     throw new ContractError('Transaction confirmation timed out')
   }
 
+  /** Parse the contract return value into a ScanNebulaResult. */
   private parseScanResult(
     result: rpc.Api.GetSuccessfulTransactionResponse
   ): Omit<ScanNebulaResult, 'transactionHash'> {

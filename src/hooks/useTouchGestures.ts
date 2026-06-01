@@ -27,6 +27,20 @@ function midpoint(a: TouchPoint, b: TouchPoint): TouchPoint {
   return { id: -1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
+/**
+ * Hook that attaches touch gesture handlers (pinch zoom, swipe rotate,
+ * two-finger pan, tap) to a target DOM element.
+ *
+ * @param targetRef - Ref to the HTML element to attach listeners to
+ * @param callbacks - Gesture callback functions
+ *
+ * @example
+ * const ref = useRef<HTMLDivElement>(null)
+ * useTouchGestures(ref, {
+ *   onPinchZoom: (scale) => setZoom((z) => z * scale),
+ *   onTap: (x, y) => console.log('tap', x, y),
+ * })
+ */
 export function useTouchGestures(
   targetRef: React.RefObject<HTMLElement>,
   callbacks: TouchGestureCallbacks

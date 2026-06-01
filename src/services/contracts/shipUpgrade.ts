@@ -1,4 +1,11 @@
-import { BASE_FEE, Operation, TransactionBuilder, rpc, xdr, type Transaction } from '@stellar/stellar-sdk'
+import {
+  BASE_FEE,
+  Operation,
+  TransactionBuilder,
+  rpc,
+  xdr,
+  type Transaction,
+} from '@stellar/stellar-sdk'
 import type { StellarNetworkConfig } from '@config/stellar'
 import { env } from '@config/env'
 import type { ResourceAssetBalance } from '@services/assets/resources'
@@ -41,6 +48,9 @@ function asNumber(value: string | number | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+/**
+ * Calculate the resource requirements for upgrading a ship.
+ */
 export function calculateUpgradeRequirements(
   shipId: string,
   ship: ShipNFTRecord | null
@@ -59,6 +69,9 @@ export function calculateUpgradeRequirements(
   }
 }
 
+/**
+ * Calculate the projected stats after a successful upgrade.
+ */
 export function calculateUpgradedStats(ship: ShipNFTRecord | null): ShipUpgradeStats {
   const stats = ship?.metadata.stats ?? {}
   const hull = asNumber(stats.hull) || 100
@@ -76,6 +89,9 @@ export function calculateUpgradedStats(ship: ShipNFTRecord | null): ShipUpgradeS
   }
 }
 
+/**
+ * Validate whether the player's resource balances meet the upgrade requirements.
+ */
 export function validateUpgrade(
   requirements: ShipUpgradeRequirements,
   balances: ResourceAssetBalance[]
@@ -119,6 +135,10 @@ export function validateUpgrade(
   }
 }
 
+/**
+ * Build a ship upgrade transaction for the Stellar network.
+ * Includes simulation before returning the final result.
+ */
 export async function buildShipUpgradeTransaction(params: {
   accountId: string
   shipId: string

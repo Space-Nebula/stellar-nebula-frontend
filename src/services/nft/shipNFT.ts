@@ -77,9 +77,7 @@ function writeCache(accountId: string, record: ShipNFTRecord | null): void {
 
 function safeDecodeBase64(value: string): string {
   try {
-    return typeof atob === 'function'
-      ? atob(value)
-      : Buffer.from(value, 'base64').toString('utf8')
+    return typeof atob === 'function' ? atob(value) : Buffer.from(value, 'base64').toString('utf8')
   } catch {
     return value
   }
@@ -153,13 +151,14 @@ function extractMetadataUri(account: AccountRecord): string | undefined {
     if (decoded.startsWith('{')) {
       try {
         const parsed = JSON.parse(decoded) as Record<string, unknown>
-        const uri = typeof parsed.metadataUri === 'string'
-          ? parsed.metadataUri
-          : typeof parsed.uri === 'string'
-            ? parsed.uri
-            : typeof parsed.image === 'string'
-              ? parsed.image
-              : undefined
+        const uri =
+          typeof parsed.metadataUri === 'string'
+            ? parsed.metadataUri
+            : typeof parsed.uri === 'string'
+              ? parsed.uri
+              : typeof parsed.image === 'string'
+                ? parsed.image
+                : undefined
         if (uri) return uri
       } catch {
         // Fall through and treat the decoded value as the URI.
@@ -198,11 +197,28 @@ async function fetchJson(url: string): Promise<unknown> {
   return response.json() as Promise<unknown>
 }
 
+/**
+ * Clear the locally cached ship NFT record for an account.
+ */
 export function clearShipNFTCache(accountId: string): void {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(getCacheKey(accountId))
 }
 
+/**
+ * Fetch ship NFT metadata from the Stellar network.
+ *
+ * Resolves the ship asset and metadata URI from the account's data entries
+ * and fetches remote metadata when available. Results are cached in
+ * localStorage for 30 seconds.
+ *
+ * @param accountId - The Stellar public key of the ship owner
+ * @param config    - Optional network config override
+ * @param options.forceRefresh - Bypass the local cache
+ *
+ * @example
+ * const ship = await fetchShipNFT('G...')
+ */
 export async function fetchShipNFT(
   accountId: string,
   config?: StellarNetworkConfig,
@@ -236,12 +252,12 @@ export async function fetchShipNFT(
     return null
   }
 
-  const inlineMetadata = metadataUri && metadataUri.startsWith('{')
-    ? parseMetadata(tryParseJson(metadataUri))
-    : null
-  const remoteMetadata = metadataUri && !metadataUri.startsWith('{')
-    ? parseMetadata(await fetchJson(normalizeMetadataUrl(metadataUri)))
-    : null
+  const inlineMetadata =
+    metadataUri && metadataUri.startsWith('{') ? parseMetadata(tryParseJson(metadataUri)) : null
+  const remoteMetadata =
+    metadataUri && !metadataUri.startsWith('{')
+      ? parseMetadata(await fetchJson(normalizeMetadataUrl(metadataUri)))
+      : null
 
   const metadata =
     inlineMetadata ??

@@ -1,0 +1,139 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    # Only run for Dependabot PRs
+    if: github.actor == 'dependabot[bot]'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get PR metadata
+        id: pr-metadata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title;
+            const labels = pr.labels.map(l => l.name);
+            
+            // Determine if this is a security update
+            const isSecurityUpdate = 
+              title.includes('security') ||
+              title.toLowerCase().includes('[security]') ||
+              labels.some(l => l.includes('security'));
+            
+            // Determine if this is a patch or minor version update
+            const isPatchOrMinor =
+              title.includes('bump') ||
+              title.toLowerCase().includes('patch') ||
+              title.toLowerCase().includes('minor');
+            
+            core.setOutput('is-security-update', isSecurityUpdate);
+            core.setOutput('is-patch-or-minor', isPatchOrMinor);
+            core.setOutput('pr-number', pr.number);
+
+      - name: Enable auto-merge for security and patch updates
+        if: |
+          steps.pr-metadata.outputs.is-security-update == 'true' ||
+          steps.pr-metadata.outputs.is-patch-or-minor == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            
+            try {
+              // Enable auto-merge with squash strategy
+              await github.rest.pulls.enableAutoMerge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash',
+                commit_title: 'Automated dependency update',
+                commit_message: 'Updated via Dependabot'
+              });
+              
+              console.log(`✅ Auto-merge enabled for PR #${prNumber}`);
+            } catch (error) {
+              // Auto-merge might already be enabled, which is not an error
+              if (error.message.includes('Pull request auto merge already enabled')) {
+                console.log(`Auto-merge was already enabled for PR #${prNumber}`);
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Approve Dependabot PR
+        if: github.event.action != 'synchronize'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                event: 'APPROVE',
+                body: '✅ Automatically approved by DevOps automation. Security and patch/minor updates are auto-merged.'
+              });
+              
+              console.log(`✅ Approval added to PR #${prNumber}`);
+            } catch (error) {
+              // If we've already approved, that's okay
+              if (!error.message.includes('already approved')) {
+                throw error;
+              }
+            }
+
+      - name: Add Dependabot labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const labels = ['dependencies', 'automation'];
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              labels: labels
+            });
+            
+            console.log(`✅ Labels added to PR #${prNumber}`);
+
+      - name: Comment on PR about auto-merge
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const pr = context.payload.pull_request;
+            const isSecurityUpdate = 
+              pr.title.includes('security') ||
+              pr.title.toLowerCase().includes('[security]');
+            
+            const comment = isSecurityUpdate
+              ? `🔒 **Security Update** - This PR will be auto-merged when all checks pass.`
+              : `📦 **Dependency Update** - This patch/minor update will be auto-merged when all checks pass.`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });

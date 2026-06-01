@@ -1,7 +1,12 @@
-import { lazy, Suspense, type ReactNode } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { lazy, Suspense, type ReactNode, useEffect } from 'react'
+import { createBrowserRouter, useLocation } from 'react-router-dom'
 import AppLayout from '../layouts/AppLayout'
 import LoadingScreen from '../components/Loading/LoadingScreen'
+import { createScopedLogger } from '../services/logging'
+import { addMonitoringBreadcrumb, captureMonitoringEvent } from '../services/monitoring'
+import { trackEvent } from '../services/analytics'
+
+const log = createScopedLogger('Routes')
 
 const Home = lazy(() => import('../pages/Home'))
 const Marketplace = lazy(() => import('../pages/Marketplace'))
@@ -23,10 +28,34 @@ const withSuspense = (component: ReactNode) => (
   </Suspense>
 )
 
+// Component to track route changes
+function RouteChangeTracker() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const pageName = location.pathname || '/'
+    log.info(`Page view: ${pageName}`)
+
+    // Track page view
+    addMonitoringBreadcrumb(`Navigation: ${pageName}`, 'page-view')
+    trackEvent('scan_started', { page: pageName })
+
+    // Capture page view event in monitoring
+    captureMonitoringEvent('page_view', { path: pageName })
+  }, [location.pathname])
+
+  return null
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <>
+        <RouteChangeTracker />
+        <AppLayout />
+      </>
+    ),
     children: [
       {
         index: true,

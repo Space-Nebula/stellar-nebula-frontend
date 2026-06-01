@@ -3,28 +3,30 @@ import type { StellarNetwork } from './stellar'
 export type Environment = 'development' | 'staging' | 'production'
 
 export interface EnvConfig {
-  // App
   NODE_ENV: Environment
   APP_NAME: string
   APP_VERSION: string
 
-  // Stellar Network
   STELLAR_NETWORK: StellarNetwork
   STELLAR_RPC_URL: string
   STELLAR_HORIZON_URL: string
   STELLAR_PASSPHRASE: string
 
-  // Contract IDs
   NEBULA_CONTRACT_ID: string
   TOKEN_CONTRACT_ID: string
 
-  // API
   API_BASE_URL: string
   API_TIMEOUT_MS: number
 
-  // Feature flags
   ENABLE_DEV_TOOLS: boolean
   ENABLE_FPS_COUNTER: boolean
+
+  // Monitoring and Logging
+  SENTRY_DSN: string | null
+  LOGROCKET_APP_ID: string | null
+  ENABLE_MONITORING: boolean
+  LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error'
+  ANALYTICS_ENDPOINT: string | null
 }
 
 const REQUIRED_VARS = [
@@ -36,6 +38,10 @@ const REQUIRED_VARS = [
   'VITE_API_BASE_URL',
 ] as const
 
+/**
+ * Validate that required environment variables are present.
+ * Throws if any are missing.
+ */
 function validateEnv(): void {
   const missing = REQUIRED_VARS.filter((key) => !import.meta.env[key])
 
@@ -46,6 +52,10 @@ function validateEnv(): void {
   }
 }
 
+/**
+ * Read and validate all environment variables.
+ * Returns a typed EnvConfig object.
+ */
 function getEnv(): EnvConfig {
   validateEnv()
 
@@ -70,6 +80,13 @@ function getEnv(): EnvConfig {
 
     ENABLE_DEV_TOOLS: import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true',
     ENABLE_FPS_COUNTER: import.meta.env.VITE_ENABLE_FPS_COUNTER === 'true',
+
+    // Monitoring and Logging
+    SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN ?? null,
+    LOGROCKET_APP_ID: import.meta.env.VITE_LOGROCKET_APP_ID ?? null,
+    ENABLE_MONITORING: import.meta.env.VITE_ENABLE_MONITORING !== 'false',
+    LOG_LEVEL: (import.meta.env.VITE_LOG_LEVEL ?? 'info') as EnvConfig['LOG_LEVEL'],
+    ANALYTICS_ENDPOINT: import.meta.env.VITE_ANALYTICS_ENDPOINT ?? null,
   }
 }
 

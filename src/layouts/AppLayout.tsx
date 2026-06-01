@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import Navigation from '../components/Navigation'
+import Footer from '../components/Layout/Footer'
 import LoadingScreen from '../components/Loading/LoadingScreen'
 import NotificationBootstrap from '../components/Notifications/NotificationBootstrap'
 import { useWallet } from '../contexts'
@@ -24,6 +25,7 @@ function AppLayout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <Footer />
     </div>
   )
 }

@@ -31,7 +31,9 @@ export function useFreighterWallet() {
     try {
       const installed = await isFreighterInstalled()
       if (!installed) {
-        throw new Error('Freighter wallet is not installed. Visit https://www.freighter.app to install it.')
+        throw new Error(
+          'Freighter wallet is not installed. Visit https://www.freighter.app to install it.'
+        )
       }
       const publicKey: PublicKey = await connectFreighter()
       const network = await getFreighterNetwork()
@@ -58,10 +60,15 @@ export function useFreighterWallet() {
       setIsLoading(true)
       setError(null)
       try {
-        const networkPassphrase = walletState.network === 'testnet'
-          ? 'Test SDF Network ; September 2015'
-          : 'Public Global Stellar Network ; September 2015'
-        const signed = await signTransactionWithFreighter(xdr, networkPassphrase, walletState.publicKey ?? undefined)
+        const networkPassphrase =
+          walletState.network === 'testnet'
+            ? 'Test SDF Network ; September 2015'
+            : 'Public Global Stellar Network ; September 2015'
+        const signed = await signTransactionWithFreighter(
+          xdr,
+          networkPassphrase,
+          walletState.publicKey ?? undefined
+        )
         return signed
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to sign transaction'
@@ -71,7 +78,7 @@ export function useFreighterWallet() {
         setIsLoading(false)
       }
     },
-    [walletState],
+    [walletState]
   )
 
   return { walletState, isLoading, error, connect, disconnect, signTransaction }

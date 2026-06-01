@@ -1,103 +1,57 @@
-/**
- * Freighter wallet service.
- *
- * Wraps the @stellar/freighter-api browser extension API.
- * The SDK is mocked via the window.__freighter__ shim so the module works
- * without installing the npm package (no external dependency required at
- * build time). When the real extension is present it exposes the same
- * interface on window.freighterApi.
- *
- * Reference: https://www.freighter.app/docs/guide/introduction.html
- */
-
-import type { StellarNetwork, PublicKey, XDR } from '@/types'
-
-// ─── Freighter browser-extension interface (subset we use) ───────────────────
-
-interface FreighterApi {
-  isConnected(): Promise<{ isConnected: boolean }>
-  getPublicKey(): Promise<string>
-  getNetwork(): Promise<string>
-  getNetworkDetails(): Promise<{ network: string; networkPassphrase: string }>
-  signTransaction(xdr: string, opts?: { network?: string; accountToSign?: string }): Promise<string>
-}
-
-/** Resolve the Freighter API from the browser extension or the dev shim. */
-function getFreighterApi(): FreighterApi | null {
-  if (typeof window === 'undefined') return null
-
-  // Real extension injects window.freighterApi
-  const w = window as Window & {
-    freighterApi?: FreighterApi
-    __freighter__?: FreighterApi
-  }
-
-  return w.freighterApi ?? w.__freighter__ ?? null
-}
-
-// ─── Public helpers ───────────────────────────────────────────────────────────
+import type { PublicKey, XDR, StellarNetwork } from '@/types'
 
 /**
- * Returns true when the Freighter extension is installed in the browser.
+ * Check whether the Freighter browser extension is installed.
  */
 export async function isFreighterInstalled(): Promise<boolean> {
-  const api = getFreighterApi()
-  if (!api) return false
   try {
-    const { isConnected } = await api.isConnected()
-    return isConnected
+    const freighter = await import('@stellar/freighter-api')
+    return freighter.isConnected()
   } catch {
-    return false
+    // Freighter may not be installed or the module might not be resolvable.
+    // Fall back to checking the global window.
+    const anyWindow = window as Record<string, unknown>
+    return typeof anyWindow.freighter !== 'undefined' || typeof anyWindow.stellar !== 'undefined'
   }
 }
 
 /**
- * Request the user's public key from Freighter.
- * Throws if the extension is not installed or the user rejects the request.
+ * Request the user's public key via the Freighter extension.
  */
 export async function connectFreighter(): Promise<PublicKey> {
-  const api = getFreighterApi()
-  if (!api) {
-    throw new Error('Freighter wallet is not installed. Please install it from https://www.freighter.app')
-  }
-  const publicKey = await api.getPublicKey()
-  if (!publicKey) {
-    throw new Error('Freighter did not return a public key. The user may have rejected the request.')
-  }
-  return publicKey
+  const freighter = await import('@stellar/freighter-api')
+  return freighter.getPublicKey()
 }
 
 /**
- * Get the network the user's Freighter is currently set to.
- */
-export async function getFreighterNetwork(): Promise<StellarNetwork> {
-  const api = getFreighterApi()
-  if (!api) throw new Error('Freighter wallet is not installed.')
-
-  const { network } = await api.getNetworkDetails()
-  const normalised = network.toLowerCase()
-
-  if (normalised.includes('testnet')) return 'testnet'
-  if (normalised.includes('futurenet')) return 'futurenet'
-  return 'mainnet'
-}
-
-/**
- * Sign a Stellar transaction XDR with Freighter.
- *
- * @param xdr           - base64-encoded transaction XDR
- * @param network       - Stellar network passphrase
- * @param accountToSign - optional specific account to sign with
- * @returns signed transaction XDR
+ * Sign a transaction XDR with Freighter.
  */
 export async function signTransactionWithFreighter(
   xdr: XDR,
-  network: string,
-  accountToSign?: PublicKey,
+  networkPassphrase: string,
+  publicKey?: string
 ): Promise<XDR> {
-  const api = getFreighterApi()
-  if (!api) throw new Error('Freighter wallet is not installed.')
+  const freighter = await import('@stellar/freighter-api')
+  return freighter.signTransaction(xdr, {
+    networkPassphrase,
+    ...(publicKey ? { publicKey } : {}),
+  })
+}
 
-  const signed = await api.signTransaction(xdr, { network, accountToSign })
-  return signed
+/**
+ * Get the network that Freighter is currently connected to.
+ */
+export async function getFreighterNetwork(): Promise<StellarNetwork> {
+  try {
+    const freighter = await import('@stellar/freighter-api')
+    const network = await freighter.getNetwork()
+    const networkMap: Record<string, StellarNetwork> = {
+      public: 'mainnet',
+      testnet: 'testnet',
+      futurenet: 'futurenet',
+    }
+    return networkMap[network.toLowerCase()] ?? 'testnet'
+  } catch {
+    return 'testnet'
+  }
 }

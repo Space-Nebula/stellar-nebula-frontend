@@ -1,7 +1,9 @@
 import { useRef, useState, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
-import type { Group, Mesh } from 'three'
-import { ParticleSystem, Starfield } from '../Nebula'
+import type { Mesh } from 'three'
+import { ParticleSystem, Starfield, InteractiveScanPoints, ShipModel } from '../Nebula'
+import { trackEvent } from '../../services/analytics'
+import type { ResourceType } from '../../types/game'
 
 function NebulaSphere() {
   const meshRef = useRef<Mesh>(null)
@@ -38,27 +40,19 @@ export function NebulaScene({ starfieldDensity, performanceMode = false }: Nebul
   const [scanningPoints, setScanningPoints] = useState<Set<string>>(new Set())
 
   const handleScan = useCallback((pointId: string, resourceType: ResourceType, amount: number) => {
-    // Set scanning state
     setScanningPoints((prev) => new Set([...prev, pointId]))
-
-    // Simulate scan transaction
-    toast.loading(`Scanning ${resourceType} deposit...`, { id: pointId })
+    trackEvent('scan_started', { pointId, resourceType, amount })
 
     setTimeout(() => {
-      // Remove scanning state
       setScanningPoints((prev) => {
         const next = new Set(prev)
         next.delete(pointId)
         return next
       })
 
-      // Set cooldown (5 seconds)
       setCooldowns((prev) => ({ ...prev, [pointId]: 5 }))
+      trackEvent('scan_completed', { pointId, resourceType, amount })
 
-      // Show success message
-      toast.success(`Scanned ${amount} units of ${resourceType}`, { id: pointId })
-
-      // Clear cooldown after duration
       setTimeout(() => {
         setCooldowns((prev) => {
           const next = { ...prev }

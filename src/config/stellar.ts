@@ -29,6 +29,7 @@ export interface StellarConnectionStatus {
   networkPassphrase: string
 }
 
+/** Preconfigured Stellar network definitions. */
 export const STELLAR_NETWORK_CONFIGS: Record<StellarNetwork, StellarNetworkConfig> = {
   testnet: {
     network: 'testnet',
@@ -50,10 +51,12 @@ export const STELLAR_NETWORK_CONFIGS: Record<StellarNetwork, StellarNetworkConfi
   },
 }
 
+/** Get the config for a specific Stellar network. */
 export function getStellarNetworkConfig(network: StellarNetwork = 'testnet'): StellarNetworkConfig {
   return STELLAR_NETWORK_CONFIGS[network]
 }
 
+/** Read Stellar config values from environment variables. */
 export function getStellarEnvConfig(): StellarEnvConfig {
   return {
     STELLAR_NETWORK: import.meta.env.VITE_STELLAR_NETWORK as StellarNetwork | undefined,
@@ -63,6 +66,10 @@ export function getStellarEnvConfig(): StellarEnvConfig {
   }
 }
 
+/**
+ * Get the active Stellar configuration by merging defaults with
+ * environment variable overrides.
+ */
 export function getActiveStellarConfig(
   config: StellarEnvConfig = getStellarEnvConfig()
 ): StellarNetworkConfig {
@@ -76,18 +83,27 @@ export function getActiveStellarConfig(
   }
 }
 
+/** Create a Soroban RPC server client. */
 export function createStellarRpcServer(
   config: StellarNetworkConfig = getActiveStellarConfig()
 ): rpc.Server {
   return new rpc.Server(config.rpcUrl)
 }
 
+/** Create a Horizon server client. */
 export function createHorizonServer(
   config: StellarNetworkConfig = getActiveStellarConfig()
 ): Horizon.Server {
   return new Horizon.Server(config.horizonUrl)
 }
 
+/**
+ * Check connectivity to Stellar network services (RPC + Horizon).
+ *
+ * @example
+ * const status = await checkStellarConnection()
+ * console.log(status.rpcHealthy, status.horizonConnected)
+ */
 export async function checkStellarConnection(
   config: StellarNetworkConfig = getActiveStellarConfig(),
   clients: StellarConnectionClients = {

@@ -58,6 +58,48 @@ describe('Zustand stores', () => {
     })
   })
 
+  it('applies, confirms, and rolls back optimistic resource updates', () => {
+    useResourceStore.getState().setInventory({
+      credits: 1000,
+      fuel: 100,
+      minerals: 80,
+      nebulaDust: 10,
+    })
+
+    const failedId = useResourceStore.getState().applyOptimisticUpdate('Upgrade: Cargo', {
+      credits: -250,
+      minerals: -20,
+    })
+
+    expect(useResourceStore.getState().inventory).toMatchObject({
+      credits: 750,
+      minerals: 60,
+    })
+    expect(useResourceStore.getState().optimisticTransactions[0]).toMatchObject({
+      id: failedId,
+      status: 'pending',
+    })
+
+    useResourceStore.getState().rollbackOptimisticUpdate(failedId, 'rejected')
+
+    expect(useResourceStore.getState().inventory).toMatchObject({
+      credits: 1000,
+      minerals: 80,
+    })
+    expect(useResourceStore.getState().optimisticTransactions[0]).toMatchObject({
+      status: 'failed',
+      error: 'rejected',
+    })
+
+    const confirmedId = useResourceStore.getState().applyOptimisticUpdate('Scan reward', {
+      nebulaDust: 5,
+    })
+    useResourceStore.getState().confirmOptimisticUpdate(confirmedId)
+
+    expect(useResourceStore.getState().inventory.nebulaDust).toBe(15)
+    expect(useResourceStore.getState().optimisticTransactions[0].status).toBe('confirmed')
+  })
+
   it('tracks user session authentication state', () => {
     useUserStore.getState().setSession(session)
     useUserStore.getState().updateSession({ handle: 'sector-lead' })

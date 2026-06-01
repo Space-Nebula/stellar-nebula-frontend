@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGraphicsStore } from '@/store'
+import { trackEvent } from '@/services/analytics'
+import { useFrameRateMonitor } from '@/hooks/useFrameRateMonitor'
 
 const BASE_STAR_COUNT = 4200
 
@@ -17,17 +19,26 @@ function getParticleCount(density: number, performanceMode: boolean): number {
 
 export function PerformanceMonitor() {
   const [visible, setVisible] = useState(true)
-  const [fps, setFps] = useState(0)
   const [memUsed, setMemUsed] = useState<number | null>(null)
   const [memLimit, setMemLimit] = useState<number | null>(null)
-
-  const frameCountRef = useRef(0)
-  const lastTimeRef = useRef(performance.now())
-  const rafRef = useRef<number>(0)
 
   const density = useGraphicsStore((s) => s.starfieldDensity)
   const performanceMode = useGraphicsStore((s) => s.performanceMode)
   const particleCount = getParticleCount(density, performanceMode)
+
+  const { fps } = useFrameRateMonitor({
+    enabled: visible,
+    targetFps: 60,
+    sampleWindowMs: 1000,
+    onSample: (sample) => {
+      trackEvent('performance_metric', {
+        metric: 'fps',
+        value: sample.fps,
+        performanceMode,
+        particleCount,
+      })
+    },
+  })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -42,38 +53,26 @@ export function PerformanceMonitor() {
 
   useEffect(() => {
     if (!visible) return
-    lastTimeRef.current = performance.now()
 
-    const tick = () => {
-      frameCountRef.current++
-      const now = performance.now()
-      const elapsed = now - lastTimeRef.current
-
-      if (elapsed >= 1000) {
-        setFps(Math.round((frameCountRef.current * 1000) / elapsed))
-        frameCountRef.current = 0
-        lastTimeRef.current = now
-
-        const mem = (performance as PerformanceWithMemory).memory
-        if (mem) {
-          setMemUsed(mem.usedJSHeapSize)
-          setMemLimit(mem.jsHeapSizeLimit)
-        }
-      }
-
-      rafRef.current = requestAnimationFrame(tick)
+    const mem = (performance as PerformanceWithMemory).memory
+    if (mem) {
+      setMemUsed(mem.usedJSHeapSize)
+      setMemLimit(mem.jsHeapSizeLimit)
     }
-
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [visible])
+  }, [particleCount, performanceMode, visible])
 
   if (!visible) return null
 
   const fpsColor = fps >= 50 ? '#4ade80' : fps >= 30 ? '#facc15' : '#f87171'
   const memPercent = memUsed && memLimit ? (memUsed / memLimit) * 100 : null
   const memColor =
-    memPercent === null ? '#94a3b8' : memPercent < 60 ? '#4ade80' : memPercent < 80 ? '#facc15' : '#f87171'
+    memPercent === null
+      ? '#94a3b8'
+      : memPercent < 60
+        ? '#4ade80'
+        : memPercent < 80
+          ? '#facc15'
+          : '#f87171'
   const toMB = (bytes: number) => (bytes / 1_048_576).toFixed(1)
 
   return (
@@ -84,9 +83,7 @@ export function PerformanceMonitor() {
       <StatRow
         label="Memory"
         value={
-          memUsed !== null && memLimit !== null
-            ? `${toMB(memUsed)} / ${toMB(memLimit)} MB`
-            : 'N/A'
+          memUsed !== null && memLimit !== null ? `${toMB(memUsed)} / ${toMB(memLimit)} MB` : 'N/A'
         }
         color={memColor}
       />

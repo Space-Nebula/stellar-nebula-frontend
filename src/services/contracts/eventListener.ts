@@ -93,7 +93,8 @@ function normalizeContractEvent(raw: unknown): ContractEventRecord {
       (record?.transaction_hash as string | undefined) ||
       undefined,
     contractId: (record?.contract_id as string | undefined) || undefined,
-    timestamp: (record?.timestamp as string | undefined) || (record?.created_at as string | undefined),
+    timestamp:
+      (record?.timestamp as string | undefined) || (record?.created_at as string | undefined),
     raw,
   }
 }
@@ -167,32 +168,36 @@ export function startContractEventListener(options: ContractEventListenerOptions
     }
   }
 
-  const stream = (horizon as unknown as {
-    ledgers: () => {
-      stream: (handlers: {
-        onmessage: (ledger: Record<string, unknown>) => void
-        onerror: (error: unknown) => void
-      }) => { close?: () => void }
+  const stream = (
+    horizon as unknown as {
+      ledgers: () => {
+        stream: (handlers: {
+          onmessage: (ledger: Record<string, unknown>) => void
+          onerror: (error: unknown) => void
+        }) => { close?: () => void }
+      }
     }
-  }).ledgers().stream({
-    onmessage: (ledger) => {
-      const nextLedger =
-        typeof ledger.sequence === 'number'
-          ? ledger.sequence
-          : typeof ledger.sequence === 'string'
-            ? Number(ledger.sequence)
-            : typeof ledger.ledger_seq === 'number'
-              ? ledger.ledger_seq
-              : 0
+  )
+    .ledgers()
+    .stream({
+      onmessage: (ledger) => {
+        const nextLedger =
+          typeof ledger.sequence === 'number'
+            ? ledger.sequence
+            : typeof ledger.sequence === 'string'
+              ? Number(ledger.sequence)
+              : typeof ledger.ledger_seq === 'number'
+                ? ledger.ledger_seq
+                : 0
 
-      latestLedger = Math.max(latestLedger, nextLedger)
-      void fetchEvents()
-    },
-    onerror: (error) => {
-      const wrapped = error instanceof Error ? error : new Error('Horizon streaming failed')
-      options.onError?.(wrapped)
-    },
-  })
+        latestLedger = Math.max(latestLedger, nextLedger)
+        void fetchEvents()
+      },
+      onerror: (error) => {
+        const wrapped = error instanceof Error ? error : new Error('Horizon streaming failed')
+        options.onError?.(wrapped)
+      },
+    })
 
   pollingHandle = setInterval(() => {
     void fetchEvents()

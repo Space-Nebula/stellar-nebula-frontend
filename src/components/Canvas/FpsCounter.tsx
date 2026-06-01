@@ -1,31 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useFrameRateMonitor } from '@/hooks/useFrameRateMonitor'
 
 export function FpsCounter() {
-  const [fps, setFps] = useState(0)
-  const frameCountRef = useRef(0)
-  const lastTimeRef = useRef(0)
-  const rafRef = useRef<number>(0)
-
-  useEffect(() => {
-    lastTimeRef.current = performance.now()
-
-    const tick = () => {
-      frameCountRef.current++
-      const now = performance.now()
-      const elapsed = now - lastTimeRef.current
-
-      if (elapsed >= 1000) {
-        setFps(Math.round((frameCountRef.current * 1000) / elapsed))
-        frameCountRef.current = 0
-        lastTimeRef.current = now
-      }
-
-      rafRef.current = requestAnimationFrame(tick)
-    }
-
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [])
+  const { fps } = useFrameRateMonitor({
+    enabled: true,
+    targetFps: 60,
+    sampleWindowMs: 1000,
+  })
 
   return (
     <div

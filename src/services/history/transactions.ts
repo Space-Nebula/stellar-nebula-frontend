@@ -1,139 +1,79 @@
-import type { StellarNetworkConfig } from '@config/stellar'
+import type { Horizon } from '@stellar/stellar-sdk'
+import { createHorizonServer, getActiveStellarConfig } from '@/config/stellar'
+import type { StellarNetworkConfig } from '@/config/stellar'
+import type { StellarTransaction } from '@/types'
 
-export interface HistoryOperation {
-  type: string
-  source_account?: string
-  asset_code?: string
-  asset_issuer?: string
-  amount?: string
-  from?: string
-  to?: string
-  contract_id?: string
-  function?: string
+export interface TransactionHistoryOptions {
+  limit?: number
+  cursor?: string
+  order?: 'asc' | 'desc'
 }
 
-export interface HistoryTransaction {
-  hash: string
-  successful: boolean
-  created_at: string
-  source_account: string
-  memo_type?: string
-  memo?: string
-  fee_charged: string
-  operation_count: number
-  operations: HistoryOperation[]
+export interface PaginatedTransactions {
+  transactions: StellarTransaction[]
+  nextCursor: string | null
+  hasMore: boolean
 }
 
-export interface TransactionHistoryPage {
-  records: HistoryTransaction[]
-  nextHref: string | null
-}
-
-interface HorizonPage<T> {
-  records: T[]
-  _links?: {
-    next?: {
-      href: string
-    }
+function mapHorizonTransaction(tx: Horizon.ServerApi.TransactionRecord): StellarTransaction {
+  return {
+    hash: tx.hash,
+    ledger: tx.ledger,
+    createdAt: tx.created_at,
+    sourceAccount: tx.source_account,
+    feeCharged: tx.fee_charged,
+    status: tx.successful ? 'success' : 'failed',
+    memo: tx.memo ?? undefined,
   }
 }
 
-const KEYWORDS = ['ship', 'upgrade', 'scan', 'market', 'nebula', 'stardust', 'nft']
-
-function buildHorizonUrl(
+/**
+ * Fetch paginated Stellar transaction history for an account from Horizon.
+ *
+ * @param accountId - The Stellar public key
+ * @param options   - Pagination and ordering options
+ * @param config    - Optional network config override
+ *
+ * @example
+ * const { transactions, hasMore } = await getTransactionHistory('G...', { limit: 10 })
+ */
+export async function getTransactionHistory(
   accountId: string,
-  config: StellarNetworkConfig | undefined,
-  cursor?: string,
-  limit = 10
-): string {
-  const base = (config?.horizonUrl ?? 'https://horizon-testnet.stellar.org').replace(/\/+$/, '')
-  const url = new URL(`${base}/accounts/${accountId}/transactions`)
-  url.searchParams.set('limit', String(limit))
-  url.searchParams.set('order', 'desc')
+  options: TransactionHistoryOptions = {},
+  config?: StellarNetworkConfig
+): Promise<PaginatedTransactions> {
+  const horizon = createHorizonServer(config ?? getActiveStellarConfig())
+  const { limit = 20, cursor, order = 'desc' } = options
+
+  const builder = horizon.transactions().forAccount(accountId).limit(limit).order(order)
 
   if (cursor) {
-    url.searchParams.set('cursor', cursor)
+    builder.cursor(cursor)
   }
 
-  return url.toString()
-}
-
-async function fetchPage<T>(url: string): Promise<HorizonPage<T>> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to fetch transaction history (${response.status})`)
-  }
-
-  return response.json() as Promise<HorizonPage<T>>
-}
-
-async function fetchOperationsForTransaction(
-  hash: string,
-  config?: StellarNetworkConfig
-): Promise<HistoryOperation[]> {
-  const base = (config?.horizonUrl ?? 'https://horizon-testnet.stellar.org').replace(/\/+$/, '')
-  const response = await fetch(`${base}/transactions/${hash}/operations?limit=20&order=asc`)
-  if (!response.ok) return []
-
-  const payload = (await response.json()) as HorizonPage<HistoryOperation>
-  return payload.records ?? []
-}
-
-function getOperationSummary(operation: HistoryOperation): string {
-  if (operation.type === 'payment') {
-    const asset = operation.asset_code ?? 'XLM'
-    const amount = operation.amount ?? '0'
-    return `${amount} ${asset}`
-  }
-
-  if (operation.type === 'invoke_host_function') {
-    const contract = operation.contract_id ? operation.contract_id.slice(0, 6) : 'contract'
-    const fn = operation.function ?? 'invoke'
-    return `${contract}:${fn}`
-  }
-
-  return operation.type.replace(/_/g, ' ')
-}
-
-function transactionIsRelevant(tx: HistoryTransaction): boolean {
-  const memoText = `${tx.memo ?? ''} ${tx.memo_type ?? ''}`.toLowerCase()
-  if (KEYWORDS.some((keyword) => memoText.includes(keyword))) return true
-  return tx.operations.some((operation) => {
-    if (operation.type === 'invoke_host_function') return true
-    if (operation.type === 'payment') {
-      return KEYWORDS.some((keyword) =>
-        (operation.asset_code ?? '').toLowerCase().includes(keyword)
-      )
-    }
-    return false
-  })
-}
-
-export function summarizeHistoryOperation(operation: HistoryOperation): string {
-  return getOperationSummary(operation)
-}
-
-export async function loadTransactionHistoryPage(
-  accountId: string,
-  config?: StellarNetworkConfig,
-  cursorOrHref?: string,
-  limit = 10
-): Promise<TransactionHistoryPage> {
-  const page = await fetchPage<HistoryTransaction>(
-    cursorOrHref?.startsWith('http')
-      ? cursorOrHref
-      : buildHorizonUrl(accountId, config, cursorOrHref, limit)
-  )
-
-  const records = await Promise.all(
-    (page.records ?? []).map(async (tx) => {
-      const operations = await fetchOperationsForTransaction(tx.hash, config)
-      return { ...tx, operations }
-    })
-  )
+  const response = await builder.call()
+  const transactions = response.records.map(mapHorizonTransaction)
 
   return {
-    records: records.filter(transactionIsRelevant),
-    nextHref: page._links?.next?.href ?? null,
+    transactions,
+    nextCursor: response.next ? response.next : null,
+    hasMore: !!response.next,
+  }
+}
+
+/**
+ * Fetch a single Stellar transaction by hash.
+ */
+export async function getTransactionByHash(
+  hash: string,
+  config?: StellarNetworkConfig
+): Promise<StellarTransaction | null> {
+  const horizon = createHorizonServer(config ?? getActiveStellarConfig())
+
+  try {
+    const response = await horizon.transactions().transaction(hash).call()
+    return mapHorizonTransaction(response)
+  } catch {
+    return null
   }
 }

@@ -9,7 +9,10 @@ import { useState, useCallback } from 'react'
  * @example
  * const [theme, setTheme] = useLocalStorage('theme', 'dark')
  */
-export function useLocalStorage<T>(key: string, initial: T): [T, (value: T | ((prev: T) => T)) => void] {
+export function useLocalStorage<T>(
+  key: string,
+  initial: T
+): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key)
@@ -31,7 +34,7 @@ export function useLocalStorage<T>(key: string, initial: T): [T, (value: T | ((p
         // localStorage may be unavailable (private browsing, quota exceeded)
       }
     },
-    [key],
+    [key]
   )
 
   return [storedValue, setValue]

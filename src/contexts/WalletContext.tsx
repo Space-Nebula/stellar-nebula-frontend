@@ -10,6 +10,11 @@ import {
   signTransactionWithAlbedo,
 } from '@services/wallets'
 import type { WalletState, WalletType, XDR, StellarNetwork } from '@/types'
+import { createScopedLogger } from '@/services/logging'
+import { addMonitoringBreadcrumb, setMonitoringUser, clearMonitoringUser } from '@/services/monitoring'
+import { trackEvent } from '@/services/analytics'
+
+const log = createScopedLogger('WalletContext')
 
 // ─── Storage key ─────────────────────────────────────────────────────────────
 
@@ -80,25 +85,37 @@ function clearPersistedWallet(): void {
  * Validates if a persisted wallet session is still active.
  * Checks if the wallet extension is still installed and can provide the public key.
  */
-async function validateWalletSession(persisted: PersistedWallet): Promise<boolean> {
+async function validateWalletSession(persisted: PersistedWallet): Promise<WalletState | null> {
   try {
     if (persisted.walletType === 'freighter') {
       const installed = await isFreighterInstalled()
-      if (!installed) return false
+      if (!installed) return null
 
-      // Attempt to get the public key to ensure the wallet is still connected
+      // Attempt to get the public key and network to ensure the wallet is still connected.
+      // If the wallet has been switched or disconnected, do not reuse the persisted session.
       const currentKey = await connectFreighter()
-      // Verify the key matches what we stored
-      return currentKey === persisted.publicKey
+      if (currentKey !== persisted.publicKey) return null
+
+      const network = await getFreighterNetwork()
+      return {
+        isConnected: true,
+        publicKey: currentKey,
+        walletType: persisted.walletType,
+        network,
+      }
     } else if (persisted.walletType === 'albedo') {
-      if (!isAlbedoAvailable()) return false
-      // For Albedo, just check availability (web-based, no key validation needed)
-      return true
+      if (!isAlbedoAvailable()) return null
+      return {
+        isConnected: true,
+        publicKey: persisted.publicKey,
+        walletType: persisted.walletType,
+        network: persisted.network,
+      }
     }
-    return false
+    return null
   } catch {
-    // Session expired or wallet disconnected
-    return false
+    // Session expired, wallet disconnected, or the wallet rejected the validation request.
+    return null
   }
 }
 
@@ -136,29 +153,45 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const persisted = loadPersistedWallet()
       if (!persisted) return
 
+      log.info('Attempting wallet auto-reconnect', { walletType: persisted.walletType })
       setIsReconnecting(true)
       setReconnectError(null)
 
       try {
         // Validate that the persisted session is still active
-        const isValid = await validateWalletSession(persisted)
-        if (!isValid) {
-          // Session expired or wallet disconnected
+        const restored = await validateWalletSession(persisted)
+        if (!restored) {
           setReconnectError('Previous wallet session expired. Please reconnect.')
           clearPersistedWallet()
           setIsReconnecting(false)
           return
         }
 
-        // Session is valid, restore the wallet state
-        setWalletState({
-          isConnected: true,
-          publicKey: persisted.publicKey,
+        // Session is valid, restore the wallet state and keep storage in sync.
+        setWalletState(restored)
+        persistWallet({
+          publicKey: restored.publicKey ?? persisted.publicKey,
+          walletType: restored.walletType,
+          network: restored.network ?? persisted.network,
+        })
+        
+        log.info('Wallet auto-reconnect successful', { 
+          walletType: persisted.walletType,
+          network: persisted.network 
+        })
+        
+        addMonitoringBreadcrumb('Wallet auto-reconnected', 'wallet', {
           walletType: persisted.walletType,
           network: persisted.network,
         })
+        
+        trackEvent('scan_started', {
+          action: 'wallet_auto_reconnect',
+          walletType: persisted.walletType,
+        })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to restore wallet connection'
+        log.error('Wallet auto-reconnect failed', err instanceof Error ? err : new Error(message))
         setReconnectError(message)
         clearPersistedWallet()
       } finally {
@@ -170,8 +203,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
   }, [])
 
   const connect = useCallback(async (type: WalletType) => {
+    log.info('Wallet connection initiated', { walletType: type })
     setIsLoading(true)
     setError(null)
+    
+    addMonitoringBreadcrumb('Wallet connection started', 'wallet', { walletType: type })
+    
     try {
       let publicKey: string
       let network: StellarNetwork
@@ -198,19 +235,53 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const newState: WalletState = { isConnected: true, publicKey, walletType: type, network }
       setWalletState(newState)
       persistWallet({ publicKey, walletType: type, network })
+      
+      log.info('Wallet connected successfully', { walletType: type, network })
+      
+      // Set user context in monitoring
+      setMonitoringUser(publicKey, undefined, `${type}-user`)
+      
+      addMonitoringBreadcrumb('Wallet connected', 'wallet', {
+        walletType: type,
+        network,
+      })
+      
+      trackEvent('scan_started', {
+        action: 'wallet_connect',
+        walletType: type,
+        network,
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to connect wallet'
+      log.error('Wallet connection failed', err instanceof Error ? err : new Error(message), { walletType: type })
       setError(message)
+      
+      trackEvent('error_reported', {
+        action: 'wallet_connect_failed',
+        walletType: type,
+        error: message,
+      })
     } finally {
       setIsLoading(false)
     }
   }, [])
 
   const disconnect = useCallback(() => {
+    log.info('Wallet disconnected', { walletType: walletState.walletType })
+    
     setWalletState(INITIAL_WALLET_STATE)
     setError(null)
     clearPersistedWallet()
-  }, [])
+    
+    // Clear user context in monitoring
+    clearMonitoringUser()
+    
+    addMonitoringBreadcrumb('Wallet disconnected', 'wallet')
+    
+    trackEvent('scan_completed', {
+      action: 'wallet_disconnect',
+    })
+  }, [walletState.walletType])
 
   const switchWallet = useCallback(
     async (type: WalletType) => {
@@ -227,30 +298,61 @@ export function WalletProvider({ children }: WalletProviderProps) {
     async (xdr: XDR): Promise<XDR | null> => {
       if (!walletState.isConnected || !walletState.network || !walletState.walletType) {
         setError('Wallet is not connected')
+        log.warn('Transaction signing attempted without connected wallet')
         return null
       }
+      
+      log.info('Transaction signing initiated', { walletType: walletState.walletType })
       setIsLoading(true)
       setError(null)
+      
+      addMonitoringBreadcrumb('Transaction signing started', 'transaction', {
+        walletType: walletState.walletType,
+      })
+      
       try {
+        let signedXdr: XDR | null = null
+        
         if (walletState.walletType === 'freighter') {
           const passphraseMap: Record<StellarNetwork, string> = {
             testnet: 'Test SDF Network ; September 2015',
             futurenet: 'Test SDF Future Network ; October 2022',
             mainnet: 'Public Global Stellar Network ; September 2015',
           }
-          return await signTransactionWithFreighter(
+          signedXdr = await signTransactionWithFreighter(
             xdr,
             passphraseMap[walletState.network],
             walletState.publicKey ?? undefined
           )
+        } else if (walletState.walletType === 'albedo') {
+          signedXdr = await signTransactionWithAlbedo(xdr, walletState.network)
+        } else {
+          throw new Error(`Signing not supported for wallet type "${walletState.walletType}"`)
         }
-        if (walletState.walletType === 'albedo') {
-          return await signTransactionWithAlbedo(xdr, walletState.network)
-        }
-        throw new Error(`Signing not supported for wallet type "${walletState.walletType}"`)
+        
+        log.info('Transaction signed successfully', { walletType: walletState.walletType })
+        
+        addMonitoringBreadcrumb('Transaction signed', 'transaction', {
+          walletType: walletState.walletType,
+        })
+        
+        trackEvent('upgrade_confirmed', {
+          walletType: walletState.walletType,
+        })
+        
+        return signedXdr
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to sign transaction'
+        log.error('Transaction signing failed', err instanceof Error ? err : new Error(message), {
+          walletType: walletState.walletType,
+        })
         setError(message)
+        
+        trackEvent('upgrade_failed', {
+          walletType: walletState.walletType,
+          error: message,
+        })
+        
         return null
       } finally {
         setIsLoading(false)

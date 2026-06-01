@@ -3,7 +3,10 @@ import { TransactionBuilder, rpc } from '@stellar/stellar-sdk'
 import { useWallet } from '../../contexts/WalletContext'
 import { env } from '../../config/env'
 import type { StellarNetworkConfig } from '../../config/stellar'
-import { fetchResourceAssetSnapshot, type ResourceAssetSnapshot } from '../../services/assets/resources'
+import {
+  fetchResourceAssetSnapshot,
+  type ResourceAssetSnapshot,
+} from '../../services/assets/resources'
 import {
   buildShipUpgradeTransaction,
   calculateUpgradeRequirements,
@@ -36,6 +39,18 @@ function inferAccountId(
   return accountId ?? walletAddress ?? null
 }
 
+/**
+ * Hook that manages the full ship upgrade lifecycle:
+ * fetching NFT metadata, resource balances, building quotes,
+ * simulating, and executing the upgrade on-chain.
+ *
+ * @param shipId    - The ship ID to upgrade
+ * @param accountId - Optional explicit account ID (falls back to wallet)
+ * @param config    - Optional Stellar network config override
+ *
+ * @example
+ * const { shipNFT, quote, isLoading, executeUpgrade } = useShipUpgrade('ship-123')
+ */
 export function useShipUpgrade(
   shipId: string | null | undefined,
   accountId?: string | null,
@@ -54,6 +69,7 @@ export function useShipUpgrade(
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /** Refresh ship NFT data, resource balances, and upgrade quote. */
   const refresh = useCallback(async () => {
     if (!shipId || !resolvedAccountId) {
       setShipNFT(null)
@@ -101,6 +117,7 @@ export function useShipUpgrade(
     return () => window.clearTimeout(timer)
   }, [refresh])
 
+  /** Build the upgrade transaction (includes simulation). */
   const buildUpgradeTransaction = useCallback(async () => {
     if (!shipId || !resolvedAccountId) {
       setError('A connected account and ship are required.')
@@ -145,6 +162,7 @@ export function useShipUpgrade(
     }
   }, [config, resolvedAccountId, resourceSnapshot, shipId, shipNFT])
 
+  /** Build and submit the upgrade transaction on-chain. */
   const executeUpgrade = useCallback(async () => {
     if (!walletState.isConnected || !walletState.publicKey) {
       setError('Connect a wallet to submit the upgrade transaction.')
@@ -163,19 +181,31 @@ export function useShipUpgrade(
         signedXdr,
         config?.networkPassphrase ?? env.STELLAR_PASSPHRASE
       )
-      const sendResult = await retryAsync(
-        async () => rpcServer.sendTransaction(transaction),
-        {
-          retries: 2,
-          shouldRetry: (error) => isRetryableStellarError(error),
-        }
-      )
+      const sendResult = await retryAsync(async () => rpcServer.sendTransaction(transaction), {
+        retries: 2,
+        shouldRetry: (error) => isRetryableStellarError(error),
+      })
 
-      if (sendResult.status !== 'PENDING') {
-        throw new Error(`Upgrade submission failed: ${sendResult.status}`)
+      const sendStatus =
+        typeof (sendResult as { status?: unknown }).status === 'string'
+          ? (sendResult as { status: string }).status
+          : 'UNKNOWN'
+
+      if (sendStatus === 'FAILED' || sendStatus === 'ERROR') {
+        throw new Error(`Upgrade submission failed: ${sendStatus}`)
       }
 
-      const finalResult = await rpcServer.pollTransaction(sendResult.hash)
+      if (sendStatus === 'SUCCESS') {
+        return typeof (sendResult as { hash?: unknown }).hash === 'string'
+          ? (sendResult as { hash: string }).hash
+          : null
+      }
+
+      if (sendStatus !== 'PENDING') {
+        throw new Error(`Upgrade submission failed: ${sendStatus}`)
+      }
+
+      const finalResult = await rpcServer.pollTransaction((sendResult as { hash: string }).hash)
 
       if (finalResult.status === 'FAILED') {
         throw new Error('The upgrade transaction failed on-chain.')
@@ -195,7 +225,14 @@ export function useShipUpgrade(
       setError(err instanceof Error ? err.message : 'Failed to submit upgrade transaction')
       return null
     }
-  }, [buildUpgradeTransaction, config, shipNFT, signTransaction, walletState.isConnected, walletState.publicKey])
+  }, [
+    buildUpgradeTransaction,
+    config,
+    shipNFT,
+    signTransaction,
+    walletState.isConnected,
+    walletState.publicKey,
+  ])
 
   return {
     shipNFT,

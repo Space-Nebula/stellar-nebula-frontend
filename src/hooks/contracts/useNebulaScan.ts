@@ -17,6 +17,18 @@ export interface UseNebulaScanReturn {
   reset: () => void
 }
 
+/**
+ * Hook that scans a nebula zone via a Soroban contract.
+ *
+ * @param options.contractId     - The Soroban contract address
+ * @param options.signTransaction- Callback to sign a built XDR
+ *
+ * @example
+ * const { scan, isLoading, error } = useNebulaScan({
+ *   contractId: 'C...',
+ *   signTransaction: (xdr) => wallet.sign(xdr),
+ * })
+ */
 export function useNebulaScan({
   contractId,
   signTransaction,

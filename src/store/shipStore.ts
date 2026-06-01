@@ -3,6 +3,13 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 
 export type ShipStatus = 'docked' | 'in-flight' | 'maintenance'
 
+export interface ShipStats {
+  speed: number
+  scannerLevel: number
+  shieldCapacity: number
+  weaponPower: number
+}
+
 export interface Ship {
   id: string
   name: string
@@ -11,6 +18,7 @@ export interface Ship {
   cargoCapacity: number
   crewCapacity: number
   lastKnownSector?: string
+  stats?: ShipStats
 }
 
 export interface ShipState {
@@ -24,6 +32,8 @@ export interface ShipActions {
   removeShip: (shipId: string) => void
   setActiveShip: (shipId: string | null) => void
   updateShipStatus: (shipId: string, status: ShipStatus) => void
+  updateShipStats: (shipId: string, stats: Partial<ShipStats>) => void
+  getActiveShip: () => Ship | null
   resetShips: () => void
 }
 
@@ -38,7 +48,7 @@ export const initialShipState: ShipState = {
 
 export const useShipStore = create<ShipStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialShipState,
       setShips: (ships) => set({ ships }),
       upsertShip: (ship) =>
@@ -63,6 +73,18 @@ export const useShipStore = create<ShipStore>()(
         set((state) => ({
           ships: state.ships.map((ship) => (ship.id === shipId ? { ...ship, status } : ship)),
         })),
+      updateShipStats: (shipId, stats) =>
+        set((state) => ({
+          ships: state.ships.map((ship) =>
+            ship.id === shipId
+              ? { ...ship, stats: { ...(ship.stats ?? { speed: 0, scannerLevel: 0, shieldCapacity: 0, weaponPower: 0 }), ...stats } }
+              : ship,
+          ),
+        })),
+      getActiveShip: () => {
+        const { ships, activeShipId } = get()
+        return ships.find((s) => s.id === activeShipId) ?? null
+      },
       resetShips: () => set(initialShipState),
     }),
     {

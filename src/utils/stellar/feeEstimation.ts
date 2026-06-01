@@ -69,9 +69,7 @@ function getNetworkCondition(baseFee: number): FeeEstimateResult['networkConditi
  * so the UI can still render a stable preview when the stats endpoint is
  * unreachable.
  */
-export async function estimateTransactionFee(
-  input: FeeEstimateInput,
-): Promise<FeeEstimateResult> {
+export async function estimateTransactionFee(input: FeeEstimateInput): Promise<FeeEstimateResult> {
   const config = getActiveStellarConfig()
   const rpcServer = createStellarRpcServer(config)
 
