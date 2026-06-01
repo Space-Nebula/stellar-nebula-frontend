@@ -22,7 +22,9 @@
     "docker:prod": "docker-compose up prod",
     "prepare": "husky",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run"
   },
   "dependencies": {
     "@albedo-link/intent": "^0.13.0",
