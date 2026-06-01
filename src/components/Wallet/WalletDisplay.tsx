@@ -19,7 +19,7 @@ interface WalletDisplayProps {
 
 export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
   const { walletState, disconnect, isReconnecting, reconnectError } = useWallet()
-  const { balances } = useAccountBalances(walletState.publicKey)
+  const { balances, isStreaming, balanceChanged } = useAccountBalances(walletState.publicKey)
   const [copied, setCopied] = useState(false)
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -77,9 +77,22 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
 
   return (
     <div style={containerStyle}>
-      {/* Balance chip */}
+      {/* Balance chip with streaming indicator */}
       {xlmBalance && (
-        <div style={balanceChipStyle} aria-label={`Balance: ${xlmBalance.balance} XLM`}>
+        <div
+          style={{
+            ...balanceChipStyle,
+            ...(balanceChanged ? balanceChangedStyle : {}),
+          }}
+          aria-label={`Balance: ${xlmBalance.balance} XLM${isStreaming ? ' (Live)' : ''}`}
+        >
+          {isStreaming && (
+            <span
+              style={streamingDotStyle}
+              title="Real-time updates active"
+              aria-label="Live updates"
+            />
+          )}
           <span style={balanceLabelStyle}>XLM</span>
           <span style={balanceAmountStyle}>{Number(xlmBalance.balance).toFixed(2)}</span>
         </div>
@@ -253,4 +266,18 @@ const reconnectingTextStyle: React.CSSProperties = {
   fontSize: '0.88em',
   color: 'rgba(165, 173, 255, 0.8)',
   fontWeight: 500,
+}
+
+const streamingDotStyle: React.CSSProperties = {
+  width: 6,
+  height: 6,
+  borderRadius: '50%',
+  backgroundColor: '#32d6a5',
+  boxShadow: '0 0 0 2px rgba(50, 214, 165, 0.3)',
+  animation: 'pulse 2s ease-in-out infinite',
+}
+
+const balanceChangedStyle: React.CSSProperties = {
+  animation: 'balanceGlow 0.5s ease-out',
+  boxShadow: '0 0 12px rgba(50, 214, 165, 0.6)',
 }
