@@ -5,6 +5,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Vector3 } from 'three'
 import { useTouchGestures } from '@/hooks/useTouchGestures'
 import { useNebulaZoom } from '@/hooks/useNebulaZoom'
+import { useGraphicsStore } from '@/store/graphicsStore'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ export function CameraControls({
   const canvasRef = useRef<HTMLElement>(gl.domElement)
 
   const { jumpToLevel } = useNebulaZoom(controlsRef)
+  const autoRotateEnabled = useGraphicsStore((state) => state.autoRotateEnabled)
+  const setAutoRotateEnabled = useGraphicsStore((state) => state.setAutoRotateEnabled)
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -48,9 +51,7 @@ export function CameraControls({
       }
       if (key === ' ' && gl.domElement === e.target) {
         e.preventDefault()
-        if (controlsRef.current) {
-          controlsRef.current.autoRotate = !controlsRef.current.autoRotate
-        }
+        setAutoRotateEnabled(!autoRotateEnabled)
       }
 
       // Zoom level keyboard shortcuts
@@ -58,7 +59,7 @@ export function CameraControls({
       if (key === '2') jumpToLevel('exploration')
       if (key === '3') jumpToLevel('detail')
     },
-    [gl, jumpToLevel]
+    [gl, jumpToLevel, autoRotateEnabled, setAutoRotateEnabled]
   )
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
@@ -174,7 +175,7 @@ export function CameraControls({
       maxDistance={MAX_DISTANCE}
       minPolarAngle={0.05}
       maxPolarAngle={Math.PI - 0.05}
-      autoRotate
+      autoRotate={autoRotateEnabled}
       autoRotateSpeed={AUTO_ROTATE_SPEED}
       zoomSpeed={isMobile ? 0.6 : 1}
       rotateSpeed={isMobile ? 0.4 : 0.6}
