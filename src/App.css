@@ -1375,6 +1375,48 @@ h1 {
   transform: translateX(1.1rem);
 }
 
+.settings-data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settings-button {
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.4);
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.settings-button:hover {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.55);
+}
+
+.settings-button--danger {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+}
+
+.settings-button--danger:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.8);
+}
+
+.settings-data-message {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.settings-file-input {
+  display: none;
+}
+
 /* ─── Tutorial / Onboarding ──────────────────────────────────────────────── */
 
 .tutorial-overlay {
