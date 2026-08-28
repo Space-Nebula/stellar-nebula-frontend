@@ -42,7 +42,7 @@ const generateMockTrades = (basePrice: number): Trade[] => {
 
 export const DEXInterface: React.FC = () => {
   const [baseAsset, setBaseAsset] = useState<Asset>(SUPPORTED_ASSETS[1]) // Default to DUST
-  const [quoteAsset] = useState<Asset>(SUPPORTED_ASSETS[0]) // Default to XLM
+  const quoteAsset = SUPPORTED_ASSETS[0] // Default to XLM
 
   const [bids, setBids] = useState<Order[]>([])
   const [asks, setAsks] = useState<Order[]>([])

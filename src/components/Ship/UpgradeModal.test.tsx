@@ -18,6 +18,10 @@ const fundedInventory: ResourceInventory = {
   fuel: 260,
   minerals: 180,
   nebulaDust: 90,
+  nebulite: 0,
+  stellarium: 0,
+  voidcrystal: 0,
+  darkMatter: 0,
 }
 
 describe('UpgradeModal', () => {

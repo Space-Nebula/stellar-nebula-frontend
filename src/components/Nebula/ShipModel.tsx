@@ -1,10 +1,9 @@
 /* eslint-disable */
 import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
-import type { Group, Object3D } from 'three'
-import { LOD } from '@react-three/drei'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { Group, Mesh, Object3D } from 'three'
 import type { ShipClass } from '@/types/game'
 
 interface ShipModelProps {
@@ -75,10 +74,11 @@ function LoadedShip({
   useEffect(() => {
     if (model.scene) {
       const cloned = model.scene.clone()
-      cloned.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true
-          child.receiveShadow = true
+      cloned.traverse((child: Object3D) => {
+        const mesh = child as Mesh
+        if (mesh.isMesh) {
+          mesh.castShadow = true
+          mesh.receiveShadow = true
         }
       })
       setClonedScene(cloned)
@@ -166,27 +166,12 @@ export function ShipModel({
 
   return (
     <group position={position}>
-      <LOD>
-        <LOD.Mesh distance={[0, 5]}>
-          <LoadedShip
-            model={gltf}
-            autoRotate={autoRotate}
-            rotationSpeed={rotationSpeed}
-            scale={scale}
-          />
-        </LOD.Mesh>
-        <LOD.Mesh distance={[5, 15]}>
-          <LoadedShip
-            model={gltf}
-            autoRotate={autoRotate}
-            rotationSpeed={rotationSpeed}
-            scale={scale * 0.8}
-          />
-        </LOD.Mesh>
-        <LOD.Mesh distance={[15, 50]}>
-          <FallbackShip shipClass={shipClass} />
-        </LOD.Mesh>
-      </LOD>
+      <LoadedShip
+        model={gltf}
+        autoRotate={autoRotate}
+        rotationSpeed={rotationSpeed}
+        scale={scale}
+      />
     </group>
   )
 }

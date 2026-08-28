@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
+export type TutorialObjective = 'connect-wallet' | 'first-scan' | 'first-upgrade'
+
 export interface TutorialState {
   completed: boolean
   currentStep: number
@@ -10,6 +12,7 @@ export interface TutorialState {
 
 export interface TutorialActions {
   setStep: (step: number) => void
+  completeObjective: (objective: TutorialObjective) => void
   complete: () => void
   dismiss: () => void
   replay: () => void

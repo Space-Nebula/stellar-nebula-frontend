@@ -1,16 +1,31 @@
 import type { PublicKey, XDR, StellarNetwork } from '@/types'
 
+interface FreighterClient {
+  isConnected: () => boolean | Promise<boolean>
+  getPublicKey: () => string | Promise<string>
+  signTransaction: (
+    xdr: string,
+    options: { networkPassphrase: string; publicKey?: string }
+  ) => string | Promise<string>
+  getNetwork: () => string | Promise<string>
+}
+
+async function loadFreighter(): Promise<FreighterClient> {
+  const packageName = '@stellar/freighter-api'
+  return (await import(/* @vite-ignore */ packageName)) as FreighterClient
+}
+
 /**
  * Check whether the Freighter browser extension is installed.
  */
 export async function isFreighterInstalled(): Promise<boolean> {
   try {
-    const freighter = await import('@stellar/freighter-api')
-    return freighter.isConnected()
+    const freighter = await loadFreighter()
+    return Boolean(await freighter.isConnected())
   } catch {
     // Freighter may not be installed or the module might not be resolvable.
     // Fall back to checking the global window.
-    const anyWindow = window as Record<string, unknown>
+    const anyWindow = window as unknown as Record<string, unknown>
     return typeof anyWindow.freighter !== 'undefined' || typeof anyWindow.stellar !== 'undefined'
   }
 }
@@ -19,7 +34,7 @@ export async function isFreighterInstalled(): Promise<boolean> {
  * Request the user's public key via the Freighter extension.
  */
 export async function connectFreighter(): Promise<PublicKey> {
-  const freighter = await import('@stellar/freighter-api')
+  const freighter = await loadFreighter()
   return freighter.getPublicKey()
 }
 
@@ -31,7 +46,7 @@ export async function signTransactionWithFreighter(
   networkPassphrase: string,
   publicKey?: string
 ): Promise<XDR> {
-  const freighter = await import('@stellar/freighter-api')
+  const freighter = await loadFreighter()
   return freighter.signTransaction(xdr, {
     networkPassphrase,
     ...(publicKey ? { publicKey } : {}),
@@ -43,7 +58,7 @@ export async function signTransactionWithFreighter(
  */
 export async function getFreighterNetwork(): Promise<StellarNetwork> {
   try {
-    const freighter = await import('@stellar/freighter-api')
+    const freighter = await loadFreighter()
     const network = await freighter.getNetwork()
     const networkMap: Record<string, StellarNetwork> = {
       public: 'mainnet',

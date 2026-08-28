@@ -1,80 +1,20 @@
-/* eslint-disable */
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { AchievementCard } from './AchievementCard'
-import type { Achievement } from './types'
-
-// Mock achievements data
-const MOCK_ACHIEVEMENTS: Achievement[] = [
-  {
-    id: '1',
-    title: 'First Scan',
-    description: 'Complete your first sector scan.',
-    icon: '📡',
-    progress: 1,
-    target: 1,
-    unlocked: true,
-    rarity: 'common',
-    unlockedAt: '2026-05-20T10:00:00Z',
-  },
-  {
-    id: '2',
-    title: '10 Scans',
-    description: 'Complete 10 sector scans.',
-    icon: '🔭',
-    progress: 10,
-    target: 10,
-    unlocked: true,
-    rarity: 'common',
-    unlockedAt: '2026-05-22T14:30:00Z',
-  },
-  {
-    id: '3',
-    title: '100 Scans',
-    description: 'Complete 100 sector scans.',
-    icon: '🌌',
-    progress: 42,
-    target: 100,
-    unlocked: false,
-    rarity: 'rare',
-  },
-  {
-    id: '4',
-    title: 'Ship Upgrade',
-    description: 'Upgrade your ship for the first time.',
-    icon: '🚀',
-    progress: 1,
-    target: 1,
-    unlocked: true,
-    rarity: 'rare',
-    unlockedAt: '2026-05-25T09:15:00Z',
-  },
-  {
-    id: '5',
-    title: 'Resource Trader',
-    description: 'Make 50 successful trades on the marketplace.',
-    icon: '💎',
-    progress: 12,
-    target: 50,
-    unlocked: false,
-    rarity: 'epic',
-  },
-  {
-    id: '6',
-    title: 'Nebula Explorer',
-    description: 'Discover a hidden nebula anomaly.',
-    icon: '🌀',
-    progress: 0,
-    target: 1,
-    unlocked: false,
-    rarity: 'legendary',
-  },
-]
+import { buildAchievements, useAchievementStore } from '@/store'
+import { ShareButton } from '@/components/Social/ShareButton'
 
 export const AchievementList: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all')
   const [sort, setSort] = useState<'progress' | 'rarity'>('progress')
+  const stats = useAchievementStore((state) => state.stats)
+  const unlockedAtById = useAchievementStore((state) => state.unlockedAtById)
 
-  const filteredAchievements = MOCK_ACHIEVEMENTS.filter((a) => {
+  const achievements = useMemo(
+    () => buildAchievements(stats, unlockedAtById),
+    [stats, unlockedAtById]
+  )
+
+  const filteredAchievements = achievements.filter((a) => {
     if (filter === 'unlocked') return a.unlocked
     if (filter === 'locked') return !a.unlocked
     return true
@@ -105,7 +45,7 @@ export const AchievementList: React.FC = () => {
         <div className="flex gap-2">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
+            onChange={(e) => setFilter(e.target.value as 'all' | 'unlocked' | 'locked')}
             className="bg-space-800 border border-space-700 text-white rounded px-3 py-1.5 outline-none focus:border-cosmic-cyan"
           >
             <option value="all">All Status</option>
@@ -115,7 +55,7 @@ export const AchievementList: React.FC = () => {
 
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as any)}
+            onChange={(e) => setSort(e.target.value as 'progress' | 'rarity')}
             className="bg-space-800 border border-space-700 text-white rounded px-3 py-1.5 outline-none focus:border-cosmic-cyan"
           >
             <option value="progress">Sort: Progress</option>
@@ -126,7 +66,25 @@ export const AchievementList: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {sortedAchievements.map((achievement) => (
-          <AchievementCard key={achievement.id} achievement={achievement} />
+          <AchievementCard
+            key={achievement.id}
+            achievement={achievement}
+            footer={
+              achievement.unlocked ? (
+                <ShareButton
+                  title={achievement.title}
+                  description={achievement.description}
+                  subject="achievement"
+                  playerStats={{
+                    scans: stats.scansCompleted,
+                    upgrades: stats.shipsUpgraded,
+                    resources: stats.resourcesCollected,
+                  }}
+                  variant="icon"
+                />
+              ) : undefined
+            }
+          />
         ))}
       </div>
 

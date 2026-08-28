@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color } from 'three'
@@ -31,7 +30,6 @@ function useDeviceHints() {
 
 const MAX_PARTICLE_COUNT = 50000
 const MIN_PARTICLE_COUNT = 10000
-const NEBULA_RADIUS = 70
 const CORE_RADIUS = 12
 
 const NEBULA_PALETTE = [

@@ -4,10 +4,12 @@ export {
   buildShipUpgradeTransaction,
   calculateUpgradeRequirements,
   calculateUpgradedStats,
+  validateUpgradeContractCall,
   validateUpgrade,
 } from './shipUpgrade'
 export type {
   ShipUpgradeBuildResult,
+  ShipUpgradeContractValidation,
   ShipUpgradeQuote,
   ShipUpgradeRequirements,
   ShipUpgradeStats,
