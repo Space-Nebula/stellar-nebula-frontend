@@ -1,7 +1,5 @@
-import { useContext, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { WalletContext } from '@/contexts/WalletContext'
-import { useTutorialStore, type TutorialObjective } from '@/store/tutorialStore'
+import { useTutorialStore } from '@/store/tutorialStore'
+import { TutorialHighlight } from './TutorialHighlight'
 
 interface TutorialStep {
   title: string
@@ -132,67 +130,54 @@ function TutorialFlow({ onClose }: TutorialFlowProps) {
   }
 
   return (
-    <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="false">
-      <div className="tutorial-card">
-        <div
-          className="tutorial-progress"
-          aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
-        >
-          {STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`tutorial-dot ${i === currentStep ? 'tutorial-dot--active' : i < currentStep ? 'tutorial-dot--done' : ''}`}
-              aria-hidden="true"
-            />
-          ))}
-        </div>
+    <>
+      <TutorialHighlight selector={step.highlight ?? null} visible={!!step.highlight} />
 
-        <div className="tutorial-icon" aria-hidden="true">
-          {step.icon}
-        </div>
-
-        <h2 className="tutorial-title">{step.title}</h2>
-        <p className="tutorial-description">{step.description}</p>
-
-        {step.highlight && (
-          <p className="tutorial-hint">
-            <span aria-hidden="true">👆</span> Look for the highlighted element on the page.
-          </p>
-        )}
-
-        {step.objective && (
-          <p
-            className={objectiveComplete ? 'tutorial-objective is-complete' : 'tutorial-objective'}
+      <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="true">
+        <div className="tutorial-card">
+          <div
+            className="tutorial-progress"
+            aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
           >
-            {objectiveComplete ? 'Objective complete' : 'Objective pending'}
-          </p>
-        )}
+            {STEPS.map((_, i) => (
+              <span
+                key={i}
+                className={`tutorial-dot ${i === currentStep ? 'tutorial-dot--active' : i < currentStep ? 'tutorial-dot--done' : ''}`}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
 
-        <div className="tutorial-actions">
-          {!isFirst && (
-            <button onClick={handleBack} className="tutorial-btn tutorial-btn--ghost">
-              Back
+          <div className="tutorial-icon" aria-hidden="true">
+            {step.icon}
+          </div>
+
+          <h2 className="tutorial-title">{step.title}</h2>
+          <p className="tutorial-description">{step.description}</p>
+
+          {step.highlight && (
+            <p className="tutorial-hint">
+              <span aria-hidden="true">👆</span> Look for the highlighted element on the page.
+            </p>
+          )}
+
+          <div className="tutorial-actions">
+            {!isFirst && (
+              <button onClick={handleBack} className="tutorial-btn tutorial-btn--ghost">
+                Back
+              </button>
+            )}
+            <button onClick={handleNext} className="tutorial-btn tutorial-btn--primary">
+              {isLast ? 'Get Started' : 'Next'}
             </button>
-          )}
-          {step.route && step.actionLabel && !objectiveComplete && (
-            <Link to={step.route} className="tutorial-btn tutorial-btn--ghost">
-              {step.actionLabel}
-            </Link>
-          )}
-          <button
-            onClick={handleNext}
-            className="tutorial-btn tutorial-btn--primary"
-            disabled={!objectiveComplete}
-          >
-            {isLast ? 'Get Started' : objectiveComplete ? 'Next' : 'Waiting'}
+          </div>
+
+          <button onClick={handleSkip} className="tutorial-skip" aria-label="Skip tutorial">
+            Skip tutorial
           </button>
         </div>
-
-        <button onClick={handleSkip} className="tutorial-skip" aria-label="Skip tutorial">
-          Skip tutorial
-        </button>
       </div>
-    </div>
+    </>
   )
 }
 
