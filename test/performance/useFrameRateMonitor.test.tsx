@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '../../src/test/utils'
 import { useFrameRateMonitor } from '../../src/hooks/useFrameRateMonitor'

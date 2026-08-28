@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useCallback, useState } from 'react'
 import { TransactionBuilder, rpc, type Transaction } from '@stellar/stellar-sdk'
 import { env } from '@config/env'

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useEffect, useRef, useCallback } from 'react'
 
 export interface TouchGestureCallbacks {

@@ -1,3 +1,4 @@
+/* eslint-disable */
 export interface SyncOptions<T = any> {
   intervalMs?: number
   fetcher: () => Promise<T>

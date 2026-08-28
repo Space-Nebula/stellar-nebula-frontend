@@ -47,7 +47,12 @@ export function MobileMenu({ isOpen, items, onClose }: MobileMenuProps) {
       >
         <div className="mobile-menu-header">
           <span>Menu</span>
-          <button type="button" className="mobile-menu-close" onClick={onClose} aria-label="Close menu">
+          <button
+            type="button"
+            className="mobile-menu-close"
+            onClick={onClose}
+            aria-label="Close menu"
+          >
             Close
           </button>
         </div>

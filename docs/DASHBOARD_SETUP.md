@@ -53,6 +53,7 @@ VITE_SENTRY_DSN=https://your-actual-dsn-here
 3. Pin important searches for quick access
 
 **Recommended Saved Searches:**
+
 - High-priority errors: `is:unresolved priority:high`
 - New errors: `is:unresolved age:-24h`
 - Frequent errors: `is:unresolved times_seen:>100`
@@ -72,6 +73,7 @@ VITE_SENTRY_DSN=https://your-actual-dsn-here
    - Set thresholds for alerts
 
 **Key Transactions to Monitor:**
+
 - `/` - Home page load time
 - `/nebula` - 3D canvas initialization
 - `/dashboard` - Dashboard load time
@@ -96,18 +98,21 @@ VITE_SENTRY_DSN=https://your-actual-dsn-here
 **Recommended Alerts:**
 
 #### High Error Rate Alert
+
 - **Alert Type**: Issues
 - **Condition**: When the issue is first seen
 - **Filter**: `level:error`
 - **Action**: Send notification to Slack/Email
 
 #### Performance Degradation Alert
+
 - **Alert Type**: Metric
 - **Condition**: When transaction duration exceeds threshold
 - **Threshold**: P95 > 3000ms
 - **Action**: Send notification to team
 
 #### New Release Issues Alert
+
 - **Alert Type**: Issues
 - **Condition**: When new issues appear in a release
 - **Action**: Send notification to release manager
@@ -153,6 +158,7 @@ VITE_LOGROCKET_APP_ID=your-org/your-app
    - **Custom Events**: Filter by tracked events
 
 **Useful Filters:**
+
 - `hasError:true` - Sessions with errors
 - `duration:>300` - Sessions longer than 5 minutes
 - `page:/nebula` - Sessions that visited the nebula page
@@ -172,6 +178,7 @@ VITE_LOGROCKET_APP_ID=your-org/your-app
 2. Create a funnel to track user conversion:
 
 **Example Funnel: Wallet Connection to Transaction**
+
 1. Step 1: Page view `/`
 2. Step 2: Wallet connected
 3. Step 3: Page view `/nebula`
@@ -218,23 +225,27 @@ The application tracks the following events (see `src/services/analytics.ts`):
 Create the following widgets in your analytics dashboard:
 
 #### 1. User Engagement
+
 - **Total Sessions**: Count of unique sessions
 - **Active Users**: Daily/Weekly/Monthly active users
 - **Session Duration**: Average time spent in app
 - **Page Views**: Most visited pages
 
 #### 2. Feature Adoption
+
 - **Wallet Connections**: Count of wallet connect events
 - **Scans Completed**: Success rate of scan operations
 - **Upgrades**: Count of upgrade attempts vs. completions
 - **Marketplace Activity**: Trades initiated and completed
 
 #### 3. Error Tracking
+
 - **Error Rate**: Percentage of sessions with errors
 - **Top Errors**: Most common error messages
 - **Error Trends**: Error rate over time
 
 #### 4. Performance Metrics
+
 - **API Response Time**: Average duration of API calls
 - **Page Load Time**: Time to interactive for each page
 - **Transaction Time**: Time to complete blockchain transactions
@@ -276,6 +287,7 @@ Create the following widgets in your analytics dashboard:
 ### Sentry
 
 **Roles:**
+
 - **Owner**: Full access, billing, and settings
 - **Manager**: Manage projects and team members
 - **Admin**: Full project access
@@ -283,6 +295,7 @@ Create the following widgets in your analytics dashboard:
 - **Billing**: Billing and subscription management
 
 **Recommended Setup:**
+
 - Developers: **Member** role
 - Team Leads: **Admin** role
 - DevOps: **Manager** role
@@ -290,11 +303,13 @@ Create the following widgets in your analytics dashboard:
 ### LogRocket
 
 **Roles:**
+
 - **Admin**: Full access to all features
 - **Member**: View sessions and errors
 - **Billing**: Billing management only
 
 **Recommended Setup:**
+
 - Developers: **Member** role
 - Product Managers: **Member** role
 - DevOps: **Admin** role
@@ -304,6 +319,7 @@ Create the following widgets in your analytics dashboard:
 ### 1. Set Up Alerts
 
 Configure alerts for critical issues:
+
 - Error rate exceeds 1%
 - Performance degradation (P95 > 3s)
 - New errors in production
@@ -312,6 +328,7 @@ Configure alerts for critical issues:
 ### 2. Regular Review
 
 Schedule regular dashboard reviews:
+
 - **Daily**: Check error rate and new issues
 - **Weekly**: Review performance trends and user behavior
 - **Monthly**: Analyze feature adoption and conversion funnels
@@ -319,6 +336,7 @@ Schedule regular dashboard reviews:
 ### 3. Incident Response
 
 When an alert fires:
+
 1. Check Sentry for error details and stack trace
 2. Find related LogRocket session to see user context
 3. Reproduce the issue locally if possible
@@ -328,6 +346,7 @@ When an alert fires:
 ### 4. Performance Budgets
 
 Set performance budgets and monitor:
+
 - Page load time < 2s
 - API response time < 500ms
 - Bundle size < 500KB
@@ -336,6 +355,7 @@ Set performance budgets and monitor:
 ### 5. Privacy and Compliance
 
 Ensure monitoring complies with privacy regulations:
+
 - **PII Masking**: LogRocket masks text by default
 - **Data Retention**: Configure retention periods in settings
 - **User Consent**: Implement analytics opt-out (already in code)

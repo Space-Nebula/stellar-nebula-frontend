@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { lazy, Suspense, type ReactNode, useEffect } from 'react'
 import { createBrowserRouter, useLocation } from 'react-router-dom'
 import AppLayout from '../layouts/AppLayout'

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { startContractEventListener, type ContractEventRecord } from '@/services/contracts/eventListener'
+import {
+  startContractEventListener,
+  type ContractEventRecord,
+} from '@/services/contracts/eventListener'
 import { useDebounce } from '@/hooks'
 
 interface ContractEventFeedProps {
@@ -12,7 +15,10 @@ export function ContractEventFeed({ defaultContractId = '' }: ContractEventFeedP
   const [error, setError] = useState<string | null>(null)
 
   const debouncedContractId = useDebounce(contractId.trim(), 250)
-  const canStream = useMemo(() => /^C[A-Z2-7]{55}$/.test(debouncedContractId), [debouncedContractId])
+  const canStream = useMemo(
+    () => /^C[A-Z2-7]{55}$/.test(debouncedContractId),
+    [debouncedContractId]
+  )
   const isLive = canStream
 
   useEffect(() => {
@@ -79,7 +85,9 @@ export function ContractEventFeed({ defaultContractId = '' }: ContractEventFeedP
             <article key={event.id} style={eventCardStyle}>
               <div style={eventHeaderStyle}>
                 <span style={eventTypeStyle}>{event.type}</span>
-                <span style={eventMetaStyle}>{event.ledger ? `Ledger ${event.ledger}` : 'Live'}</span>
+                <span style={eventMetaStyle}>
+                  {event.ledger ? `Ledger ${event.ledger}` : 'Live'}
+                </span>
               </div>
               <p style={eventSummaryStyle}>{event.summary}</p>
               <p style={eventMetaStyle}>{event.txHash ?? 'Transaction hash unavailable'}</p>
@@ -88,7 +96,11 @@ export function ContractEventFeed({ defaultContractId = '' }: ContractEventFeedP
         )}
       </div>
 
-      {error && <p role="alert" style={errorStyle}>{error}</p>}
+      {error && (
+        <p role="alert" style={errorStyle}>
+          {error}
+        </p>
+      )}
     </section>
   )
 }

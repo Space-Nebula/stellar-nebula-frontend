@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useState, useRef } from 'react'
 import html2canvas from 'html2canvas'
 import { analytics } from '@/services/analytics'

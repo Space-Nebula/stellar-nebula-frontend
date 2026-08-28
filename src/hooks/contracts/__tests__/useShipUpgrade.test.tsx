@@ -115,7 +115,13 @@ const MOCK_RESOURCES: ResourceAssetSnapshot = {
 }
 
 const MOCK_REQUIREMENTS = { credits: 100, stardust: 50, nebulite: 20, cosmicDust: 10 }
-const MOCK_UPDATED_STATS = { hull: 120, shield: 110, speed: 105, cargoCapacity: 150, crewCapacity: 12 }
+const MOCK_UPDATED_STATS = {
+  hull: 120,
+  shield: 110,
+  speed: 105,
+  cargoCapacity: 150,
+  crewCapacity: 12,
+}
 const MOCK_VALIDATION = { canUpgrade: true, missing: [], requirements: MOCK_REQUIREMENTS }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -156,10 +162,7 @@ describe('useShipUpgrade', () => {
     mockFetchShipNFT.mockResolvedValue(MOCK_SHIP)
     mockFetchResourceAssetSnapshot.mockResolvedValue(MOCK_RESOURCES)
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.shipNFT).toEqual(MOCK_SHIP))
 
@@ -172,10 +175,7 @@ describe('useShipUpgrade', () => {
     mockFetchShipNFT.mockResolvedValue(MOCK_SHIP)
     mockFetchResourceAssetSnapshot.mockResolvedValue(MOCK_RESOURCES)
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.quote).not.toBeNull())
     expect(result.current.quote?.canUpgrade).toBe(true)
@@ -185,10 +185,7 @@ describe('useShipUpgrade', () => {
     mockFetchShipNFT.mockResolvedValue(MOCK_SHIP)
     mockFetchResourceAssetSnapshot.mockResolvedValue(MOCK_RESOURCES)
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.updatedStats).not.toBeNull())
     expect(result.current.updatedStats?.hull).toBe(120)
@@ -198,10 +195,7 @@ describe('useShipUpgrade', () => {
     mockFetchShipNFT.mockRejectedValue(new Error('Horizon unavailable'))
     mockFetchResourceAssetSnapshot.mockResolvedValue(MOCK_RESOURCES)
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.error).toBeTruthy())
     expect(result.current.error).toBe('Horizon unavailable')
@@ -212,10 +206,7 @@ describe('useShipUpgrade', () => {
     mockFetchShipNFT.mockResolvedValue(MOCK_SHIP)
     mockFetchResourceAssetSnapshot.mockRejectedValue(new Error('Rate limited'))
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.error).toBeTruthy())
     expect(result.current.error).toBe('Rate limited')
@@ -239,14 +230,16 @@ describe('useShipUpgrade', () => {
     mockBuildShipUpgradeTransaction.mockResolvedValue({
       xdr: 'TXXDR==',
       transaction: {},
-      quote: { canUpgrade: true, missing: [], requirements: MOCK_REQUIREMENTS, updatedStats: MOCK_UPDATED_STATS },
+      quote: {
+        canUpgrade: true,
+        missing: [],
+        requirements: MOCK_REQUIREMENTS,
+        updatedStats: MOCK_UPDATED_STATS,
+      },
       simulation: { status: 'success' },
     })
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -265,14 +258,16 @@ describe('useShipUpgrade', () => {
     mockBuildShipUpgradeTransaction.mockResolvedValue({
       xdr: 'TXXDR==',
       transaction: {},
-      quote: { canUpgrade: false, missing: [], requirements: MOCK_REQUIREMENTS, updatedStats: MOCK_UPDATED_STATS },
+      quote: {
+        canUpgrade: false,
+        missing: [],
+        requirements: MOCK_REQUIREMENTS,
+        updatedStats: MOCK_UPDATED_STATS,
+      },
       simulation: { status: 'error', error: 'Insufficient gas' },
     })
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -284,10 +279,7 @@ describe('useShipUpgrade', () => {
   })
 
   it('executeUpgrade returns null when wallet is not connected', async () => {
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     let execResult: unknown
     await act(async () => {
@@ -301,10 +293,7 @@ describe('useShipUpgrade', () => {
     mockFetchShipNFT.mockResolvedValue(MOCK_SHIP)
     mockFetchResourceAssetSnapshot.mockResolvedValue(MOCK_RESOURCES)
 
-    const { result } = renderHook(
-      () => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useShipUpgrade(MOCK_SHIP_ID, MOCK_ACCOUNT_ID), { wrapper })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 

@@ -22,7 +22,7 @@ function renderModal(isOpen = true, onClose = vi.fn()) {
   return render(
     <WalletProvider>
       <ConnectModal isOpen={isOpen} onClose={onClose} />
-    </WalletProvider>,
+    </WalletProvider>
   )
 }
 

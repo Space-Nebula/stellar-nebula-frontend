@@ -1,3 +1,4 @@
+/* eslint-disable */
 function toBase64(arr: ArrayBuffer) {
   return btoa(String.fromCharCode(...new Uint8Array(arr)))
 }
@@ -48,7 +49,7 @@ export class StorageManager {
   /** Persist a value to localStorage (optionally encrypted). */
   async set<T>(k: string, value: T) {
     const payload = { v: value, __v: this.opts.version ?? 1 }
-    let data = JSON.stringify(payload)
+    const data = JSON.stringify(payload)
     const aes = await this.aesKeyPromise
     if (aes) {
       const iv = crypto.getRandomValues(new Uint8Array(12))

@@ -6,20 +6,25 @@ All monitoring and logging infrastructure has been successfully implemented for 
 
 ## What Was Added/Enhanced
 
-### 1. **LogRocket Integration** 
+### 1. **LogRocket Integration**
+
 - Added LogRocket script loader to `index.html` (loads only in non-localhost environments)
 - Configured LogRocket initialization in `src/services/monitoring.ts`
 - Integrated with Sentry for unified error tracking
 
 ### 2. **Environment Configuration**
+
 Updated all environment files with monitoring variables:
+
 - `VITE_LOGROCKET_APP_ID` - LogRocket session replay
 - `VITE_ANALYTICS_ENDPOINT` - Custom analytics backend
 - `VITE_ENABLE_MONITORING` - Master monitoring toggle
 - `VITE_LOG_LEVEL` - Configurable log levels (debug/info/warn/error)
 
 ### 3. **Wallet Event Instrumentation**
+
 Enhanced `src/contexts/WalletContext.tsx` with comprehensive tracking:
+
 - Wallet connection/disconnection events
 - Auto-reconnect attempts and results
 - Transaction signing events
@@ -27,7 +32,9 @@ Enhanced `src/contexts/WalletContext.tsx` with comprehensive tracking:
 - Analytics event tracking for all wallet actions
 
 ### 4. **Dashboard Documentation**
+
 Created `docs/DASHBOARD_SETUP.md` with:
+
 - Step-by-step Sentry dashboard setup
 - LogRocket dashboard configuration
 - Custom analytics dashboard guidelines
@@ -37,38 +44,45 @@ Created `docs/DASHBOARD_SETUP.md` with:
 ## Already Implemented (Pre-existing)
 
 ✅ **Structured Logging** (`src/services/logging.ts`)
+
 - Multi-level logging (debug, info, warn, error)
 - Scoped loggers for component organization
 - Consistent formatting and context support
 
 ✅ **Analytics Service** (`src/services/analytics.ts`)
+
 - Event tracking with PII sanitization
 - Batched transmission
 - User opt-out support
 - Predefined event types
 
 ✅ **Monitoring Service** (`src/services/monitoring.ts`)
+
 - Sentry error tracking and performance monitoring
 - Session replay with privacy masking
 - User context management
 - Breadcrumb tracking
 
 ✅ **Error Tracking** (`src/services/errorTracking.ts`)
+
 - Sentry integration
 - Error boundary instrumentation
 - Context capture
 
 ✅ **Route Change Tracking** (`src/routes/index.tsx`)
+
 - Automatic page view logging
 - Breadcrumb creation for navigation
 - Analytics event tracking
 
 ✅ **API Request Logging** (`src/services/api.ts`)
+
 - Request/response logging with duration
 - Error and timeout tracking
 - Breadcrumb creation for API calls
 
 ✅ **Comprehensive Documentation** (`docs/MONITORING_AND_LOGGING.md`)
+
 - Complete usage guide
 - Best practices
 - Troubleshooting tips
@@ -76,6 +90,7 @@ Created `docs/DASHBOARD_SETUP.md` with:
 ## Environment Setup
 
 ### Development
+
 ```bash
 VITE_ENABLE_MONITORING=true
 VITE_LOG_LEVEL=debug
@@ -84,6 +99,7 @@ VITE_LOGROCKET_APP_ID=    # Usually disabled
 ```
 
 ### Staging
+
 ```bash
 VITE_ENABLE_MONITORING=true
 VITE_LOG_LEVEL=info
@@ -92,6 +108,7 @@ VITE_LOGROCKET_APP_ID=<staging-id>
 ```
 
 ### Production
+
 ```bash
 VITE_ENABLE_MONITORING=true
 VITE_LOG_LEVEL=warn

@@ -5,6 +5,7 @@ All custom React hooks live here. Follow the naming convention `use<PascalCase>`
 ## Available Hooks
 
 ### `useLocalStorage<T>(key, initial)`
+
 Persist state to `localStorage` with the same API as `useState`.
 
 ```tsx
@@ -14,6 +15,7 @@ const [theme, setTheme] = useLocalStorage('theme', 'dark')
 ```
 
 ### `useDebounce<T>(value, delay?)`
+
 Debounce a value — only updates after `delay` ms of inactivity (default 300 ms).
 
 ```tsx
@@ -23,6 +25,7 @@ const debouncedSearch = useDebounce(searchTerm, 400)
 ```
 
 ### `useFreighterWallet()`
+
 Connect / disconnect the Freighter browser-extension wallet and sign transactions.
 
 ```tsx

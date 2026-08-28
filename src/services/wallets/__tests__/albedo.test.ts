@@ -74,7 +74,7 @@ describe('signTransactionWithAlbedo', () => {
     } as unknown as TxResult
     vi.mocked(albedo.tx).mockResolvedValue(response)
     await expect(signTransactionWithAlbedo('RAW_XDR', 'testnet')).rejects.toThrow(
-      'Albedo did not return a signed transaction',
+      'Albedo did not return a signed transaction'
     )
   })
 
@@ -88,8 +88,6 @@ describe('signTransactionWithAlbedo', () => {
     } as unknown as TxResult
     vi.mocked(albedo.tx).mockResolvedValue(response)
     await signTransactionWithAlbedo('RAW_XDR', 'mainnet')
-    expect(albedo.tx).toHaveBeenCalledWith(
-      expect.objectContaining({ network: undefined }),
-    )
+    expect(albedo.tx).toHaveBeenCalledWith(expect.objectContaining({ network: undefined }))
   })
 })

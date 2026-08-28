@@ -100,6 +100,6 @@ export const useSessionStore = create<SessionStore>()(
       name: sessionStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
       partialize: ({ session }) => ({ session }),
-    },
-  ),
+    }
+  )
 )

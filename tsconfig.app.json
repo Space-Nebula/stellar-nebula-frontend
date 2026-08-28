@@ -27,18 +27,18 @@
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*":           ["src/*"],
+      "@/*": ["src/*"],
       "@components/*": ["src/components/*"],
-      "@contexts/*":   ["src/contexts/*"],
-      "@hooks":         ["src/hooks/index.ts"],
-      "@hooks/*":      ["src/hooks/*"],
-      "@utils/*":      ["src/utils/*"],
-      "@store/*":      ["src/store/*"],
-      "@types/*":      ["src/types/*"],
-      "@constants/*":  ["src/constants/*"],
-      "@config/*":     ["src/config/*"],
-      "@services/*":   ["src/services/*"],
-      "@assets/*":     ["src/assets/*"]
+      "@contexts/*": ["src/contexts/*"],
+      "@hooks": ["src/hooks/index.ts"],
+      "@hooks/*": ["src/hooks/*"],
+      "@utils/*": ["src/utils/*"],
+      "@store/*": ["src/store/*"],
+      "@types/*": ["src/types/*"],
+      "@constants/*": ["src/constants/*"],
+      "@config/*": ["src/config/*"],
+      "@services/*": ["src/services/*"],
+      "@assets/*": ["src/assets/*"]
     }
   },
   "include": ["src"]

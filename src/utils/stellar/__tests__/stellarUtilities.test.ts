@@ -104,9 +104,7 @@ describe('Stellar utility functions', () => {
       dependsOn: ['missing'],
     })
 
-    expect(validateBatchOperations([])).toEqual([
-      expect.objectContaining({ code: 'EMPTY_BATCH' }),
-    ])
+    expect(validateBatchOperations([])).toEqual([expect.objectContaining({ code: 'EMPTY_BATCH' })])
     expect(validateBatchOperations([duplicate, missingDependency])).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 'DUPLICATE_OPERATION' }),
@@ -224,7 +222,9 @@ describe('Stellar utility functions', () => {
     const simulateTransaction = vi.fn().mockResolvedValue({ xdr: responseXdr })
     vi.mocked(createStellarRpcServer).mockReturnValue({ simulateTransaction } as never)
 
-    await expect(simulateContractTransaction<boolean>('AAAA', { retries: 0 })).resolves.toMatchObject({
+    await expect(
+      simulateContractTransaction<boolean>('AAAA', { retries: 0 })
+    ).resolves.toMatchObject({
       status: 'success',
       value: true,
     })

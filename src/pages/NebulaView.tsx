@@ -4,8 +4,7 @@ function NebulaView() {
       <p className="eyebrow">Nebula View</p>
       <h1>Survey active stellar clouds.</h1>
       <p className="page-copy">
-        Review mapped sectors, anomaly density, and navigation conditions for
-        upcoming expeditions.
+        Review mapped sectors, anomaly density, and navigation conditions for upcoming expeditions.
       </p>
     </section>
   )

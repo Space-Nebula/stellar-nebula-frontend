@@ -25,7 +25,8 @@ test.describe('Nebula scan page', () => {
 
   test('navigates to nebula from nav link', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('navigation', { name: /primary navigation/i })
+    await page
+      .getByRole('navigation', { name: /primary navigation/i })
       .getByRole('link', { name: /nebula/i })
       .click()
     await expect(page).toHaveURL(/\/nebula/)

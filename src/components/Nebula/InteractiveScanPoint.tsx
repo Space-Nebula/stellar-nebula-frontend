@@ -27,11 +27,11 @@ const RESOURCE_COLORS: Record<ResourceType, string> = {
   darkMatter: '#a78bfa',
 }
 
-export function InteractiveScanPoint({ 
-  data, 
-  onScan, 
+export function InteractiveScanPoint({
+  data,
+  onScan,
   cooldown = 0,
-  isScanning = false 
+  isScanning = false,
 }: InteractiveScanPointProps) {
   const meshRef = useRef<Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -46,13 +46,16 @@ export function InteractiveScanPoint({
     setHovered(false)
   }, [])
 
-  const handleClick = useCallback((event: THREE.Event) => {
-    event.stopPropagation()
-    
-    if (cooldown <= 0 && !isScanning && onScan) {
-      onScan(data.id, data.resourceType, data.resourceAmount)
-    }
-  }, [cooldown, isScanning, onScan, data])
+  const handleClick = useCallback(
+    (event: THREE.Event) => {
+      event.stopPropagation()
+
+      if (cooldown <= 0 && !isScanning && onScan) {
+        onScan(data.id, data.resourceType, data.resourceAmount)
+      }
+    },
+    [cooldown, isScanning, onScan, data]
+  )
 
   // Pulse animation
   useFrame(() => {
@@ -74,8 +77,8 @@ export function InteractiveScanPoint({
 
   const isOnCooldown = cooldown > 0
   const canInteract = !isOnCooldown && !isScanning
-  const currentColor = isOnCooldown ? '#4b5563' : (hovered ? '#ffffff' : data.color)
-  const emissiveIntensity = hovered ? 0.8 : (isOnCooldown ? 0.1 : 0.5)
+  const currentColor = isOnCooldown ? '#4b5563' : hovered ? '#ffffff' : data.color
+  const emissiveIntensity = hovered ? 0.8 : isOnCooldown ? 0.1 : 0.5
 
   return (
     <mesh
@@ -94,17 +97,12 @@ export function InteractiveScanPoint({
         transparent
         opacity={isOnCooldown ? 0.4 : 0.9}
       />
-      
+
       {/* Glow effect when hovered */}
       {hovered && canInteract && (
         <mesh scale={1.5}>
           <sphereGeometry args={[data.size, 16, 16]} />
-          <meshBasicMaterial
-            color={currentColor}
-            transparent
-            opacity={0.2}
-            toneMapped={false}
-          />
+          <meshBasicMaterial color={currentColor} transparent opacity={0.2} toneMapped={false} />
         </mesh>
       )}
 
@@ -112,12 +110,7 @@ export function InteractiveScanPoint({
       {isOnCooldown && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[data.size * 1.2, data.size * 1.4, 32]} />
-          <meshBasicMaterial
-            color="#4b5563"
-            transparent
-            opacity={0.6}
-            side={THREE.DoubleSide}
-          />
+          <meshBasicMaterial color="#4b5563" transparent opacity={0.6} side={THREE.DoubleSide} />
         </mesh>
       )}
 
@@ -125,12 +118,7 @@ export function InteractiveScanPoint({
       {isScanning && (
         <mesh scale={1.2}>
           <sphereGeometry args={[data.size, 16, 16]} />
-          <meshBasicMaterial
-            color="#22c55e"
-            transparent
-            opacity={0.5}
-            toneMapped={false}
-          />
+          <meshBasicMaterial color="#22c55e" transparent opacity={0.5} toneMapped={false} />
         </mesh>
       )}
     </mesh>
@@ -143,10 +131,10 @@ interface ScanPointsProps {
   scanningPoints?: Set<string>
 }
 
-export function InteractiveScanPoints({ 
-  onScan, 
+export function InteractiveScanPoints({
+  onScan,
   cooldowns = {},
-  scanningPoints = new Set()
+  scanningPoints = new Set(),
 }: ScanPointsProps) {
   const scanPointsData: ScanPointData[] = [
     {

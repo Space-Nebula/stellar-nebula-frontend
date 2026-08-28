@@ -27,7 +27,10 @@ vi.mock('@/services/analytics', () => ({ trackEvent: vi.fn() }))
 
 vi.mock('@/services/logging', () => ({
   createScopedLogger: vi.fn().mockReturnValue({
-    info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   }),
 }))
 
@@ -101,9 +104,7 @@ describe('Navigation — accessibility', () => {
 
   it('mobile menu trigger has an accessible label', async () => {
     await renderNavigation()
-    expect(
-      screen.getByRole('button', { name: /open navigation menu/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument()
   })
 
   it('mobile menu button has aria-expanded attribute', async () => {

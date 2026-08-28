@@ -23,7 +23,10 @@ vi.mock('@/services/analytics', () => ({ trackEvent: vi.fn() }))
 
 vi.mock('@/services/logging', () => ({
   createScopedLogger: vi.fn().mockReturnValue({
-    info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   }),
 }))
 
