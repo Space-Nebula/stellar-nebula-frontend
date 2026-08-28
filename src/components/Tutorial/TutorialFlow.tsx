@@ -1,4 +1,5 @@
 import { useTutorialStore } from '@/store/tutorialStore'
+import { TutorialHighlight } from './TutorialHighlight'
 
 interface TutorialStep {
   title: string
@@ -100,50 +101,54 @@ function TutorialFlow({ onClose }: TutorialFlowProps) {
   }
 
   return (
-    <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="true">
-      <div className="tutorial-card">
-        <div
-          className="tutorial-progress"
-          aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
-        >
-          {STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`tutorial-dot ${i === currentStep ? 'tutorial-dot--active' : i < currentStep ? 'tutorial-dot--done' : ''}`}
-              aria-hidden="true"
-            />
-          ))}
-        </div>
+    <>
+      <TutorialHighlight selector={step.highlight ?? null} visible={!!step.highlight} />
 
-        <div className="tutorial-icon" aria-hidden="true">
-          {step.icon}
-        </div>
+      <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="true">
+        <div className="tutorial-card">
+          <div
+            className="tutorial-progress"
+            aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
+          >
+            {STEPS.map((_, i) => (
+              <span
+                key={i}
+                className={`tutorial-dot ${i === currentStep ? 'tutorial-dot--active' : i < currentStep ? 'tutorial-dot--done' : ''}`}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
 
-        <h2 className="tutorial-title">{step.title}</h2>
-        <p className="tutorial-description">{step.description}</p>
+          <div className="tutorial-icon" aria-hidden="true">
+            {step.icon}
+          </div>
 
-        {step.highlight && (
-          <p className="tutorial-hint">
-            <span aria-hidden="true">👆</span> Look for the highlighted element on the page.
-          </p>
-        )}
+          <h2 className="tutorial-title">{step.title}</h2>
+          <p className="tutorial-description">{step.description}</p>
 
-        <div className="tutorial-actions">
-          {!isFirst && (
-            <button onClick={handleBack} className="tutorial-btn tutorial-btn--ghost">
-              Back
-            </button>
+          {step.highlight && (
+            <p className="tutorial-hint">
+              <span aria-hidden="true">👆</span> Look for the highlighted element on the page.
+            </p>
           )}
-          <button onClick={handleNext} className="tutorial-btn tutorial-btn--primary">
-            {isLast ? 'Get Started' : 'Next'}
+
+          <div className="tutorial-actions">
+            {!isFirst && (
+              <button onClick={handleBack} className="tutorial-btn tutorial-btn--ghost">
+                Back
+              </button>
+            )}
+            <button onClick={handleNext} className="tutorial-btn tutorial-btn--primary">
+              {isLast ? 'Get Started' : 'Next'}
+            </button>
+          </div>
+
+          <button onClick={handleSkip} className="tutorial-skip" aria-label="Skip tutorial">
+            Skip tutorial
           </button>
         </div>
-
-        <button onClick={handleSkip} className="tutorial-skip" aria-label="Skip tutorial">
-          Skip tutorial
-        </button>
       </div>
-    </div>
+    </>
   )
 }
 

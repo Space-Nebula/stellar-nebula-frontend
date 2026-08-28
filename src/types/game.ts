@@ -51,12 +51,15 @@ export interface NebulaZone {
 
 export type ResourceType = 'nebulite' | 'stellarium' | 'voidcrystal' | 'darkMatter'
 
+export type RarityTier = 'common' | 'rare' | 'legendary'
+
 export interface Resource {
   type: ResourceType
   /** Amount available in a deposit */
   amount: number
   /** Base market value per unit in credits */
   baseValue: number
+  rarity?: RarityTier
 }
 
 export interface CargoItem {
