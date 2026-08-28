@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import type { Mesh } from 'three'
 import type { ResourceType } from '@/types/game'
 import * as THREE from 'three'
@@ -47,7 +47,7 @@ export function InteractiveScanPoint({
   }, [])
 
   const handleClick = useCallback(
-    (event: THREE.Event) => {
+    (event: ThreeEvent<MouseEvent>) => {
       event.stopPropagation()
 
       if (cooldown <= 0 && !isScanning && onScan) {
