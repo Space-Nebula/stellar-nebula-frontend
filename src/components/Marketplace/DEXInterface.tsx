@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React, { useState, useEffect } from 'react'
 import type { Asset, Order, Trade } from './types'
 import { SUPPORTED_ASSETS } from './types'
@@ -26,7 +25,7 @@ const generateMockOrders = (type: 'buy' | 'sell', basePrice: number): Order[] =>
 }
 
 const generateMockTrades = (basePrice: number): Trade[] => {
-  return Array.from({ length: 30 }, (_, i) => {
+  return Array.from({ length: 30 }, () => {
     const type = (Math.random() > 0.5 ? 'buy' : 'sell') as 'buy' | 'sell'
     const priceVariance = Math.random() * 0.02 - 0.01
 
@@ -43,7 +42,7 @@ const generateMockTrades = (basePrice: number): Trade[] => {
 
 export const DEXInterface: React.FC = () => {
   const [baseAsset, setBaseAsset] = useState<Asset>(SUPPORTED_ASSETS[1]) // Default to DUST
-  const [quoteAsset, setQuoteAsset] = useState<Asset>(SUPPORTED_ASSETS[0]) // Default to XLM
+  const quoteAsset = SUPPORTED_ASSETS[0] // Default to XLM
 
   const [bids, setBids] = useState<Order[]>([])
   const [asks, setAsks] = useState<Order[]>([])

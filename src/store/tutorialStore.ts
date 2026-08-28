@@ -1,14 +1,18 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
+export type TutorialObjective = 'connect-wallet' | 'first-scan' | 'first-upgrade'
+
 export interface TutorialState {
   completed: boolean
   currentStep: number
   dismissed: boolean
+  completedObjectives: TutorialObjective[]
 }
 
 export interface TutorialActions {
   setStep: (step: number) => void
+  completeObjective: (objective: TutorialObjective) => void
   complete: () => void
   dismiss: () => void
   replay: () => void
@@ -22,6 +26,7 @@ export const initialTutorialState: TutorialState = {
   completed: false,
   currentStep: 0,
   dismissed: false,
+  completedObjectives: [],
 }
 
 export const useTutorialStore = create<TutorialStore>()(
@@ -29,6 +34,12 @@ export const useTutorialStore = create<TutorialStore>()(
     (set) => ({
       ...initialTutorialState,
       setStep: (currentStep) => set({ currentStep }),
+      completeObjective: (objective) =>
+        set((state) =>
+          state.completedObjectives.includes(objective)
+            ? state
+            : { completedObjectives: [...state.completedObjectives, objective] }
+        ),
       complete: () => set({ completed: true, dismissed: true }),
       dismiss: () => set({ dismissed: true }),
       replay: () => set({ completed: false, dismissed: false, currentStep: 0 }),

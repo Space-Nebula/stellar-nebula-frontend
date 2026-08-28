@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Inventory } from '../Resources/Inventory'
+import { AchievementList } from '../Achievements/AchievementList'
 import { SHIP_UPGRADES, UpgradeModal, type ShipUpgradeOption } from '../Ship/UpgradeModal'
 import { trackEvent } from '../../services/analytics'
+import { useTutorialStore } from '../../store/tutorialStore'
 import {
   useResourceStore,
+  useAchievementStore,
   useShipStore,
   type ResourceInventory,
   type ResourceType,
@@ -45,6 +48,10 @@ const DEMO_INVENTORY: ResourceInventory = {
   fuel: 260,
   minerals: 180,
   nebulaDust: 90,
+  nebulite: 120,
+  stellarium: 65,
+  voidcrystal: 30,
+  darkMatter: 10,
 }
 
 const RESOURCE_ORDER: ResourceType[] = ['credits', 'fuel', 'minerals', 'nebulaDust']
@@ -109,6 +116,8 @@ function ShipDashboard() {
   } = useResourceStore()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState<string | null>(null)
+  const recordUpgradeCompleted = useAchievementStore((state) => state.recordUpgradeCompleted)
+  const completeTutorialObjective = useTutorialStore((state) => state.completeObjective)
   const seededShips = useRef(false)
   const seededInventory = useRef(false)
 
@@ -194,6 +203,8 @@ function ShipDashboard() {
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 700))
       confirmOptimisticUpdate(transactionId)
+      recordUpgradeCompleted({ upgradeId: upgrade.id, shipId: activeShip.id })
+      completeTutorialObjective('first-upgrade')
       trackEvent('upgrade_confirmed', {
         upgradeId: upgrade.id,
         cargoDelta: upgrade.cargoDelta ?? 0,
@@ -332,6 +343,8 @@ function ShipDashboard() {
           </section>
         </div>
       </div>
+
+      <AchievementList />
 
       <UpgradeModal
         isOpen={isUpgradeOpen}

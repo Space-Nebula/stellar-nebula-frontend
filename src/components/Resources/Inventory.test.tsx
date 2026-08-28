@@ -18,6 +18,10 @@ describe('Inventory', () => {
           fuel: 20,
           minerals: 0,
           nebulaDust: 5,
+          nebulite: 0,
+          stellarium: 0,
+          voidcrystal: 0,
+          darkMatter: 0,
         }}
       />
     )
@@ -41,6 +45,10 @@ describe('Inventory', () => {
         fuel: 100,
         minerals: 60,
         nebulaDust: 10,
+        nebulite: 0,
+        stellarium: 0,
+        voidcrystal: 0,
+        darkMatter: 0,
       },
       optimisticTransactions: [
         {
@@ -52,6 +60,10 @@ describe('Inventory', () => {
             fuel: 100,
             minerals: 80,
             nebulaDust: 10,
+            nebulite: 0,
+            stellarium: 0,
+            voidcrystal: 0,
+            darkMatter: 0,
           },
           status: 'pending',
           createdAt: new Date().toISOString(),

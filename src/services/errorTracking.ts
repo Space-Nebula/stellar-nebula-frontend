@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react'
 import { createScopedLogger } from './logging'
+import type { LogContext } from './logging'
 
 const log = createScopedLogger('ErrorTracking')
 
@@ -52,16 +53,30 @@ export function setSentryUser(publicKey: string | null): void {
   }
 }
 
+function toLogContext(context?: Record<string, unknown>): LogContext | undefined {
+  if (!context) return undefined
+
+  return Object.fromEntries(
+    Object.entries(context).flatMap(([key, value]) =>
+      value === null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value)
+        ? [[key, value as LogContext[string]]]
+        : []
+    )
+  )
+}
+
 export function captureError(error: unknown, context?: Record<string, unknown>): void {
+  const logContext = toLogContext(context)
+
   Sentry.withScope((scope) => {
     if (context) {
       scope.setExtras(context)
     }
     if (error instanceof Error) {
-      log.error('Error captured', error, context)
+      log.error('Error captured', error, logContext)
       Sentry.captureException(error)
     } else {
-      log.error('Non-standard error captured', new Error(String(error)), context)
+      log.error('Non-standard error captured', new Error(String(error)), logContext)
       Sentry.captureException(new Error(String(error)))
     }
   })

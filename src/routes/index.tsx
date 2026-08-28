@@ -14,6 +14,7 @@ const Marketplace = lazy(() => import('../pages/Marketplace'))
 const NebulaView = lazy(() => import('../pages/NebulaView'))
 const NotFound = lazy(() => import('../pages/NotFound'))
 const ShipDashboard = lazy(() => import('../pages/ShipDashboard'))
+const LeaderboardPage = lazy(() => import('../pages/LeaderboardPage'))
 
 const withSuspense = (component: ReactNode) => (
   <Suspense
@@ -73,6 +74,10 @@ export const router = createBrowserRouter([
       {
         path: 'marketplace',
         element: withSuspense(<Marketplace />),
+      },
+      {
+        path: 'leaderboard',
+        element: withSuspense(<LeaderboardPage />),
       },
       {
         path: '*',

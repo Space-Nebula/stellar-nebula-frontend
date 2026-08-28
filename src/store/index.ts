@@ -10,8 +10,10 @@ export {
 
 export {
   initialResourceState,
+  RESOURCE_TYPES,
   resourceStoreStorageKey,
   useResourceStore,
+  type HarvestedResourceEvent,
   type ResourceInventory,
   type OptimisticResourceStatus,
   type OptimisticResourceTransaction,
@@ -59,3 +61,17 @@ export {
   type GameStore,
   type ScanCooldown,
 } from './gameStore'
+
+export {
+  ACHIEVEMENT_DEFINITIONS,
+  achievementStoreStorageKey,
+  buildAchievements,
+  initialAchievementState,
+  useAchievementStore,
+  type AchievementDefinition,
+  type AchievementState,
+  type AchievementStats,
+  type AchievementStore,
+  type GameEvent,
+  type GameEventType,
+} from './achievementStore'

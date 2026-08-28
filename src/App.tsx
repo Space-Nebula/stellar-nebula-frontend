@@ -1,7 +1,7 @@
 import { RouterProvider } from 'react-router-dom'
 import { useEffect } from 'react'
 import ErrorBoundary from './components/ErrorBoundary'
-import { WalletProvider } from './contexts/WalletContext'
+import { NotificationProvider, WalletProvider } from './contexts'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { InstallPrompt } from './components/PWA/InstallPrompt'
 import { OfflineIndicator } from './components/PWA/OfflineIndicator'
@@ -44,9 +44,11 @@ function App() {
     <ThemeProvider>
       <ErrorBoundary>
         <WalletProvider>
-          <RouterProvider router={router} />
-          <InstallPrompt />
-          <OfflineIndicator />
+          <NotificationProvider>
+            <RouterProvider router={router} />
+            <InstallPrompt />
+            <OfflineIndicator />
+          </NotificationProvider>
         </WalletProvider>
       </ErrorBoundary>
     </ThemeProvider>

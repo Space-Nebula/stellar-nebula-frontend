@@ -4,6 +4,7 @@ export type AnalyticsEventName =
   | 'upgrade_started'
   | 'upgrade_confirmed'
   | 'upgrade_failed'
+  | 'share_created'
   | 'error_reported'
   | 'performance_metric'
 

@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { ReactElement } from 'react'
 import ErrorBoundary from './ErrorBoundary'
 
-function Boom() {
+function Boom(): ReactElement {
   throw new Error('Simulated render error')
 }
 

@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  buildAchievements,
+  initialAchievementState,
   initialResourceState,
   initialShipState,
   initialUserState,
+  useAchievementStore,
   resourceStoreStorageKey,
   shipStoreStorageKey,
   useResourceStore,
@@ -34,6 +37,7 @@ describe('Zustand stores', () => {
     localStorage.clear()
     useShipStore.setState(initialShipState)
     useResourceStore.setState(initialResourceState)
+    useAchievementStore.setState(initialAchievementState)
     useUserStore.setState(initialUserState)
   })
 
@@ -55,6 +59,10 @@ describe('Zustand stores', () => {
       fuel: 25,
       minerals: 0,
       nebulaDust: 0,
+      nebulite: 0,
+      stellarium: 0,
+      voidcrystal: 0,
+      darkMatter: 0,
     })
   })
 
@@ -64,6 +72,10 @@ describe('Zustand stores', () => {
       fuel: 100,
       minerals: 80,
       nebulaDust: 10,
+      nebulite: 0,
+      stellarium: 0,
+      voidcrystal: 0,
+      darkMatter: 0,
     })
 
     const failedId = useResourceStore.getState().applyOptimisticUpdate('Upgrade: Cargo', {
@@ -98,6 +110,51 @@ describe('Zustand stores', () => {
 
     expect(useResourceStore.getState().inventory.nebulaDust).toBe(15)
     expect(useResourceStore.getState().optimisticTransactions[0].status).toBe('confirmed')
+  })
+
+  it('persists harvested resources from scan rewards', () => {
+    const harvest = useResourceStore.getState().harvestResource(
+      {
+        scanPointId: 'scan-1',
+        resourceType: 'nebulite',
+        amount: 42,
+        transactionHash: 'abc123',
+      },
+      'harvest-1'
+    )
+
+    expect(harvest).toMatchObject({
+      id: 'harvest-1',
+      resourceType: 'nebulite',
+      amount: 42,
+      source: 'contract',
+    })
+    expect(useResourceStore.getState().inventory.nebulite).toBe(42)
+    expect(useResourceStore.getState().lastHarvest?.scanPointId).toBe('scan-1')
+    expect(localStorage.getItem(resourceStoreStorageKey)).toContain('harvest-1')
+  })
+
+  it('records game events and unlocks achievements from scan and upgrade conditions', () => {
+    useAchievementStore.getState().recordScanCompleted({
+      pointId: 'scan-4',
+      resourceType: 'darkMatter',
+      amount: 25,
+    })
+    useAchievementStore.getState().recordUpgradeCompleted({
+      upgradeId: 'cargo-expansion',
+      shipId: 'ship-1',
+    })
+
+    const achievements = buildAchievements(
+      useAchievementStore.getState().stats,
+      useAchievementStore.getState().unlockedAtById
+    )
+
+    expect(useAchievementStore.getState().eventLog).toHaveLength(2)
+    expect(achievements.find((item) => item.id === 'first-scan')?.unlocked).toBe(true)
+    expect(achievements.find((item) => item.id === 'dark-matter-trace')?.unlocked).toBe(true)
+    expect(achievements.find((item) => item.id === 'first-upgrade')?.unlocked).toBe(true)
+    expect(useAchievementStore.getState().pendingNotifications.length).toBeGreaterThan(0)
   })
 
   it('tracks user session authentication state', () => {

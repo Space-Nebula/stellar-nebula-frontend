@@ -3,6 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import type { Mesh } from 'three'
 import { ParticleSystem, Starfield, InteractiveScanPoints, ShipModel } from '../Nebula'
 import { trackEvent } from '../../services/analytics'
+import { useAchievementStore, useResourceStore } from '../../store'
+import { useTutorialStore } from '../../store/tutorialStore'
 import type { ResourceType } from '../../types/game'
 
 function NebulaSphere() {
@@ -38,30 +40,48 @@ interface NebulaSceneProps {
 export function NebulaScene({ starfieldDensity, performanceMode = false }: NebulaSceneProps) {
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({})
   const [scanningPoints, setScanningPoints] = useState<Set<string>>(new Set())
+  const harvestResource = useResourceStore((state) => state.harvestResource)
+  const recordScanCompleted = useAchievementStore((state) => state.recordScanCompleted)
+  const completeTutorialObjective = useTutorialStore((state) => state.completeObjective)
 
-  const handleScan = useCallback((pointId: string, resourceType: ResourceType, amount: number) => {
-    setScanningPoints((prev) => new Set([...prev, pointId]))
-    trackEvent('scan_started', { pointId, resourceType, amount })
-
-    setTimeout(() => {
-      setScanningPoints((prev) => {
-        const next = new Set(prev)
-        next.delete(pointId)
-        return next
-      })
-
-      setCooldowns((prev) => ({ ...prev, [pointId]: 5 }))
-      trackEvent('scan_completed', { pointId, resourceType, amount })
+  const handleScan = useCallback(
+    (pointId: string, resourceType: ResourceType, amount: number) => {
+      setScanningPoints((prev) => new Set([...prev, pointId]))
+      trackEvent('scan_started', { pointId, resourceType, amount })
 
       setTimeout(() => {
-        setCooldowns((prev) => {
-          const next = { ...prev }
-          delete next[pointId]
+        setScanningPoints((prev) => {
+          const next = new Set(prev)
+          next.delete(pointId)
           return next
         })
-      }, 5000)
-    }, 2000)
-  }, [])
+
+        setCooldowns((prev) => ({ ...prev, [pointId]: 5 }))
+        const harvest = harvestResource({
+          scanPointId: pointId,
+          resourceType,
+          amount,
+        })
+        recordScanCompleted({
+          pointId,
+          resourceType,
+          amount,
+          transactionHash: harvest.transactionHash,
+        })
+        completeTutorialObjective('first-scan')
+        trackEvent('scan_completed', { pointId, resourceType, amount })
+
+        setTimeout(() => {
+          setCooldowns((prev) => {
+            const next = { ...prev }
+            delete next[pointId]
+            return next
+          })
+        }, 5000)
+      }, 2000)
+    },
+    [completeTutorialObjective, harvestResource, recordScanCompleted]
+  )
 
   // Update cooldowns
   useFrame((_state, delta: number) => {

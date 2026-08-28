@@ -11,6 +11,7 @@ const navigationItems = [
   { label: 'Nebula', to: '/nebula' },
   { label: 'Ship', to: '/dashboard' },
   { label: 'Market', to: '/marketplace' },
+  { label: 'Leaderboard', to: '/leaderboard' },
 ]
 
 function Navigation() {
