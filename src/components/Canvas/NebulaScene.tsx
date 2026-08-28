@@ -1,13 +1,8 @@
 import { useRef, useState, useCallback, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { Mesh } from 'three'
-import {
-  ParticleSystem,
-  Starfield,
-  InteractiveScanPoints,
-  ShipModel,
-  ProceduralNebulaField,
-} from '../Nebula'
+import { ParticleSystem, Starfield, InteractiveScanPoints, ProceduralNebulaField } from '../Nebula'
+import { ShipModel } from './ShipModel'
 import { trackEvent } from '../../services/analytics'
 import type { ResourceType, RarityTier } from '../../types/game'
 import { useScanCooldown } from '../../hooks/useScanCooldown'
