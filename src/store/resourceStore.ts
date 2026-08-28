@@ -5,6 +5,16 @@ export type ResourceType = 'credits' | 'fuel' | 'minerals' | 'nebulaDust'
 
 export type ResourceInventory = Record<ResourceType, number>
 
+/** Natural resources harvested from scanning nebula anomalies. */
+export type HarvestableResourceType = 'nebulite' | 'stellarium' | 'voidcrystal' | 'darkMatter'
+
+export interface HarvestEntry {
+  id: string
+  resourceType: HarvestableResourceType
+  amount: number
+  createdAt: string
+}
+
 export type OptimisticResourceStatus = 'pending' | 'confirmed' | 'failed'
 
 export interface OptimisticResourceTransaction {
@@ -20,6 +30,8 @@ export interface OptimisticResourceTransaction {
 
 export interface ResourceState {
   inventory: ResourceInventory
+  harvested: Record<HarvestableResourceType, number>
+  harvestLog: HarvestEntry[]
   optimisticTransactions: OptimisticResourceTransaction[]
 }
 
@@ -27,6 +39,8 @@ export interface ResourceActions {
   setInventory: (inventory: ResourceInventory) => void
   setResource: (resource: ResourceType, amount: number) => void
   adjustResource: (resource: ResourceType, delta: number) => void
+  addHarvest: (resourceType: HarvestableResourceType, amount: number) => void
+  clearHarvestLog: () => void
   applyOptimisticUpdate: (
     label: string,
     changes: Partial<Record<ResourceType, number>>,
@@ -49,6 +63,13 @@ export const initialResourceState: ResourceState = {
     minerals: 0,
     nebulaDust: 0,
   },
+  harvested: {
+    nebulite: 0,
+    stellarium: 0,
+    voidcrystal: 0,
+    darkMatter: 0,
+  },
+  harvestLog: [],
   optimisticTransactions: [],
 }
 
@@ -96,6 +117,23 @@ export const useResourceStore = create<ResourceStore>()(
             [resource]: Math.max(0, state.inventory[resource] + delta),
           },
         })),
+      addHarvest: (resourceType, amount) =>
+        set((state) => ({
+          harvested: {
+            ...state.harvested,
+            [resourceType]: state.harvested[resourceType] + amount,
+          },
+          harvestLog: [
+            {
+              id: createOptimisticId(),
+              resourceType,
+              amount,
+              createdAt: new Date().toISOString(),
+            },
+            ...state.harvestLog,
+          ].slice(0, 50),
+        })),
+      clearHarvestLog: () => set({ harvestLog: [] }),
       applyOptimisticUpdate: (label, changes, id = createOptimisticId()) => {
         set((state) => ({
           inventory: applyResourceChanges(state.inventory, changes),
@@ -163,7 +201,7 @@ export const useResourceStore = create<ResourceStore>()(
     {
       name: resourceStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ inventory }) => ({ inventory }),
+      partialize: ({ inventory, harvested, harvestLog }) => ({ inventory, harvested, harvestLog }),
     }
   )
 )

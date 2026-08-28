@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { isAlbedoAvailable, connectAlbedo, signTransactionWithAlbedo } from '../albedo'
 
-vi.mock('@albedo-link/intent', () => ({
-  default: {
-    publicKey: vi.fn(),
-    tx: vi.fn(),
-  },
-}))
+vi.mock('@albedo-link/intent', () => {
+  const publicKey = vi.fn()
+  const tx = vi.fn()
+
+  return {
+    publicKey,
+    tx,
+    default: { publicKey, tx },
+  }
+})
 
 import albedo from '@albedo-link/intent'
 

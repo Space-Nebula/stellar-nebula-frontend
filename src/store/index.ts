@@ -12,6 +12,8 @@ export {
   initialResourceState,
   resourceStoreStorageKey,
   useResourceStore,
+  type HarvestEntry,
+  type HarvestableResourceType,
   type ResourceInventory,
   type OptimisticResourceStatus,
   type OptimisticResourceTransaction,

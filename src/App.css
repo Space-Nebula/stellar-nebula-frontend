@@ -1204,10 +1204,10 @@ h1 {
     display: inline-block;
   }
 
-
   .help-modal {
     max-height: min(90vh, 820px);
     padding: 1rem;
+  }
 
   .header-tools {
     width: 100%;
@@ -1216,7 +1216,6 @@ h1 {
 
   .nav-link {
     padding-inline: 0.75rem;
-
   }
 
   .notification-panel {
@@ -1770,4 +1769,22 @@ h1 {
     position: relative;
     flex-wrap: wrap;
   }
+}
+
+.marketplace-view {
+  display: grid;
+  gap: 2rem;
+}
+
+.harvest-panel {
+  margin-top: 2rem;
+  max-width: 760px;
+}
+
+.harvest-totals {
+  margin: 1rem 0;
+}
+
+.dashboard-history {
+  margin-top: 0.75rem;
 }

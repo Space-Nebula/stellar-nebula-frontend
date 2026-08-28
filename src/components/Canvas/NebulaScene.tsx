@@ -46,6 +46,7 @@ function NebulaSphere() {
 interface NebulaSceneProps {
   starfieldDensity: number
   performanceMode?: boolean
+  onScanComplete?: (resourceType: ResourceType, amount: number) => void
 }
 
 function createInitialRng() {

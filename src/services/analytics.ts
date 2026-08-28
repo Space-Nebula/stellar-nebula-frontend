@@ -1,6 +1,7 @@
 export type AnalyticsEventName =
   | 'scan_started'
   | 'scan_completed'
+  | 'harvest_completed'
   | 'upgrade_started'
   | 'upgrade_confirmed'
   | 'upgrade_failed'

@@ -52,7 +52,7 @@ export function InteractiveScanPoint({
   }, [])
 
   const handleClick = useCallback(
-    (event: THREE.Event) => {
+    (event: ThreeEvent<MouseEvent>) => {
       event.stopPropagation()
 
       if (cooldown <= 0 && !isScanning && onScan) {

@@ -16,14 +16,24 @@ export interface PaginatedTransactions {
 }
 
 function mapHorizonTransaction(tx: Horizon.ServerApi.TransactionRecord): StellarTransaction {
+  const record = tx as unknown as {
+    hash: string
+    ledger?: number
+    created_at: string
+    source_account: string
+    fee_charged: string
+    successful: boolean
+    memo?: string | null
+  }
+
   return {
-    hash: tx.hash,
-    ledger: tx.ledger,
-    createdAt: tx.created_at,
-    sourceAccount: tx.source_account,
-    feeCharged: tx.fee_charged,
-    status: tx.successful ? 'success' : 'failed',
-    memo: tx.memo ?? undefined,
+    hash: record.hash,
+    ledger: record.ledger,
+    createdAt: record.created_at,
+    sourceAccount: record.source_account,
+    feeCharged: record.fee_charged,
+    status: record.successful ? 'success' : 'failed',
+    memo: record.memo ?? undefined,
   }
 }
 
@@ -54,10 +64,13 @@ export async function getTransactionHistory(
   const response = await builder.call()
   const transactions = response.records.map(mapHorizonTransaction)
 
+  const nextLink = (response as unknown as { _links?: { next?: { href?: string } } })._links?.next
+    ?.href
+
   return {
     transactions,
-    nextCursor: response.next ? response.next : null,
-    hasMore: !!response.next,
+    nextCursor: nextLink ?? null,
+    hasMore: Boolean(response.next),
   }
 }
 

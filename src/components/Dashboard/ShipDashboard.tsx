@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Inventory } from '../Resources/Inventory'
 import { SHIP_UPGRADES, UpgradeModal, type ShipUpgradeOption } from '../Ship/UpgradeModal'
+import { TransactionHistory } from '../History/TransactionHistory'
+import { useShipUpgrade } from '../../hooks/contracts/useShipUpgrade'
+import { useWallet } from '../../contexts/WalletContext'
 import { trackEvent } from '../../services/analytics'
 import {
   useResourceStore,
@@ -98,6 +101,7 @@ function ShipCard({
 }
 
 function ShipDashboard() {
+  const { walletState } = useWallet()
   const { ships, activeShipId, setShips, setActiveShip, upsertShip } = useShipStore()
   const {
     inventory,
@@ -138,6 +142,8 @@ function ShipDashboard() {
     () => fleet.find((ship) => ship.id === activeShipId) ?? fleet[0] ?? null,
     [activeShipId, fleet]
   )
+
+  const upgradeContract = useShipUpgrade(activeShip?.id)
 
   const totalCargoCapacity = useMemo(
     () => fleet.reduce((sum, ship) => sum + ship.cargoCapacity, 0),
@@ -181,13 +187,44 @@ function ShipDashboard() {
       mineralsCost: upgrade.cost.minerals ?? 0,
     })
 
-    upsertShip({
+    const upgradedShip = {
       ...activeShip,
       cargoCapacity: activeShip.cargoCapacity + (upgrade.cargoDelta ?? 0),
       crewCapacity: activeShip.crewCapacity + (upgrade.crewDelta ?? 0),
       status: upgrade.statusAfter ?? 'docked',
       lastKnownSector: upgrade.sectorLabel ?? activeShip.lastKnownSector,
-    })
+    }
+
+    const useContractPath = walletState.isConnected && Boolean(upgradeContract.shipNFT)
+
+    if (useContractPath) {
+      setUpgradeMessage(`${upgrade.name} is submitting its transaction on-chain…`)
+      const txHash = await upgradeContract.executeUpgrade()
+
+      if (txHash) {
+        upsertShip(upgradedShip)
+        confirmOptimisticUpdate(transactionId)
+        trackEvent('upgrade_confirmed', {
+          upgradeId: upgrade.id,
+          cargoDelta: upgrade.cargoDelta ?? 0,
+          crewDelta: upgrade.crewDelta ?? 0,
+          txHash,
+        })
+        setUpgradeMessage(`${upgrade.name} confirmed on-chain (${txHash.slice(0, 8)}).`)
+        setIsUpgradeOpen(false)
+      } else {
+        upsertShip(previousShip)
+        rollbackOptimisticUpdate(transactionId, upgradeContract.error ?? 'Contract upgrade failed')
+        trackEvent('upgrade_failed', {
+          upgradeId: upgrade.id,
+          reason: 'contract_error',
+        })
+        setUpgradeMessage(`${upgrade.name} failed and resource changes were rolled back.`)
+      }
+      return
+    }
+
+    upsertShip(upgradedShip)
 
     setUpgradeMessage(`${upgrade.name} is pending transaction confirmation.`)
 
@@ -310,6 +347,13 @@ function ShipDashboard() {
                 <p className="eyebrow">Upgrade Queue</p>
                 <h2>Ready for batch execution</h2>
               </div>
+              <span className="section-meta">
+                {walletState.isConnected
+                  ? upgradeContract.shipNFT
+                    ? 'Contract upgrades available'
+                    : 'On-chain upgrades need a funded ship'
+                  : 'Connect a wallet for on-chain upgrades'}
+              </span>
             </div>
 
             <div className="queue-list">
@@ -341,6 +385,13 @@ function ShipDashboard() {
         onClose={() => setIsUpgradeOpen(false)}
         onConfirm={handleApplyUpgrade}
       />
+
+      <section className="dashboard-history">
+        <TransactionHistory
+          accountId={walletState.isConnected ? walletState.publicKey : null}
+          title="Ship transaction history"
+        />
+      </section>
     </section>
   )
 }
