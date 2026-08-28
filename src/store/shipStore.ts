@@ -77,8 +77,19 @@ export const useShipStore = create<ShipStore>()(
         set((state) => ({
           ships: state.ships.map((ship) =>
             ship.id === shipId
-              ? { ...ship, stats: { ...(ship.stats ?? { speed: 0, scannerLevel: 0, shieldCapacity: 0, weaponPower: 0 }), ...stats } }
-              : ship,
+              ? {
+                  ...ship,
+                  stats: {
+                    ...(ship.stats ?? {
+                      speed: 0,
+                      scannerLevel: 0,
+                      shieldCapacity: 0,
+                      weaponPower: 0,
+                    }),
+                    ...stats,
+                  },
+                }
+              : ship
           ),
         })),
       getActiveShip: () => {

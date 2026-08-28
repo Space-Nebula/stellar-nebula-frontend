@@ -39,7 +39,7 @@ export default function LoadingScreen({
 
   const displayMessage = useMemo(
     () => message ?? DEFAULT_MESSAGES[fallbackIndex],
-    [fallbackIndex, message],
+    [fallbackIndex, message]
   )
 
   return (

@@ -18,7 +18,8 @@ test.describe('Ship upgrade flow', () => {
 
   test('navigates to dashboard from nav', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('navigation', { name: /primary navigation/i })
+    await page
+      .getByRole('navigation', { name: /primary navigation/i })
       .getByRole('link', { name: /ship/i })
       .click()
     await expect(page).toHaveURL(/\/dashboard/)
@@ -26,7 +27,8 @@ test.describe('Ship upgrade flow', () => {
 
   test('marketplace is accessible from nav', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('navigation', { name: /primary navigation/i })
+    await page
+      .getByRole('navigation', { name: /primary navigation/i })
       .getByRole('link', { name: /market/i })
       .click()
     await expect(page).toHaveURL(/\/marketplace/)

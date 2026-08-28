@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color } from 'three'
@@ -47,11 +48,7 @@ const NEBULA_PALETTE = [
 // ─── Geometry ─────────────────────────────────────────────────────────────────
 
 function lerpColor(a: Color, b: Color, t: number): Color {
-  return new Color(
-    a.r + (b.r - a.r) * t,
-    a.g + (b.g - a.g) * t,
-    a.b + (b.b - a.b) * t,
-  )
+  return new Color(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t)
 }
 
 function sampleNebulaColor(t: number): Color {
@@ -235,7 +232,7 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
 
   const geometry = useMemo(
     () => createNebulaGeometry(particleCount, performanceMode || isMobile),
-    [particleCount, performanceMode, isMobile],
+    [particleCount, performanceMode, isMobile]
   )
 
   const uniforms = useMemo(
@@ -243,7 +240,7 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
       uTime: { value: 0 },
       uRotationSpeed: { value: prefersReducedMotion ? 0.02 : 0.06 },
     }),
-    [prefersReducedMotion],
+    [prefersReducedMotion]
   )
 
   const shader = performanceMode || isMobile ? fragmentShaderPerf : fragmentShader

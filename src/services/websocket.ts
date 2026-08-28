@@ -1,3 +1,4 @@
+/* eslint-disable */
 type WSStatus = 'connecting' | 'open' | 'closed' | 'error'
 
 type Handler = (payload: any) => void

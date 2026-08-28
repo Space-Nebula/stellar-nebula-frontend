@@ -25,7 +25,7 @@ export default function NotificationCenter() {
 
   const panelLabel = useMemo(
     () => (unreadCount > 0 ? `${unreadCount} unread notifications` : 'No unread notifications'),
-    [unreadCount],
+    [unreadCount]
   )
 
   useEffect(() => {
@@ -91,16 +91,26 @@ export default function NotificationCenter() {
               {notifications.map((notification) => (
                 <li
                   key={notification.id}
-                  className={notification.read ? 'notification-item' : 'notification-item notification-item-unread'}
+                  className={
+                    notification.read
+                      ? 'notification-item'
+                      : 'notification-item notification-item-unread'
+                  }
                 >
                   <div>
                     <p className="notification-type">{typeLabelMap[notification.type]}</p>
                     <p className="notification-title">{notification.title}</p>
                     <p className="notification-description">{notification.description}</p>
-                    <p className="notification-time">{formatRelativeTime(notification.createdAt)}</p>
+                    <p className="notification-time">
+                      {formatRelativeTime(notification.createdAt)}
+                    </p>
                   </div>
                   {!notification.read && (
-                    <button type="button" className="notification-mark-read" onClick={() => markAsRead(notification.id)}>
+                    <button
+                      type="button"
+                      className="notification-mark-read"
+                      onClick={() => markAsRead(notification.id)}
+                    >
                       Mark as read
                     </button>
                   )}

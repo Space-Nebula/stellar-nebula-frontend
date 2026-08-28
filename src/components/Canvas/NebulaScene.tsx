@@ -90,16 +90,44 @@ export function NebulaScene({ starfieldDensity, performanceMode = false }: Nebul
       <pointLight position={[-10, -5, -10]} intensity={0.8} color="#06b6d4" />
       <ParticleSystem performanceMode={performanceMode} />
       <Starfield density={starfieldDensity} performanceMode={performanceMode} />
-      <InteractiveScanPoints 
+      <InteractiveScanPoints
         onScan={handleScan}
         cooldowns={cooldowns}
         scanningPoints={scanningPoints}
       />
       <NebulaSphere />
-      <ShipModel shipClass="scout" position={[3, 0, 0]} scale={0.8} autoRotate rotationSpeed={0.3} performanceMode={performanceMode} />
-      <ShipModel shipClass="freighter" position={[-3, 1, -1]} scale={0.6} autoRotate rotationSpeed={0.2} performanceMode={performanceMode} />
-      <ShipModel shipClass="warship" position={[0, -2, 2]} scale={0.7} autoRotate rotationSpeed={0.4} performanceMode={performanceMode} />
-      <ShipModel shipClass="explorer" position={[2, 2, -2]} scale={0.5} autoRotate rotationSpeed={0.25} performanceMode={performanceMode} />
+      <ShipModel
+        shipClass="scout"
+        position={[3, 0, 0]}
+        scale={0.8}
+        autoRotate
+        rotationSpeed={0.3}
+        performanceMode={performanceMode}
+      />
+      <ShipModel
+        shipClass="freighter"
+        position={[-3, 1, -1]}
+        scale={0.6}
+        autoRotate
+        rotationSpeed={0.2}
+        performanceMode={performanceMode}
+      />
+      <ShipModel
+        shipClass="warship"
+        position={[0, -2, 2]}
+        scale={0.7}
+        autoRotate
+        rotationSpeed={0.4}
+        performanceMode={performanceMode}
+      />
+      <ShipModel
+        shipClass="explorer"
+        position={[2, 2, -2]}
+        scale={0.5}
+        autoRotate
+        rotationSpeed={0.25}
+        performanceMode={performanceMode}
+      />
     </>
   )
 }

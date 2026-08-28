@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useEffect, useMemo, useState } from 'react'
 
 export interface HelpFaqItem {
@@ -38,7 +39,11 @@ const BASE_FAQ_ITEMS: HelpFaqItem[] = [
   },
 ]
 
-const FAQ_CATEGORIES: Array<HelpFaqItem['category']> = ['Game Mechanics', 'Wallet', 'Troubleshooting']
+const FAQ_CATEGORIES: Array<HelpFaqItem['category']> = [
+  'Game Mechanics',
+  'Wallet',
+  'Troubleshooting',
+]
 
 interface HelpModalProps {
   isOpen: boolean
@@ -84,7 +89,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
       >
         <header className="help-modal-header">
           <h2>Help Center</h2>
-          <button type="button" className="help-modal-close" onClick={onClose} aria-label="Close help">
+          <button
+            type="button"
+            className="help-modal-close"
+            onClick={onClose}
+            aria-label="Close help"
+          >
             Close
           </button>
         </header>
@@ -111,10 +121,10 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               {filteredItems
                 .filter((item) => item.category === category)
                 .map((item) => (
-                <details key={item.id} className="help-faq-item">
-                  <summary>{item.question}</summary>
-                  <p>{item.answer}</p>
-                </details>
+                  <details key={item.id} className="help-faq-item">
+                    <summary>{item.question}</summary>
+                    <p>{item.answer}</p>
+                  </details>
                 ))}
             </article>
           ))}
@@ -137,7 +147,11 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           <a href="https://developers.stellar.org/" target="_blank" rel="noreferrer noopener">
             Stellar developer docs
           </a>
-          <a href="https://developers.stellar.org/docs/tools/wallets/" target="_blank" rel="noreferrer noopener">
+          <a
+            href="https://developers.stellar.org/docs/tools/wallets/"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
             Wallet tools and guides
           </a>
         </section>

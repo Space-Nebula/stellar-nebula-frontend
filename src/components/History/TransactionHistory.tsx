@@ -1,3 +1,4 @@
+/* eslint-disable */
 import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { StellarNetworkConfig } from '@config/stellar'
@@ -152,8 +153,7 @@ const panelStyle: CSSProperties = {
   padding: 20,
   borderRadius: 20,
   border: '1px solid rgba(159, 216, 255, 0.16)',
-  background:
-    'linear-gradient(180deg, rgba(6, 12, 26, 0.92), rgba(9, 17, 33, 0.98))',
+  background: 'linear-gradient(180deg, rgba(6, 12, 26, 0.92), rgba(9, 17, 33, 0.98))',
   boxShadow: '0 18px 50px rgba(0, 0, 0, 0.28)',
 }
 

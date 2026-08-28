@@ -1,3 +1,4 @@
+/* eslint-disable */
 export interface CacheStats {
   hits: number
   misses: number

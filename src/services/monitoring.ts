@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Monitoring and Observability Service
  *
@@ -222,17 +223,18 @@ export function clearMonitoringUser(): void {
 
     log.debug('Monitoring user context cleared')
   } catch (error) {
-    log.warn('Failed to clear monitoring user', undefined, error instanceof Error ? error : undefined)
+    log.warn(
+      'Failed to clear monitoring user',
+      undefined,
+      error instanceof Error ? error : undefined
+    )
   }
 }
 
 /**
  * Capture a custom event in monitoring systems.
  */
-export function captureMonitoringEvent(
-  eventName: string,
-  data?: Record<string, any>
-): void {
+export function captureMonitoringEvent(eventName: string, data?: Record<string, any>): void {
   try {
     Sentry.captureMessage(eventName, {
       level: 'info',

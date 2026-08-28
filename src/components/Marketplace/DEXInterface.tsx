@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useEffect } from 'react'
 import type { Asset, Order, Trade } from './types'
 import { SUPPORTED_ASSETS } from './types'

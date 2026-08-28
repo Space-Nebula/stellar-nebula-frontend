@@ -79,19 +79,19 @@ graph TB
     UI --> State
     UI --> Contexts
     Canvas --> State
-    
+
     Contexts --> WalletSvc
     UI --> ContractSvc
     UI --> AssetSvc
-    
+
     WalletSvc --> Wallet
     ContractSvc --> Stellar
     AssetSvc --> Stellar
     API --> Backend
-    
+
     Analytics --> Backend
     Monitoring --> Sentry
-    
+
     ContractSvc --> Contracts
     Contracts --> Stellar
 ```
@@ -102,40 +102,40 @@ graph TB
 graph TD
     App[App.tsx<br/>Root Component] --> Providers[Context Providers]
     App --> Router[React Router]
-    
+
     Providers --> ThemeProvider
     Providers --> WalletProvider
     Providers --> NotificationProvider
-    
+
     Router --> AppLayout
-    
+
     AppLayout --> Navigation
     AppLayout --> Pages
     AppLayout --> Footer
     AppLayout --> NotificationBootstrap
-    
+
     Pages --> Home
     Pages --> NebulaView
     Pages --> ShipDashboard
     Pages --> Marketplace
-    
+
     NebulaView --> NebulaCanvas
     NebulaView --> ScanControls
-    
+
     NebulaCanvas --> NebulaScene
     NebulaCanvas --> CameraControls
     NebulaCanvas --> FpsCounter
-    
+
     NebulaScene --> ParticleSystem
     NebulaScene --> ShipModel
     NebulaScene --> Starfield
     NebulaScene --> InteractiveScanPoint
-    
+
     ShipDashboard --> ShipStats
     ShipDashboard --> Inventory
     ShipDashboard --> UpgradeModal
     ShipDashboard --> TransactionHistory
-    
+
     Marketplace --> DEXInterface
     Marketplace --> OrderBook
     Marketplace --> TradeForm
@@ -184,28 +184,28 @@ graph LR
     subgraph "Development"
         DevEnv[Local Dev Server<br/>Vite HMR<br/>Port 5173]
     end
-    
+
     subgraph "Build Process"
         Source[Source Code<br/>TypeScript + React] --> Build[Vite Build]
         Build --> Bundle[Optimized Bundle<br/>dist/]
         Build --> Sourcemaps[Source Maps<br/>Sentry Upload]
     end
-    
+
     subgraph "Staging Environment"
         StagingCDN[CDN<br/>Vercel/Netlify] --> StagingApp[Static Assets]
         StagingApp --> StagingEnv[.env.staging<br/>Testnet]
     end
-    
+
     subgraph "Production Environment"
         ProdCDN[CDN<br/>Vercel/Netlify] --> ProdApp[Static Assets]
         ProdApp --> ProdEnv[.env.production<br/>Mainnet]
     end
-    
+
     subgraph "Docker Deployment"
         DockerDev[Development<br/>Dockerfile] --> DevContainer[Node + Vite]
         DockerProd[Production<br/>Dockerfile.prod] --> NginxContainer[Nginx + Static Files]
     end
-    
+
     Bundle --> StagingCDN
     Bundle --> ProdCDN
     Bundle --> DockerDev
@@ -315,7 +315,6 @@ Hooks encapsulate reusable logic:
 - **Contract Hooks** (`hooks/contracts/`):
   - `useNebulaScan`: Scan nebula zones via Soroban contract
   - `useShipUpgrade`: Build and execute ship upgrade transactions
-  
 - **Utility Hooks**:
   - `useDebounce`: Debounce rapid state changes
   - `useLocalStorage`: Sync state with localStorage
@@ -394,6 +393,7 @@ The application fetches data from multiple sources:
 - **Smart Contracts**: Game logic execution (scan, upgrade, mint)
 
 Blockchain data is the source of truth for:
+
 - Wallet balances
 - NFT ownership
 - Resource assets
@@ -403,6 +403,7 @@ Blockchain data is the source of truth for:
 #### Local Storage
 
 Persisted client-side for offline access and performance:
+
 - User preferences (theme, graphics quality, sound)
 - Game state (current nebula, scan cooldowns)
 - Ship inventory (cached from blockchain)
@@ -412,6 +413,7 @@ Persisted client-side for offline access and performance:
 #### Backend API (Optional)
 
 The application can optionally connect to a backend API for:
+
 - Leaderboard data
 - Analytics aggregation
 - Metadata caching
@@ -449,12 +451,14 @@ Error Occurs → Service Catches → Hook Receives → UI Displays → Monitorin
 ### Core Framework: React 19
 
 **Why React?**
+
 - **Component-based architecture**: Encourages reusable, testable UI components
 - **Large ecosystem**: Extensive library support for Web3, 3D graphics, and UI
 - **Stellar SDK compatibility**: Official Stellar SDK works seamlessly with React
 - **Developer experience**: Excellent tooling, hot module replacement, and debugging
 
 **Why React 19?**
+
 - **Concurrent rendering**: Improves responsiveness during heavy 3D rendering
 - **Automatic batching**: Reduces unnecessary re-renders in state-heavy game UI
 - **Transitions API**: Smooth loading states for async operations (wallet signing, blockchain queries)
@@ -462,6 +466,7 @@ Error Occurs → Service Catches → Hook Receives → UI Displays → Monitorin
 ### Language: TypeScript 5.9
 
 **Why TypeScript?**
+
 - **Type safety**: Catches errors at compile time, especially critical for blockchain transactions
 - **Better IDE support**: Autocomplete and inline documentation for Stellar SDK
 - **Refactoring confidence**: Safe refactoring of complex state management and service layers
@@ -470,6 +475,7 @@ Error Occurs → Service Catches → Hook Receives → UI Displays → Monitorin
 ### Build Tool: Vite 7
 
 **Why Vite?**
+
 - **Fast HMR**: Instant hot module replacement for rapid development
 - **Optimized bundling**: Rollup-based production builds with tree-shaking
 - **Native ESM**: Leverages browser-native ES modules for faster dev server
@@ -478,6 +484,7 @@ Error Occurs → Service Catches → Hook Receives → UI Displays → Monitorin
 ### State Management: Zustand
 
 **Why Zustand over Redux/Context?**
+
 - **Minimal boilerplate**: No actions, reducers, or providers—just hooks
 - **Excellent TypeScript support**: Fully typed stores with inference
 - **Persistence built-in**: First-class localStorage middleware
@@ -489,6 +496,7 @@ Zustand is ideal for this application because game state is relatively simple (s
 ### Routing: React Router 6
 
 **Why React Router?**
+
 - **Declarative routing**: Routes defined as React components
 - **Code splitting**: Lazy loading with `React.lazy()` and `Suspense`
 - **Nested routes**: Clean layout composition with `<Outlet>`
@@ -497,12 +505,14 @@ Zustand is ideal for this application because game state is relatively simple (s
 ### 3D Graphics: Three.js + React Three Fiber
 
 **Why Three.js?**
+
 - **WebGL abstraction**: Simplifies complex WebGL programming
 - **Performance**: Hardware-accelerated 3D rendering
 - **Extensive ecosystem**: Loaders, helpers, and post-processing effects
 - **Mobile support**: Works on mobile browsers with WebGL support
 
 **Why React Three Fiber?**
+
 - **React integration**: Three.js objects as React components
 - **Declarative 3D**: Easier to reason about scene composition
 - **Hooks for animation**: `useFrame` for render loop, `useThree` for scene access
@@ -513,6 +523,7 @@ This combination allows the nebula visualization to be performant (60 FPS on mid
 ### Styling: Tailwind CSS
 
 **Why Tailwind?**
+
 - **Utility-first**: Rapid UI development without context switching
 - **Consistent design system**: Predefined spacing, colors, and breakpoints
 - **Tree-shaking**: Unused styles are purged in production
@@ -524,6 +535,7 @@ Tailwind is well-suited for this project because the UI is component-heavy and b
 ### Blockchain: Stellar SDK
 
 **Why Stellar?**
+
 - **Low fees**: Transactions cost ~0.00001 XLM (~$0.000001), enabling micro-transactions
 - **Fast finality**: 5-second block times for near-instant confirmations
 - **Built-in DEX**: Native decentralized exchange for resource trading
@@ -531,6 +543,7 @@ Tailwind is well-suited for this project because the UI is component-heavy and b
 - **Asset issuance**: Easy creation of custom tokens (resources, NFTs)
 
 **Why Stellar SDK?**
+
 - **Official library**: Maintained by Stellar Development Foundation
 - **Comprehensive**: Covers Horizon, Soroban RPC, transaction building, and signing
 - **TypeScript support**: Fully typed for safe blockchain interactions
@@ -538,12 +551,14 @@ Tailwind is well-suited for this project because the UI is component-heavy and b
 ### Testing: Vitest + Testing Library
 
 **Why Vitest?**
+
 - **Vite-native**: Shares config with Vite, no separate setup
 - **Fast**: Parallel test execution with instant HMR
 - **Jest-compatible**: Familiar API for developers coming from Jest
 - **ESM support**: Works with native ES modules
 
 **Why Testing Library?**
+
 - **User-centric**: Tests focus on user behavior, not implementation details
 - **Accessibility**: Encourages accessible component design
 - **React integration**: `@testing-library/react` for component testing
@@ -551,12 +566,14 @@ Tailwind is well-suited for this project because the UI is component-heavy and b
 ### Monitoring: Sentry + LogRocket
 
 **Why Sentry?**
+
 - **Error tracking**: Captures unhandled errors with stack traces
 - **Performance monitoring**: Tracks slow transactions and API calls
 - **Session replay**: Records user sessions leading to errors
 - **Breadcrumbs**: Logs user actions for debugging context
 
 **Why LogRocket?**
+
 - **Advanced session replay**: Records DOM, network, and console logs
 - **User analytics**: Tracks user behavior and conversion funnels
 - **Integration with Sentry**: Links sessions to error reports
@@ -566,6 +583,7 @@ These tools are essential for debugging blockchain interactions, which can fail 
 ### Analytics: Custom Event Tracker
 
 **Why custom analytics?**
+
 - **Privacy-first**: No third-party tracking scripts (GDPR-compliant)
 - **PII sanitization**: Automatically removes sensitive data (wallet addresses, keys)
 - **Opt-out support**: Users can disable analytics via settings
@@ -576,11 +594,13 @@ The custom tracker sends events to an optional backend endpoint, allowing the te
 ### Deployment: Docker + Vercel/Netlify
 
 **Why Docker?**
+
 - **Consistency**: Same environment across dev, staging, and production
 - **Isolation**: Dependencies are containerized
 - **Multi-stage builds**: Separate dev and production images
 
 **Why Vercel/Netlify?**
+
 - **Zero-config deployment**: Automatic builds on git push
 - **Global CDN**: Fast asset delivery worldwide
 - **Preview deployments**: Every PR gets a unique URL
@@ -613,18 +633,21 @@ The application uses a multi-stage build process:
 The application supports three environments:
 
 #### Development (`.env.local`)
+
 - **Network**: Testnet
 - **Monitoring**: Disabled
 - **Dev tools**: Enabled (FPS counter, performance monitor)
 - **Logging**: Debug level
 
 #### Staging (`.env.staging`)
+
 - **Network**: Futurenet
 - **Monitoring**: Enabled (Sentry, LogRocket)
 - **Dev tools**: Enabled
 - **Logging**: Info level
 
 #### Production (`.env.production`)
+
 - **Network**: Mainnet
 - **Monitoring**: Enabled
 - **Dev tools**: Disabled
@@ -635,6 +658,7 @@ Environment variables are validated at startup (`src/config/env.ts`). Missing re
 ### Docker Deployment
 
 #### Development Container (`Dockerfile`)
+
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
@@ -650,6 +674,7 @@ CMD ["npm", "run", "dev", "--", "--host"]
 - **Port**: 5173 (Vite default)
 
 #### Production Container (`Dockerfile.prod`)
+
 ```dockerfile
 # Stage 1: Build
 FROM node:18-alpine AS build
@@ -753,7 +778,7 @@ All components are functional components using hooks:
 export function MyComponent({ prop }: MyComponentProps) {
   const [state, setState] = useState(initialState)
   const value = useCustomHook()
-  
+
   return <div>{/* JSX */}</div>
 }
 ```
@@ -819,9 +844,7 @@ export const useMyStore = create<MyStore>()(
       },
       updateData: (id, data) => {
         set((state) => ({
-          data: state.data.map((item) =>
-            item.id === id ? data : item
-          ),
+          data: state.data.map((item) => (item.id === id ? data : item)),
         }))
       },
     }),
@@ -847,12 +870,12 @@ const MyContext = createContext<MyContextValue | null>(null)
 
 export function MyProvider({ children }: MyProviderProps) {
   const [state, setState] = useState(initialState)
-  
+
   const value = useMemo(() => ({
     state,
     actions: { /* ... */ },
   }), [state])
-  
+
   return <MyContext.Provider value={value}>{children}</MyContext.Provider>
 }
 
@@ -872,10 +895,7 @@ export function useMyContext() {
 Services are stateless functions:
 
 ```typescript
-export async function fetchData(
-  params: Params,
-  config?: Config
-): Promise<Result> {
+export async function fetchData(params: Params, config?: Config): Promise<Result> {
   const response = await api.get('/endpoint', params)
   return parseResponse(response)
 }
@@ -902,11 +922,7 @@ export async function fetchData(): Promise<Result> {
     const response = await api.get('/endpoint')
     return response.data
   } catch (error) {
-    throw new ServiceError(
-      'Failed to fetch data',
-      'FETCH_ERROR',
-      500
-    )
+    throw new ServiceError('Failed to fetch data', 'FETCH_ERROR', 500)
   }
 }
 ```
@@ -916,12 +932,9 @@ export async function fetchData(): Promise<Result> {
 Services implement retry for transient failures:
 
 ```typescript
-export async function fetchWithRetry<T>(
-  fn: () => Promise<T>,
-  retries = 3
-): Promise<T> {
+export async function fetchWithRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   let lastError: Error
-  
+
   for (let i = 0; i < retries; i++) {
     try {
       return await fn()
@@ -932,7 +945,7 @@ export async function fetchWithRetry<T>(
       }
     }
   }
-  
+
   throw lastError!
 }
 ```
@@ -946,11 +959,11 @@ export function useData(id: string) {
   const [data, setData] = useState<Data | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const fetch = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
       const result = await fetchData(id)
       setData(result)
@@ -960,11 +973,11 @@ export function useData(id: string) {
       setIsLoading(false)
     }
   }, [id])
-  
+
   useEffect(() => {
     fetch()
   }, [fetch])
-  
+
   return { data, isLoading, error, refetch: fetch }
 }
 ```
@@ -975,11 +988,11 @@ export function useData(id: string) {
 export function useAction() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const execute = useCallback(async (params: Params) => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
       const result = await performAction(params)
       return result
@@ -991,7 +1004,7 @@ export function useAction() {
       setIsLoading(false)
     }
   }, [])
-  
+
   return { execute, isLoading, error }
 }
 ```
@@ -1007,11 +1020,11 @@ export class ErrorBoundary extends Component<Props, State> {
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error }
   }
-  
+
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     captureError(error, errorInfo)
   }
-  
+
   render() {
     if (this.state.hasError) {
       return <ErrorFallback error={this.state.error} />
@@ -1057,11 +1070,11 @@ describe('MyComponent', () => {
     render(<MyComponent prop="value" />)
     expect(screen.getByText('value')).toBeInTheDocument()
   })
-  
+
   it('handles user interaction', async () => {
     const onAction = vi.fn()
     render(<MyComponent onAction={onAction} />)
-    
+
     await userEvent.click(screen.getByRole('button'))
     expect(onAction).toHaveBeenCalled()
   })
@@ -1074,7 +1087,7 @@ describe('MyComponent', () => {
 describe('useMyHook', () => {
   it('fetches data', async () => {
     const { result } = renderHook(() => useMyHook())
-    
+
     await waitFor(() => {
       expect(result.current.data).toBeDefined()
     })
@@ -1090,7 +1103,7 @@ describe('myService', () => {
     const data = await fetchData()
     expect(data).toEqual(expectedData)
   })
-  
+
   it('handles errors', async () => {
     await expect(fetchData()).rejects.toThrow('Error message')
   })

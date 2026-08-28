@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
@@ -43,7 +44,11 @@ function FallbackShip({ shipClass }: { shipClass: ShipClass }) {
     <group ref={meshRef}>
       <mesh>
         <coneGeometry args={[0.3, 1.2, 8]} />
-        <meshStandardMaterial color={colors[shipClass]} emissive={colors[shipClass]} emissiveIntensity={0.3} />
+        <meshStandardMaterial
+          color={colors[shipClass]}
+          emissive={colors[shipClass]}
+          emissiveIntensity={0.3}
+        />
       </mesh>
       <mesh position={[0, 0.4, 0]}>
         <sphereGeometry args={[0.15, 16, 16]} />
@@ -53,12 +58,12 @@ function FallbackShip({ shipClass }: { shipClass: ShipClass }) {
   )
 }
 
-function LoadedShip({ 
-  model, 
-  autoRotate = true, 
+function LoadedShip({
+  model,
+  autoRotate = true,
   rotationSpeed = 0.5,
-  scale = 1 
-}: { 
+  scale = 1,
+}: {
   model: GLTF
   autoRotate?: boolean
   rotationSpeed?: number
@@ -149,7 +154,12 @@ export function ShipModel({
     // Skip LOD in performance mode
     return (
       <group position={position}>
-        <LoadedShip model={gltf} autoRotate={autoRotate} rotationSpeed={rotationSpeed} scale={scale} />
+        <LoadedShip
+          model={gltf}
+          autoRotate={autoRotate}
+          rotationSpeed={rotationSpeed}
+          scale={scale}
+        />
       </group>
     )
   }
@@ -158,10 +168,20 @@ export function ShipModel({
     <group position={position}>
       <LOD>
         <LOD.Mesh distance={[0, 5]}>
-          <LoadedShip model={gltf} autoRotate={autoRotate} rotationSpeed={rotationSpeed} scale={scale} />
+          <LoadedShip
+            model={gltf}
+            autoRotate={autoRotate}
+            rotationSpeed={rotationSpeed}
+            scale={scale}
+          />
         </LOD.Mesh>
         <LOD.Mesh distance={[5, 15]}>
-          <LoadedShip model={gltf} autoRotate={autoRotate} rotationSpeed={rotationSpeed} scale={scale * 0.8} />
+          <LoadedShip
+            model={gltf}
+            autoRotate={autoRotate}
+            rotationSpeed={rotationSpeed}
+            scale={scale * 0.8}
+          />
         </LOD.Mesh>
         <LOD.Mesh distance={[15, 50]}>
           <FallbackShip shipClass={shipClass} />

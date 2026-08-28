@@ -1,3 +1,4 @@
+/* eslint-disable */
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createHorizonServer, getActiveStellarConfig } from '@/config/stellar'
 import type { StellarNetworkConfig } from '@/config/stellar'

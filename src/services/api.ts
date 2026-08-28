@@ -174,9 +174,13 @@ async function request<T>(
     }
 
     const errorMessage = error instanceof Error ? error.message : 'Network error'
-    log.error(`${method} ${path} network error`, error instanceof Error ? error : new Error(errorMessage), {
-      duration,
-    })
+    log.error(
+      `${method} ${path} network error`,
+      error instanceof Error ? error : new Error(errorMessage),
+      {
+        duration,
+      }
+    )
     addMonitoringBreadcrumb(`API Network Error: ${method} ${path}`, 'api-error', {
       duration,
       error: errorMessage,

@@ -2,7 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Inventory } from '../Resources/Inventory'
 import { SHIP_UPGRADES, UpgradeModal, type ShipUpgradeOption } from '../Ship/UpgradeModal'
 import { trackEvent } from '../../services/analytics'
-import { useResourceStore, useShipStore, type ResourceInventory, type ResourceType, type Ship } from '../../store'
+import {
+  useResourceStore,
+  useShipStore,
+  type ResourceInventory,
+  type ResourceType,
+  type Ship,
+} from '../../store'
 
 const DEMO_SHIPS: Ship[] = [
   {
@@ -43,7 +49,10 @@ const DEMO_INVENTORY: ResourceInventory = {
 
 const RESOURCE_ORDER: ResourceType[] = ['credits', 'fuel', 'minerals', 'nebulaDust']
 
-function hasResources(inventory: ResourceInventory, cost: Partial<Record<ResourceType, number>>): boolean {
+function hasResources(
+  inventory: ResourceInventory,
+  cost: Partial<Record<ResourceType, number>>
+): boolean {
   return RESOURCE_ORDER.every((resource) => (cost[resource] ?? 0) <= inventory[resource])
 }
 
@@ -193,7 +202,10 @@ function ShipDashboard() {
       setUpgradeMessage(`${upgrade.name} confirmed successfully.`)
       setIsUpgradeOpen(false)
     } catch (error) {
-      rollbackOptimisticUpdate(transactionId, error instanceof Error ? error.message : 'Upgrade failed')
+      rollbackOptimisticUpdate(
+        transactionId,
+        error instanceof Error ? error.message : 'Upgrade failed'
+      )
       trackEvent('upgrade_failed', {
         upgradeId: upgrade.id,
         reason: error instanceof Error ? error.name || 'Error' : 'unknown',
@@ -210,8 +222,8 @@ function ShipDashboard() {
           <p className="eyebrow">Ship Dashboard</p>
           <h1>Fleet command, inventory, and upgrades in one place.</h1>
           <p className="page-copy">
-            Monitor live ship state from the local fleet store, review resource
-            reserves, and stage ordered upgrade batches without leaving the dashboard.
+            Monitor live ship state from the local fleet store, review resource reserves, and stage
+            ordered upgrade batches without leaving the dashboard.
           </p>
         </div>
 
@@ -241,7 +253,7 @@ function ShipDashboard() {
         >
           {upgradeMessage ??
             (latestUpgradeResult?.status === 'failed'
-              ? latestUpgradeResult.error ?? 'Transaction failed and was rolled back.'
+              ? (latestUpgradeResult.error ?? 'Transaction failed and was rolled back.')
               : 'Transaction confirmed successfully.')}
         </div>
       )}
@@ -272,7 +284,9 @@ function ShipDashboard() {
               <p className="eyebrow">Fleet</p>
               <h2>Tracked ships</h2>
             </div>
-            <span className="section-meta">{activeShip ? `Selected: ${activeShip.name}` : 'No active ship'}</span>
+            <span className="section-meta">
+              {activeShip ? `Selected: ${activeShip.name}` : 'No active ship'}
+            </span>
           </div>
 
           <div className="ship-list">

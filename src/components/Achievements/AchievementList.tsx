@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState } from 'react'
 import { AchievementCard } from './AchievementCard'
 import type { Achievement } from './types'

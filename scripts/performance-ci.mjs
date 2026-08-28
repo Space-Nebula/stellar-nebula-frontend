@@ -3,10 +3,14 @@ import { spawn } from 'node:child_process'
 const previewPort = 4173
 const previewUrl = `http://127.0.0.1:${previewPort}`
 
-const preview = spawn('npx', ['vite', 'preview', '--host', '127.0.0.1', '--port', String(previewPort)], {
-  stdio: 'ignore',
-  detached: true,
-})
+const preview = spawn(
+  'npx',
+  ['vite', 'preview', '--host', '127.0.0.1', '--port', String(previewPort)],
+  {
+    stdio: 'ignore',
+    detached: true,
+  }
+)
 
 preview.unref()
 

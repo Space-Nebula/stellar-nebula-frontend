@@ -20,9 +20,7 @@ describe('LoadingScreen — accessibility', () => {
   it('progress value is exposed to assistive technology', async () => {
     const { default: LoadingScreen } = await import('@/components/Loading/LoadingScreen')
 
-    render(
-      <LoadingScreen stageLabel="Initialising" message="Loading assets..." progress={60} />
-    )
+    render(<LoadingScreen stageLabel="Initialising" message="Loading assets..." progress={60} />)
 
     // Either a progressbar role or an aria-valuenow attribute
     const progressBar = screen.queryByRole('progressbar')

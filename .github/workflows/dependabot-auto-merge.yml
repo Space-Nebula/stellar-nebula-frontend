@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only run for Dependabot PRs
     if: github.actor == 'dependabot[bot]'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,19 +26,19 @@ jobs:
             const pr = context.payload.pull_request;
             const title = pr.title;
             const labels = pr.labels.map(l => l.name);
-            
+
             // Determine if this is a security update
             const isSecurityUpdate = 
               title.includes('security') ||
               title.toLowerCase().includes('[security]') ||
               labels.some(l => l.includes('security'));
-            
+
             // Determine if this is a patch or minor version update
             const isPatchOrMinor =
               title.includes('bump') ||
               title.toLowerCase().includes('patch') ||
               title.toLowerCase().includes('minor');
-            
+
             core.setOutput('is-security-update', isSecurityUpdate);
             core.setOutput('is-patch-or-minor', isPatchOrMinor);
             core.setOutput('pr-number', pr.number);
@@ -52,7 +52,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = context.payload.pull_request.number;
-            
+
             try {
               // Enable auto-merge with squash strategy
               await github.rest.pulls.enableAutoMerge({
@@ -81,7 +81,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = context.payload.pull_request.number;
-            
+
             try {
               await github.rest.pulls.createReview({
                 owner: context.repo.owner,
@@ -106,14 +106,14 @@ jobs:
           script: |
             const prNumber = context.payload.pull_request.number;
             const labels = ['dependencies', 'automation'];
-            
+
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
               labels: labels
             });
-            
+
             console.log(`✅ Labels added to PR #${prNumber}`);
 
       - name: Comment on PR about auto-merge
@@ -126,11 +126,11 @@ jobs:
             const isSecurityUpdate = 
               pr.title.includes('security') ||
               pr.title.toLowerCase().includes('[security]');
-            
+
             const comment = isSecurityUpdate
               ? `🔒 **Security Update** - This PR will be auto-merged when all checks pass.`
               : `📦 **Dependency Update** - This patch/minor update will be auto-merged when all checks pass.`;
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

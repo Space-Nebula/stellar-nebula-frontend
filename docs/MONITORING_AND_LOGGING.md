@@ -63,6 +63,7 @@ VITE_APP_VERSION=1.0.0
 ```
 
 **Features:**
+
 - Automatic error tracking and exception reporting
 - Performance monitoring with distributed tracing
 - Session replays (masked for privacy)
@@ -82,18 +83,18 @@ LogRocket provides advanced session replay with user interactions, console logs,
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- LogRocket snippet should be the first script in head -->
     <script async src="https://cdn.logrocket.io/js/logrocket.js"></script>
     <title>Stellar Nebula</title>
-</head>
-<body>
+  </head>
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-</body>
+  </body>
 </html>
 ```
 
@@ -104,6 +105,7 @@ VITE_LOGROCKET_APP_ID=your-app-id
 ```
 
 **Features:**
+
 - Session replay with user interactions
 - Console log capture
 - Network activity logging
@@ -189,10 +191,10 @@ The analytics service automatically sanitizes payloads to remove PII:
 ```typescript
 // This will have 'publicKey' and 'email' removed
 analytics.track('user_action', {
-  publicKey: '...',      // ❌ DROPPED (PII)
-  email: 'user@...',     // ❌ DROPPED (PII)
+  publicKey: '...', // ❌ DROPPED (PII)
+  email: 'user@...', // ❌ DROPPED (PII)
   actionType: 'upgrade', // ✅ KEPT
-  duration: 1000,        // ✅ KEPT
+  duration: 1000, // ✅ KEPT
 })
 ```
 
@@ -326,6 +328,7 @@ main.tsx
 ```
 
 **Log Output:**
+
 ```
 [2024-05-29T10:30:00Z] INFO Application starting {environment: "production", version: "1.0.0", appName: "Stellar Nebula"}
 [2024-05-29T10:30:00Z] INFO Sentry initialized {environment: "production", release: "1.0.0"}
@@ -344,6 +347,7 @@ src/routes/index.tsx (RouteChangeTracker)
 ```
 
 **Example:**
+
 ```
 [2024-05-29T10:30:10Z] INFO [Routes] Page view: /dashboard
               Breadcrumb: Navigation: /dashboard (page-view)
@@ -364,6 +368,7 @@ src/services/api.ts
 ```
 
 **Examples:**
+
 ```
 [2024-05-29T10:30:15Z] DEBUG [API] GET /api/ships
 [2024-05-29T10:30:15Z] DEBUG [API] GET /api/ships 200 {duration: 145}
@@ -385,6 +390,7 @@ ErrorBoundary / Sentry.ErrorBoundary
 ```
 
 **Error Logging:**
+
 ```
 [2024-05-29T10:31:00Z] ERROR [App] Failed to load resources
   Error: NetworkError: Failed to fetch
@@ -421,12 +427,14 @@ addMonitoringBreadcrumb(`Operation completed`, 'performance', {
 ### 1. Logging
 
 ✅ **DO:**
+
 - Use scoped loggers for organization: `createScopedLogger('ComponentName')`
 - Include relevant context: `log.info('Action completed', { userId, duration })`
 - Use appropriate levels: info for normal flow, warn for recoverable issues, error for failures
 - Sanitize sensitive data before logging
 
 ❌ **DON'T:**
+
 - Log PII (personal identifiable information)
 - Use console.log directly; use the logger service
 - Spam debug logs in production (use environment-based log levels)
@@ -435,11 +443,13 @@ addMonitoringBreadcrumb(`Operation completed`, 'performance', {
 ### 2. Error Handling
 
 ✅ **DO:**
+
 - Capture errors with context: `captureError(error, { userId, action })`
 - Set user context after authentication: `setMonitoringUser(userId)`
 - Add breadcrumbs for user journey: `addMonitoringBreadcrumb(description, category)`
 
 ❌ **DON'T:**
+
 - Ignore errors silently
 - Capture same error multiple times
 - Log errors before Sentry is initialized
@@ -447,12 +457,14 @@ addMonitoringBreadcrumb(`Operation completed`, 'performance', {
 ### 3. Analytics
 
 ✅ **DO:**
+
 - Track user actions that matter: page views, feature usage, conversion events
 - Use predefined event types for consistency
 - Let the service handle PII sanitization
 - Wait for user consent before tracking (implement consent UI)
 
 ❌ **DON'T:**
+
 - Track every click (be selective)
 - Include PII in event payloads
 - Make analytics calls blocking (they're async)
@@ -461,12 +473,14 @@ addMonitoringBreadcrumb(`Operation completed`, 'performance', {
 ### 4. Performance
 
 ✅ **DO:**
+
 - Monitor API request durations (already instrumented)
 - Track critical user flows
 - Use Sentry's transaction sampling to avoid overhead
 - Monitor bundle size impact
 
 ❌ **DON'T:**
+
 - Capture all transactions (use sampling rates)
 - Send large payloads with events
 - Initialize monitoring synchronously if it blocks rendering
@@ -511,6 +525,7 @@ VITE_ANALYTICS_ENDPOINT= # Analytics disabled
 ### High Log Volume in Development
 
 Reduce log verbosity:
+
 ```bash
 VITE_LOG_LEVEL=warn  # Only show warnings and errors
 ```

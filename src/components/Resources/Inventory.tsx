@@ -57,7 +57,11 @@ interface InventoryProps {
   title?: string
 }
 
-export function Inventory({ inventory: inventoryProp, compact = false, title = 'Resource Inventory' }: InventoryProps) {
+export function Inventory({
+  inventory: inventoryProp,
+  compact = false,
+  title = 'Resource Inventory',
+}: InventoryProps) {
   const storeInventory = useResourceStore((state) => state.inventory)
   const optimisticTransactions = useResourceStore((state) => state.optimisticTransactions)
   const inventory = inventoryProp ?? storeInventory
@@ -109,10 +113,7 @@ export function Inventory({ inventory: inventoryProp, compact = false, title = '
     return filtered
   }, [filter, inventory, sortBy])
 
-  const totalUnits = useMemo(
-    () => rows.reduce((sum, [, amount]) => sum + amount, 0),
-    [rows]
-  )
+  const totalUnits = useMemo(() => rows.reduce((sum, [, amount]) => sum + amount, 0), [rows])
 
   return (
     <section className={`inventory-panel ${compact ? 'inventory-panel-compact' : ''}`}>
@@ -143,7 +144,10 @@ export function Inventory({ inventory: inventoryProp, compact = false, title = '
 
         <label className="sort-control">
           <span>Sort</span>
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as InventorySort)}>
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as InventorySort)}
+          >
             {SORTS.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}

@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  ANALYTICS_OPT_OUT_KEY,
-  AnalyticsTracker,
-  sanitizeAnalyticsPayload,
-} from '../analytics'
+import { ANALYTICS_OPT_OUT_KEY, AnalyticsTracker, sanitizeAnalyticsPayload } from '../analytics'
 
 describe('AnalyticsTracker', () => {
   beforeEach(() => {

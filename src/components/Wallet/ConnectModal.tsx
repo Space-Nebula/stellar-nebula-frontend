@@ -58,7 +58,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         onClose()
       }
     },
-    [onClose, clearError],
+    [onClose, clearError]
   )
 
   const handleKeyDown = useCallback(
@@ -68,7 +68,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         onClose()
       }
     },
-    [onClose, clearError],
+    [onClose, clearError]
   )
 
   const handleClose = useCallback(() => {
@@ -84,7 +84,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         onClose()
       }
     },
-    [connect, error, onClose],
+    [connect, error, onClose]
   )
 
   const isAvailable = useCallback(
@@ -93,7 +93,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
       if (type === 'albedo') return isAlbedoAvailable
       return false
     },
-    [isFreighterInstalled, isAlbedoAvailable],
+    [isFreighterInstalled, isAlbedoAvailable]
   )
 
   if (!isOpen) return null

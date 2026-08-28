@@ -91,7 +91,7 @@ export const useGameStore = create<GameStore>()(
       pruneExpiredCooldowns: () =>
         set((state) => ({
           scanCooldowns: state.scanCooldowns.filter(
-            (c) => Date.now() < new Date(c.readyAt).getTime(),
+            (c) => Date.now() < new Date(c.readyAt).getTime()
           ),
         })),
 
@@ -116,6 +116,6 @@ export const useGameStore = create<GameStore>()(
         scanCooldowns,
         elapsedSeconds,
       }),
-    },
-  ),
+    }
+  )
 )
