@@ -33,35 +33,44 @@ function NebulaSphere() {
 interface NebulaSceneProps {
   starfieldDensity: number
   performanceMode?: boolean
+  onScanComplete?: (resourceType: ResourceType, amount: number) => void
 }
 
-export function NebulaScene({ starfieldDensity, performanceMode = false }: NebulaSceneProps) {
+export function NebulaScene({
+  starfieldDensity,
+  performanceMode = false,
+  onScanComplete,
+}: NebulaSceneProps) {
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({})
   const [scanningPoints, setScanningPoints] = useState<Set<string>>(new Set())
 
-  const handleScan = useCallback((pointId: string, resourceType: ResourceType, amount: number) => {
-    setScanningPoints((prev) => new Set([...prev, pointId]))
-    trackEvent('scan_started', { pointId, resourceType, amount })
-
-    setTimeout(() => {
-      setScanningPoints((prev) => {
-        const next = new Set(prev)
-        next.delete(pointId)
-        return next
-      })
-
-      setCooldowns((prev) => ({ ...prev, [pointId]: 5 }))
-      trackEvent('scan_completed', { pointId, resourceType, amount })
+  const handleScan = useCallback(
+    (pointId: string, resourceType: ResourceType, amount: number) => {
+      setScanningPoints((prev) => new Set([...prev, pointId]))
+      trackEvent('scan_started', { pointId, resourceType, amount })
 
       setTimeout(() => {
-        setCooldowns((prev) => {
-          const next = { ...prev }
-          delete next[pointId]
+        setScanningPoints((prev) => {
+          const next = new Set(prev)
+          next.delete(pointId)
           return next
         })
-      }, 5000)
-    }, 2000)
-  }, [])
+
+        setCooldowns((prev) => ({ ...prev, [pointId]: 5 }))
+        trackEvent('scan_completed', { pointId, resourceType, amount })
+        onScanComplete?.(resourceType, amount)
+
+        setTimeout(() => {
+          setCooldowns((prev) => {
+            const next = { ...prev }
+            delete next[pointId]
+            return next
+          })
+        }, 5000)
+      }, 2000)
+    },
+    [onScanComplete]
+  )
 
   // Update cooldowns
   useFrame((_state, delta: number) => {
