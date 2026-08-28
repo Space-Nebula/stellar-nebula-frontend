@@ -1,11 +1,18 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { NebulaCanvas } from '@components/Canvas'
 import { ConnectModal, WalletDisplay } from '@components/Wallet'
 import { Inventory } from '@components/Resources/Inventory'
 import { ShareButton } from '@components/Social/ShareButton'
-import { useAchievementStore, useResourceStore, type ResourceType } from '@/store'
+import { HARVEST_META } from '@/services/harvest'
+import { trackEvent } from '@/services/analytics'
+import { showSuccess } from '@/utils/toast'
+import { useAchievementStore, useResourceStore, type HarvestableResourceType } from '@/store'
+import type { ResourceType } from '@/types/game'
 
-function formatResource(resource: ResourceType): string {
+function formatResource(resource: string): string {
+  const meta = HARVEST_META[resource as HarvestableResourceType]
+  if (meta) return meta.label
+
   switch (resource) {
     case 'nebulaDust':
       return 'Nebula Dust'
@@ -18,10 +25,30 @@ function formatResource(resource: ResourceType): string {
   }
 }
 
+function formatHarvestTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 function NebulaView() {
   const [isConnectOpen, setIsConnectOpen] = useState(false)
   const lastHarvest = useResourceStore((state) => state.lastHarvest)
+  const harvested = useResourceStore((state) => state.harvested)
+  const harvestLog = useResourceStore((state) => state.harvestLog)
   const stats = useAchievementStore((state) => state.stats)
+  const hasHarvests = harvestLog.length > 0
+
+  const handleHarvest = useCallback((resourceType: ResourceType, amount: number) => {
+    showSuccess(`Harvested ${amount} ${HARVEST_META[resourceType].label}`)
+    trackEvent('harvest_completed', { resourceType, amount })
+  }, [])
 
   return (
     <div className="nebula-view">
@@ -30,7 +57,7 @@ function NebulaView() {
         <h1>Survey active stellar clouds.</h1>
         <p className="page-copy">
           Review mapped sectors, anomaly density, and navigation conditions for upcoming
-          expeditions.
+          expeditions. Click a glowing anomaly to scan it and harvest its resources.
         </p>
 
         <div className="home-hero-actions">
@@ -39,7 +66,7 @@ function NebulaView() {
       </section>
 
       <div className="nebula-view-canvas">
-        <NebulaCanvas />
+        <NebulaCanvas onScanComplete={handleHarvest} />
       </div>
 
       <div className="nebula-resource-grid">
@@ -78,6 +105,50 @@ function NebulaView() {
 
         <Inventory compact title="Harvested Resources" />
       </div>
+
+      <section className="panel-card harvest-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Harvest Log</p>
+            <h2>Scan payouts</h2>
+          </div>
+          <span className="section-meta">
+            {hasHarvests
+              ? `${harvestLog.length} recent harvest${harvestLog.length === 1 ? '' : 's'}`
+              : 'No harvests yet'}
+          </span>
+        </div>
+
+        <div className="metric-grid harvest-totals">
+          {(Object.keys(HARVEST_META) as HarvestableResourceType[]).map((type) => (
+            <article className="metric-card" key={type}>
+              <span className="metric-label" style={{ color: HARVEST_META[type].color }}>
+                {HARVEST_META[type].label}
+              </span>
+              <strong>{harvested[type]}</strong>
+            </article>
+          ))}
+        </div>
+
+        {!hasHarvests ? (
+          <p className="page-copy">
+            Nothing collected yet. Select an anomaly in the nebula above and scan it to harvest its
+            resources.
+          </p>
+        ) : (
+          <ul className="queue-list">
+            {harvestLog.map((entry) => (
+              <li key={entry.id} className="queue-item">
+                <div>
+                  <strong>{HARVEST_META[entry.resourceType].label}</strong>
+                  <p>{formatHarvestTime(entry.createdAt)}</p>
+                </div>
+                <span>+{entry.amount}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <ConnectModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} />
     </div>

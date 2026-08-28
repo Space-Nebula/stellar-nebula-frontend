@@ -6,12 +6,14 @@ import { CameraControls } from './CameraControls'
 import { FpsCounter } from './FpsCounter'
 import { BloomEffect } from '../Effects'
 import { useGraphicsStore } from '@/store'
+import type { ResourceType } from '@/types/game'
 
 interface NebulaCanvasProps {
   showFps?: boolean
+  onScanComplete?: (resourceType: ResourceType, amount: number) => void
 }
 
-export function NebulaCanvas({ showFps = false }: NebulaCanvasProps) {
+export function NebulaCanvas({ showFps = false, onScanComplete }: NebulaCanvasProps) {
   const bloomEnabled = useGraphicsStore((state) => state.bloomEnabled)
   const bloomIntensity = useGraphicsStore((state) => state.bloomIntensity)
   const performanceMode = useGraphicsStore((state) => state.performanceMode)
@@ -46,7 +48,11 @@ export function NebulaCanvas({ showFps = false }: NebulaCanvasProps) {
         dpr={[1, deviceHints.isMobile ? 1.5 : 2]}
       >
         <Suspense fallback={null}>
-          <NebulaScene starfieldDensity={starfieldDensity} performanceMode={performanceMode} />
+          <NebulaScene
+            starfieldDensity={starfieldDensity}
+            performanceMode={performanceMode}
+            onScanComplete={onScanComplete}
+          />
           <BloomEffect
             enabled={bloomEnabled}
             intensity={bloomIntensity}

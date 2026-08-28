@@ -35,38 +35,44 @@ export interface HistoryTransactionPage {
   nextHref: string | null
 }
 
+interface HorizonTransactionRecord {
+  hash: string
+  ledger?: number | string
+  created_at: string
+  source_account: string
+  fee_charged?: string | number
+  successful?: boolean
+  memo?: string | null
+  paging_token?: string
+  operation_count?: number | string
+}
+
+function readNextHref(response: unknown): string | null {
+  return (response as { _links?: { next?: { href?: string } } })._links?.next?.href ?? null
+}
+
+function readLastCursor(records: Horizon.ServerApi.TransactionRecord[]): string | null {
+  const lastRecord = records.at(-1) as { paging_token?: string } | undefined
+  return lastRecord?.paging_token ?? null
+}
+
 function mapHorizonTransaction(tx: Horizon.ServerApi.TransactionRecord): StellarTransaction {
-  const record = tx as unknown as {
-    hash: string
-    ledger?: number
-    created_at: string
-    source_account: string
-    fee_charged: string | number
-    successful?: boolean
-    memo?: string
-    paging_token?: string
-    operation_count?: number | string
-  }
+  const record = tx as unknown as HorizonTransactionRecord
+  const ledger = Number(record.ledger)
 
   return {
     hash: record.hash,
-    ledger: typeof record.ledger === 'number' ? record.ledger : undefined,
+    ledger: Number.isFinite(ledger) ? ledger : undefined,
     createdAt: record.created_at,
     sourceAccount: record.source_account,
-    feeCharged: String(record.fee_charged),
+    feeCharged: String(record.fee_charged ?? '0'),
     status: record.successful === false ? 'failed' : 'success',
     memo: record.memo ?? undefined,
   }
 }
 
 function mapHistoryTransaction(tx: Horizon.ServerApi.TransactionRecord): HistoryTransaction {
-  const record = tx as unknown as {
-    hash: string
-    created_at: string
-    successful?: boolean
-    memo?: string
-    operation_count?: number | string
-  }
+  const record = tx as unknown as HorizonTransactionRecord
   const operationCount = Number(record.operation_count ?? 0)
 
   return {
@@ -117,12 +123,13 @@ export async function getTransactionHistory(
 
   const response = await builder.call()
   const transactions = response.records.map(mapHorizonTransaction)
-  const lastRecord = response.records.at(-1) as { paging_token?: string } | undefined
+  const nextHref = readNextHref(response)
+  const hasMore = Boolean(nextHref) || response.records.length >= limit
 
   return {
     transactions,
-    nextCursor: transactions.length >= limit ? (lastRecord?.paging_token ?? null) : null,
-    hasMore: transactions.length >= limit,
+    nextCursor: hasMore ? readLastCursor(response.records) : null,
+    hasMore,
   }
 }
 
@@ -140,11 +147,12 @@ export async function loadTransactionHistoryPage(
   }
 
   const response = await builder.call()
-  const lastRecord = response.records.at(-1) as { paging_token?: string } | undefined
+  const nextHref = readNextHref(response)
+  const hasMore = Boolean(nextHref) || response.records.length >= limit
 
   return {
     records: response.records.map(mapHistoryTransaction),
-    nextHref: response.records.length >= limit ? (lastRecord?.paging_token ?? null) : null,
+    nextHref: nextHref ?? (hasMore ? readLastCursor(response.records) : null),
   }
 }
 

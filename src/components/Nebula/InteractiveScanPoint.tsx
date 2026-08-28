@@ -1,6 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
-import type { ThreeEvent } from '@react-three/fiber'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import type { Mesh } from 'three'
 import type { ResourceType } from '@/types/game'
 import { DoubleSide } from 'three'

@@ -13,6 +13,16 @@ export type ResourceType =
 
 export type ResourceInventory = Record<ResourceType, number>
 
+/** Natural resources harvested from scanning nebula anomalies. */
+export type HarvestableResourceType = 'nebulite' | 'stellarium' | 'voidcrystal' | 'darkMatter'
+
+export interface HarvestEntry {
+  id: string
+  resourceType: HarvestableResourceType
+  amount: number
+  createdAt: string
+}
+
 export type OptimisticResourceStatus = 'pending' | 'confirmed' | 'failed'
 
 export interface HarvestedResourceEvent {
@@ -38,6 +48,8 @@ export interface OptimisticResourceTransaction {
 
 export interface ResourceState {
   inventory: ResourceInventory
+  harvested: Record<HarvestableResourceType, number>
+  harvestLog: HarvestEntry[]
   optimisticTransactions: OptimisticResourceTransaction[]
   harvestHistory: HarvestedResourceEvent[]
   lastHarvest: HarvestedResourceEvent | null
@@ -53,6 +65,8 @@ export interface ResourceActions {
     },
     id?: string
   ) => HarvestedResourceEvent
+  addHarvest: (resourceType: HarvestableResourceType, amount: number) => void
+  clearHarvestLog: () => void
   applyOptimisticUpdate: (
     label: string,
     changes: Partial<Record<ResourceType, number>>,
@@ -79,6 +93,13 @@ export const RESOURCE_TYPES: ResourceType[] = [
   'darkMatter',
 ]
 
+export const HARVESTABLE_RESOURCE_TYPES: HarvestableResourceType[] = [
+  'nebulite',
+  'stellarium',
+  'voidcrystal',
+  'darkMatter',
+]
+
 export const initialResourceState: ResourceState = {
   inventory: {
     credits: 0,
@@ -90,9 +111,24 @@ export const initialResourceState: ResourceState = {
     voidcrystal: 0,
     darkMatter: 0,
   },
+  harvested: {
+    nebulite: 0,
+    stellarium: 0,
+    voidcrystal: 0,
+    darkMatter: 0,
+  },
+  harvestLog: [],
   optimisticTransactions: [],
   harvestHistory: [],
   lastHarvest: null,
+}
+
+export function isResourceType(value: unknown): value is ResourceType {
+  return typeof value === 'string' && (RESOURCE_TYPES as string[]).includes(value)
+}
+
+export function isHarvestableResourceType(value: unknown): value is HarvestableResourceType {
+  return typeof value === 'string' && (HARVESTABLE_RESOURCE_TYPES as string[]).includes(value)
 }
 
 function createResourceEventId(prefix = 'resource-tx'): string {
@@ -103,14 +139,75 @@ function createResourceEventId(prefix = 'resource-tx'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function normalizeAmount(value: unknown): number {
+  return Math.max(0, Math.floor(Number(value) || 0))
+}
+
 function normalizeInventory(inventory: Partial<ResourceInventory> | undefined): ResourceInventory {
   return RESOURCE_TYPES.reduce<ResourceInventory>(
     (nextInventory, resource) => ({
       ...nextInventory,
-      [resource]: Math.max(0, Number(inventory?.[resource] ?? 0)),
+      [resource]: normalizeAmount(inventory?.[resource]),
     }),
     { ...initialResourceState.inventory }
   )
+}
+
+function normalizeHarvested(
+  harvested: Partial<Record<HarvestableResourceType, number>> | undefined
+): Record<HarvestableResourceType, number> {
+  return HARVESTABLE_RESOURCE_TYPES.reduce<Record<HarvestableResourceType, number>>(
+    (totals, resourceType) => ({
+      ...totals,
+      [resourceType]: normalizeAmount(harvested?.[resourceType]),
+    }),
+    { ...initialResourceState.harvested }
+  )
+}
+
+function normalizeHarvestLog(log: unknown): HarvestEntry[] {
+  if (!Array.isArray(log)) return []
+
+  return log
+    .flatMap((entry) => {
+      const candidate = entry as Partial<HarvestEntry>
+      if (!candidate.id || !isHarvestableResourceType(candidate.resourceType)) return []
+
+      return [
+        {
+          id: String(candidate.id),
+          resourceType: candidate.resourceType,
+          amount: normalizeAmount(candidate.amount),
+          createdAt: candidate.createdAt ?? new Date().toISOString(),
+        },
+      ]
+    })
+    .slice(0, 50)
+}
+
+function normalizeHarvestHistory(history: unknown): HarvestedResourceEvent[] {
+  if (!Array.isArray(history)) return []
+
+  return history
+    .flatMap((entry) => {
+      const candidate = entry as Partial<HarvestedResourceEvent>
+      if (!candidate.id || !candidate.scanPointId || !isResourceType(candidate.resourceType)) {
+        return []
+      }
+
+      return [
+        {
+          id: String(candidate.id),
+          scanPointId: String(candidate.scanPointId),
+          resourceType: candidate.resourceType,
+          amount: normalizeAmount(candidate.amount),
+          source: candidate.source ?? 'scan',
+          harvestedAt: candidate.harvestedAt ?? new Date().toISOString(),
+          transactionHash: candidate.transactionHash,
+        },
+      ]
+    })
+    .slice(0, 50)
 }
 
 function applyResourceChanges(
@@ -130,6 +227,44 @@ function applyResourceChanges(
   )
 }
 
+function createHarvestEntry(event: HarvestedResourceEvent): HarvestEntry | null {
+  if (!isHarvestableResourceType(event.resourceType)) return null
+
+  return {
+    id: event.id,
+    resourceType: event.resourceType,
+    amount: event.amount,
+    createdAt: event.harvestedAt,
+  }
+}
+
+function applyHarvestEvent(
+  state: ResourceState,
+  event: HarvestedResourceEvent
+): Pick<
+  ResourceState,
+  'inventory' | 'harvested' | 'harvestLog' | 'harvestHistory' | 'lastHarvest'
+> {
+  const harvestEntry = createHarvestEntry(event)
+  const harvested = normalizeHarvested(state.harvested)
+
+  if (harvestEntry) {
+    harvested[harvestEntry.resourceType] += harvestEntry.amount
+  }
+
+  return {
+    inventory: applyResourceChanges(state.inventory, {
+      [event.resourceType]: event.amount,
+    }),
+    harvested,
+    harvestLog: harvestEntry
+      ? [harvestEntry, ...normalizeHarvestLog(state.harvestLog)].slice(0, 50)
+      : state.harvestLog,
+    harvestHistory: [event, ...normalizeHarvestHistory(state.harvestHistory)].slice(0, 50),
+    lastHarvest: event,
+  }
+}
+
 export const useResourceStore = create<ResourceStore>()(
   persist(
     (set, get) => ({
@@ -139,7 +274,7 @@ export const useResourceStore = create<ResourceStore>()(
         set((state) => ({
           inventory: {
             ...normalizeInventory(state.inventory),
-            [resource]: Math.max(0, amount),
+            [resource]: normalizeAmount(amount),
           },
         })),
       adjustResource: (resource, delta) =>
@@ -150,27 +285,34 @@ export const useResourceStore = create<ResourceStore>()(
           },
         })),
       harvestResource: (input, id = createResourceEventId('harvest')) => {
-        const amount = Math.max(0, Math.floor(input.amount))
         const event: HarvestedResourceEvent = {
           id,
           scanPointId: input.scanPointId,
           resourceType: input.resourceType,
-          amount,
+          amount: normalizeAmount(input.amount),
           source: input.source ?? (input.transactionHash ? 'contract' : 'scan'),
           harvestedAt: new Date().toISOString(),
           transactionHash: input.transactionHash,
         }
 
-        set((state) => ({
-          inventory: applyResourceChanges(state.inventory, {
-            [event.resourceType]: event.amount,
-          }),
-          harvestHistory: [event, ...state.harvestHistory].slice(0, 50),
-          lastHarvest: event,
-        }))
+        set((state) => applyHarvestEvent(state, event))
 
         return event
       },
+      addHarvest: (resourceType, amount) => {
+        const now = new Date().toISOString()
+        const event: HarvestedResourceEvent = {
+          id: createResourceEventId('harvest'),
+          scanPointId: 'nebula-scan',
+          resourceType,
+          amount: normalizeAmount(amount),
+          source: 'scan',
+          harvestedAt: now,
+        }
+
+        set((state) => applyHarvestEvent(state, event))
+      },
+      clearHarvestLog: () => set({ harvestLog: [] }),
       applyOptimisticUpdate: (label, changes, id = createResourceEventId()) => {
         set((state) => ({
           inventory: applyResourceChanges(state.inventory, changes),
@@ -238,8 +380,10 @@ export const useResourceStore = create<ResourceStore>()(
     {
       name: resourceStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ inventory, harvestHistory, lastHarvest }) => ({
+      partialize: ({ inventory, harvested, harvestLog, harvestHistory, lastHarvest }) => ({
         inventory,
+        harvested,
+        harvestLog,
         harvestHistory,
         lastHarvest,
       }),
@@ -250,8 +394,11 @@ export const useResourceStore = create<ResourceStore>()(
           ...current,
           ...persistedState,
           inventory: normalizeInventory(persistedState?.inventory),
-          harvestHistory: persistedState?.harvestHistory ?? [],
+          harvested: normalizeHarvested(persistedState?.harvested),
+          harvestLog: normalizeHarvestLog(persistedState?.harvestLog),
+          harvestHistory: normalizeHarvestHistory(persistedState?.harvestHistory),
           lastHarvest: persistedState?.lastHarvest ?? null,
+          optimisticTransactions: current.optimisticTransactions,
         }
       },
     }

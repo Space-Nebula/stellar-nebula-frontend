@@ -1999,3 +1999,21 @@ h1 {
     flex-wrap: wrap;
   }
 }
+
+.marketplace-view {
+  display: grid;
+  gap: 2rem;
+}
+
+.harvest-panel {
+  margin-top: 2rem;
+  max-width: 760px;
+}
+
+.harvest-totals {
+  margin: 1rem 0;
+}
+
+.dashboard-history {
+  margin-top: 0.75rem;
+}

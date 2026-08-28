@@ -11,8 +11,13 @@ export {
 export {
   initialResourceState,
   RESOURCE_TYPES,
+  HARVESTABLE_RESOURCE_TYPES,
+  isHarvestableResourceType,
+  isResourceType,
   resourceStoreStorageKey,
   useResourceStore,
+  type HarvestEntry,
+  type HarvestableResourceType,
   type HarvestedResourceEvent,
   type ResourceInventory,
   type OptimisticResourceStatus,

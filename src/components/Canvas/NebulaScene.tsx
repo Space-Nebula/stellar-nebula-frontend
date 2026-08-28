@@ -35,9 +35,14 @@ function NebulaSphere() {
 interface NebulaSceneProps {
   starfieldDensity: number
   performanceMode?: boolean
+  onScanComplete?: (resourceType: ResourceType, amount: number) => void
 }
 
-export function NebulaScene({ starfieldDensity, performanceMode = false }: NebulaSceneProps) {
+export function NebulaScene({
+  starfieldDensity,
+  performanceMode = false,
+  onScanComplete,
+}: NebulaSceneProps) {
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({})
   const [scanningPoints, setScanningPoints] = useState<Set<string>>(new Set())
   const harvestResource = useResourceStore((state) => state.harvestResource)
@@ -70,6 +75,7 @@ export function NebulaScene({ starfieldDensity, performanceMode = false }: Nebul
         })
         completeTutorialObjective('first-scan')
         trackEvent('scan_completed', { pointId, resourceType, amount })
+        onScanComplete?.(resourceType, amount)
 
         setTimeout(() => {
           setCooldowns((prev) => {
@@ -80,7 +86,7 @@ export function NebulaScene({ starfieldDensity, performanceMode = false }: Nebul
         }, 5000)
       }, 2000)
     },
-    [completeTutorialObjective, harvestResource, recordScanCompleted]
+    [completeTutorialObjective, harvestResource, onScanComplete, recordScanCompleted]
   )
 
   // Update cooldowns
