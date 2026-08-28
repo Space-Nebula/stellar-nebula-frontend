@@ -1,9 +1,22 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { Mesh } from 'three'
-import { ParticleSystem, Starfield, InteractiveScanPoints, ShipModel } from '../Nebula'
+import {
+  ParticleSystem,
+  Starfield,
+  InteractiveScanPoints,
+  ShipModel,
+  ProceduralNebulaField,
+} from '../Nebula'
 import { trackEvent } from '../../services/analytics'
-import type { ResourceType } from '../../types/game'
+import type { ResourceType, RarityTier } from '../../types/game'
+import { useScanCooldown } from '../../hooks/useScanCooldown'
+import { useProceduralNebula } from '../../hooks/useProceduralNebula'
+import { rollScanReward, rollResourceAmount } from '../../utils/rarity'
+import { createRNG } from '../../utils/procedural/nebula'
+import { SCAN_COOLDOWN_MS, SCAN_CHANNEL_DURATION_SEC } from '../../constants/game'
+
+const NEBULA_SEED = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2'
 
 function NebulaSphere() {
   const meshRef = useRef<Mesh>(null)
@@ -36,16 +49,31 @@ interface NebulaSceneProps {
   onScanComplete?: (resourceType: ResourceType, amount: number) => void
 }
 
-export function NebulaScene({
-  starfieldDensity,
-  performanceMode = false,
-  onScanComplete,
-}: NebulaSceneProps) {
-  const [cooldowns, setCooldowns] = useState<Record<string, number>>({})
+function createInitialRng() {
+  return createRNG(Date.now())
+}
+
+export function NebulaScene({ starfieldDensity, performanceMode = false }: NebulaSceneProps) {
   const [scanningPoints, setScanningPoints] = useState<Set<string>>(new Set())
+  const [rarityMap, setRarityMap] = useState<Record<string, RarityTier>>({})
+  const { getRemainingSeconds, startCooldown, canScan } = useScanCooldown()
+  const scanRngRef = useRef(createInitialRng())
+
+  const nebulaConfig = useMemo(
+    () => ({
+      seed: NEBULA_SEED,
+      particleCount: performanceMode ? 5000 : 15000,
+      radius: 40,
+    }),
+    [performanceMode]
+  )
+
+  const { geometry: nebulaGeometry } = useProceduralNebula(nebulaConfig)
 
   const handleScan = useCallback(
     (pointId: string, resourceType: ResourceType, amount: number) => {
+      if (!canScan(pointId)) return
+
       setScanningPoints((prev) => new Set([...prev, pointId]))
       trackEvent('scan_started', { pointId, resourceType, amount })
 
@@ -56,41 +84,27 @@ export function NebulaScene({
           return next
         })
 
-        setCooldowns((prev) => ({ ...prev, [pointId]: 5 }))
-        trackEvent('scan_completed', { pointId, resourceType, amount })
-        onScanComplete?.(resourceType, amount)
+        const reward = rollScanReward(resourceType, scanRngRef.current)
+        const finalAmount = rollResourceAmount(amount, reward.rarity)
 
-        setTimeout(() => {
-          setCooldowns((prev) => {
-            const next = { ...prev }
-            delete next[pointId]
-            return next
-          })
-        }, 5000)
-      }, 2000)
+        setRarityMap((prev) => ({ ...prev, [pointId]: reward.rarity }))
+        startCooldown(pointId, SCAN_COOLDOWN_MS)
+
+        trackEvent('scan_completed', {
+          pointId,
+          resourceType,
+          amount: finalAmount,
+          rarity: reward.rarity,
+        })
+      }, SCAN_CHANNEL_DURATION_SEC * 1000)
     },
-    [onScanComplete]
+    [canScan, startCooldown]
   )
 
-  // Update cooldowns
-  useFrame((_state, delta: number) => {
-    setCooldowns((prev) => {
-      const next = { ...prev }
-      let hasChanges = false
-
-      Object.keys(next).forEach((key) => {
-        if (next[key] > 0) {
-          next[key] -= delta
-          if (next[key] <= 0) {
-            delete next[key]
-            hasChanges = true
-          }
-        }
-      })
-
-      return hasChanges ? next : prev
-    })
-  })
+  const remainingSecondsMap: Record<string, number> = {}
+  for (const id of ['scan-1', 'scan-2', 'scan-3', 'scan-4']) {
+    remainingSecondsMap[id] = getRemainingSeconds(id)
+  }
 
   return (
     <>
@@ -101,10 +115,16 @@ export function NebulaScene({
       <Starfield density={starfieldDensity} performanceMode={performanceMode} />
       <InteractiveScanPoints
         onScan={handleScan}
-        cooldowns={cooldowns}
+        cooldowns={remainingSecondsMap}
+        remainingSecondsMap={remainingSecondsMap}
         scanningPoints={scanningPoints}
+        rarityMap={rarityMap}
       />
-      <NebulaSphere />
+      {nebulaGeometry ? (
+        <ProceduralNebulaField geometry={nebulaGeometry} performanceMode={performanceMode} />
+      ) : (
+        <NebulaSphere />
+      )}
       <ShipModel
         shipClass="scout"
         position={[3, 0, 0]}
