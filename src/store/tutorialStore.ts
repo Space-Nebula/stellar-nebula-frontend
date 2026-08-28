@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { tutorialStoreKey } from './storageKeys'
 
 export interface TutorialState {
   completed: boolean
@@ -17,7 +18,10 @@ export interface TutorialActions {
 
 export type TutorialStore = TutorialState & TutorialActions
 
-export const tutorialStoreKey = 'stellar-nebula:tutorial-store'
+export { tutorialStoreKey }
+
+/** Bump whenever the shape of the persisted TutorialState slice changes. */
+export const TUTORIAL_STORE_SCHEMA_VERSION = 1
 
 export const initialTutorialState: TutorialState = {
   completed: false,
@@ -42,6 +46,11 @@ export const useTutorialStore = create<TutorialStore>()(
     {
       name: tutorialStoreKey,
       storage: createJSONStorage(() => localStorage),
+      version: TUTORIAL_STORE_SCHEMA_VERSION,
+      migrate: (persistedState) => ({
+        ...initialTutorialState,
+        ...(persistedState as Partial<TutorialState>),
+      }),
     }
   )
 )

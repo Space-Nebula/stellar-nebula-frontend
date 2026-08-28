@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { sessionStoreStorageKey } from './storageKeys'
 
 export interface SessionPreferences {
   theme: 'dark' | 'light'
@@ -34,7 +35,10 @@ export interface SessionActions {
 
 export type SessionStore = SessionState & SessionActions
 
-export const sessionStoreStorageKey = 'stellar-nebula:session-store'
+export { sessionStoreStorageKey }
+
+/** Bump whenever the shape of the persisted SessionState slice changes. */
+export const SESSION_STORE_SCHEMA_VERSION = 1
 
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -99,7 +103,9 @@ export const useSessionStore = create<SessionStore>()(
     {
       name: sessionStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
+      version: SESSION_STORE_SCHEMA_VERSION,
       partialize: ({ session }) => ({ session }),
+      migrate: (persistedState) => persistedState as SessionState,
     }
   )
 )

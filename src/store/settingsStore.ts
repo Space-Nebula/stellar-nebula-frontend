@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { settingsStoreKey } from './storageKeys'
 
 export type GraphicsQuality = 'low' | 'medium' | 'high'
 export type StellarNetwork = 'futurenet' | 'testnet' | 'mainnet'
@@ -22,7 +23,10 @@ export interface SettingsActions {
 
 export type SettingsStore = SettingsState & SettingsActions
 
-export const settingsStoreKey = 'stellar-nebula:settings-store'
+export { settingsStoreKey }
+
+/** Bump whenever the shape of the persisted SettingsState slice changes. */
+export const SETTINGS_STORE_SCHEMA_VERSION = 1
 
 export const initialSettingsState: SettingsState = {
   graphicsQuality: 'high',
@@ -45,6 +49,11 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: settingsStoreKey,
       storage: createJSONStorage(() => localStorage),
+      version: SETTINGS_STORE_SCHEMA_VERSION,
+      migrate: (persistedState) => ({
+        ...initialSettingsState,
+        ...(persistedState as Partial<SettingsState>),
+      }),
     }
   )
 )

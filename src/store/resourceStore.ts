@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { resourceStoreStorageKey } from './storageKeys'
 
 export type ResourceType = 'credits' | 'fuel' | 'minerals' | 'nebulaDust'
 
@@ -54,7 +55,10 @@ export interface ResourceActions {
 
 export type ResourceStore = ResourceState & ResourceActions
 
-export const resourceStoreStorageKey = 'stellar-nebula:resource-store'
+export { resourceStoreStorageKey }
+
+/** Bump whenever the shape of the persisted ResourceState slice changes. */
+export const RESOURCE_STORE_SCHEMA_VERSION = 1
 
 export const initialResourceState: ResourceState = {
   inventory: {
@@ -201,7 +205,9 @@ export const useResourceStore = create<ResourceStore>()(
     {
       name: resourceStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
+      version: RESOURCE_STORE_SCHEMA_VERSION,
       partialize: ({ inventory, harvested, harvestLog }) => ({ inventory, harvested, harvestLog }),
+      migrate: (persistedState) => persistedState as ResourceState,
     }
   )
 )
