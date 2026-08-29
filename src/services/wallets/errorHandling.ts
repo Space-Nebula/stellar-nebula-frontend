@@ -18,10 +18,7 @@ function parseErrorMessage(error: unknown): { message: string; rawError: Error |
 /**
  * Enhance wallet connection errors with specific messages and recovery suggestions.
  */
-export function handleWalletConnectionError(
-  error: unknown,
-  walletType: WalletType
-): WalletError {
+export function handleWalletConnectionError(error: unknown, walletType: WalletType): WalletError {
   const { message } = parseErrorMessage(error)
   const lowerMessage = message.toLowerCase()
 
@@ -59,7 +56,8 @@ export function handleWalletConnectionError(
       return {
         code: 'ALBEDO_NOT_AVAILABLE',
         message: 'Albedo is not available in this browser',
-        helpText: 'Albedo requires a compatible browser with popup support. Try using a different browser.',
+        helpText:
+          'Albedo requires a compatible browser with popup support. Try using a different browser.',
         isRetryable: false,
       }
     }

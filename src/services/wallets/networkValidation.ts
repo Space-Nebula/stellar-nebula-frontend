@@ -42,7 +42,8 @@ export function validateNetworkMatch(
  */
 export function getNetworkMismatchMessage(mismatch: NetworkMismatch): string {
   const appNetworkLabel = mismatch.appNetwork.charAt(0).toUpperCase() + mismatch.appNetwork.slice(1)
-  const walletNetworkLabel = mismatch.walletNetwork.charAt(0).toUpperCase() + mismatch.walletNetwork.slice(1)
+  const walletNetworkLabel =
+    mismatch.walletNetwork.charAt(0).toUpperCase() + mismatch.walletNetwork.slice(1)
 
   return `Your wallet is connected to ${walletNetworkLabel}, but this app requires ${appNetworkLabel}. Please switch your wallet to ${appNetworkLabel} to continue.`
 }

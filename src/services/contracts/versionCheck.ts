@@ -1,12 +1,7 @@
-import { rpc } from '@stellar/stellar-sdk'
+import { rpc, xdr } from '@stellar/stellar-sdk'
 import { createStellarRpcServer, getActiveStellarConfig } from '@/config/stellar'
 import type { StellarNetworkConfig } from '@/config/stellar'
-import {
-  storeContractVersion,
-  getStoredContractVersion,
-  isVersionCompatible,
-  getMigrationGuidance,
-} from './migration'
+import { storeContractVersion, getStoredContractVersion, getMigrationGuidance } from './migration'
 import { createScopedLogger } from '@/services/logging'
 
 const log = createScopedLogger('ContractVersionCheck')
@@ -39,36 +34,40 @@ export interface VersionCheckResult {
   guidance?: { message: string; steps: string[] }
 }
 
-/** Minimum contract version this frontend supports (inclusive). */
-const MIN_CONTRACT_VERSION: SemanticVersion = { major: 1, minor: 0, patch: 0, raw: '1.0.0' }
+/** Minimum contract version this frontend is compatible with */
+export const MIN_CONTRACT_VERSION: SemanticVersion = {
+  major: 0,
+  minor: 1,
+  patch: 0,
+  raw: '0.1.0',
+}
 
-/** Maximum contract version this frontend supports (inclusive). */
-const MAX_CONTRACT_VERSION: SemanticVersion = { major: 2, minor: 0, patch: 0, raw: '2.0.0' }
-
-/**
- * Parse a version string like "1.2.3" into a SemanticVersion object.
- * Falls back gracefully if the format is unexpected.
- */
-export function parseVersion(versionStr: string): SemanticVersion | null {
-  if (!versionStr || typeof versionStr !== 'string') return null
-
-  const cleaned = versionStr.replace(/^v/i, '').trim()
-  const parts = cleaned.split('.')
-
-  if (parts.length < 2 || parts.length > 3) return null
-
-  const major = parseInt(parts[0], 10)
-  const minor = parseInt(parts[1], 10)
-  const patch = parts.length === 3 ? parseInt(parts[2], 10) : 0
-
-  if (isNaN(major) || isNaN(minor) || isNaN(patch)) return null
-
-  return { major, minor, patch, raw: cleaned }
+/** Maximum (tested) contract version this frontend is compatible with */
+export const MAX_CONTRACT_VERSION: SemanticVersion = {
+  major: 1,
+  minor: 0,
+  patch: 0,
+  raw: '1.0.0',
 }
 
 /**
- * Compare two semantic versions.
- * Returns -1, 0, or 1.
+ * Parse a semver string like "1.2.3" into a SemanticVersion object.
+ */
+export function parseVersion(raw: string): SemanticVersion | null {
+  const match = raw.trim().match(/^v?(\d+)\.(\d+)\.(\d+)/)
+  if (!match) return null
+
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10),
+    patch: parseInt(match[3], 10),
+    raw,
+  }
+}
+
+/**
+ * Compare two SemanticVersion objects.
+ * Returns -1 if a < b, 0 if a == b, 1 if a > b.
  */
 export function compareVersions(a: SemanticVersion, b: SemanticVersion): number {
   if (a.major !== b.major) return a.major < b.major ? -1 : 1
@@ -92,36 +91,24 @@ export function isVersionInRange(
  * Query the Soroban contract for its version via the __version custom contract key.
  *
  * Soroban contracts can expose a `__version` read-only entry. This function
- * attempts to read it via simulateTransaction.
+ * attempts to read it via getContractData.
  */
 export async function queryContractVersion(
   contractId: string,
   config: StellarNetworkConfig = getActiveStellarConfig()
 ): Promise<string | null> {
-  const server = createStellarRpcServer(config)
-
   try {
-    // Build a simulateContractRead to fetch the __version key
-    const contract = new rpc.Server(config.rpcUrl)
+    const server = createStellarRpcServer(config)
+    const key = xdr.ScVal.scvBytes(Buffer.from('__version'))
+    const response = await server.getContractData(contractId, key, rpc.Durability.Persistent)
 
-    // Use the raw Soroban RPC to read the contract metadata
-    const response = await contract.getContractData(contractId, {
-      key: rpc.xdr.ScVal.scvBytes(
-        new TextEncoder().encode('__version')
-      ),
-    })
-
-    if (response && response.xdr) {
-      // Decode the string from the ScVal
-      const scVal = rpc.xdr.ScVal.fromXDR(
-        typeof response.xdr === 'string'
-          ? Buffer.from(response.xdr, 'base64')
-          : response.xdr
-      )
-      if (scVal.switch() === rpc.xdr.ScValType.scvBytes()) {
+    if (response && response.val) {
+      const contractData = response.val.contractData()
+      const scVal = contractData.val()
+      if (scVal.switch() === xdr.ScValType.scvBytes()) {
         return new TextDecoder().decode(scVal.bytes())
       }
-      if (scVal.switch() === rpc.xdr.ScValType.scvString()) {
+      if (scVal.switch() === xdr.ScValType.scvString()) {
         return scVal.str().toString()
       }
     }
@@ -177,8 +164,7 @@ export async function checkContractVersionCompatibility(
 
   // Check if it was previously known
   const previousVersion = getStoredContractVersion(contractId)
-  const hasChanged =
-    previousVersion && previousVersion.hash !== deployedVersion.raw
+  const hasChanged = previousVersion && previousVersion.hash !== deployedVersion.raw
 
   let message: string
   let guidance: { message: string; steps: string[] } | undefined

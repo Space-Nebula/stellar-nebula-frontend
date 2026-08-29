@@ -39,16 +39,36 @@ function formatHarvestTime(value: string): string {
 
 function NebulaView() {
   const [isConnectOpen, setIsConnectOpen] = useState(false)
+  const applyOptimisticHarvest = useResourceStore((state) => state.applyOptimisticHarvest)
+  const confirmOptimisticUpdate = useResourceStore((state) => state.confirmOptimisticUpdate)
   const lastHarvest = useResourceStore((state) => state.lastHarvest)
   const harvested = useResourceStore((state) => state.harvested)
   const harvestLog = useResourceStore((state) => state.harvestLog)
   const stats = useAchievementStore((state) => state.stats)
   const hasHarvests = harvestLog.length > 0
 
-  const handleHarvest = useCallback((resourceType: ResourceType, amount: number) => {
-    showSuccess(`Harvested ${amount} ${HARVEST_META[resourceType].label}`)
-    trackEvent('harvest_completed', { resourceType, amount })
-  }, [])
+  const handleHarvest = useCallback(
+    (resourceType: ResourceType, amount: number, pointId?: string) => {
+      const scanId = pointId ?? 'anomaly-scan'
+      const { transactionId } = applyOptimisticHarvest(
+        {
+          resourceType: resourceType as HarvestableResourceType,
+          amount,
+          scanPointId: scanId,
+          source: 'scan',
+        },
+        `Scan Anomaly: ${resourceType} +${amount}`
+      )
+
+      confirmOptimisticUpdate(transactionId)
+
+      const label =
+        HARVEST_META[resourceType as HarvestableResourceType]?.label ?? formatResource(resourceType)
+      showSuccess(`Harvested ${amount} ${label}`)
+      trackEvent('harvest_completed', { resourceType, amount, pointId: scanId })
+    },
+    [applyOptimisticHarvest, confirmOptimisticUpdate]
+  )
 
   return (
     <div className="nebula-view">

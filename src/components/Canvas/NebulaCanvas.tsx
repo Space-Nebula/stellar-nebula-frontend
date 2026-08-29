@@ -11,7 +11,7 @@ import type { ResourceType } from '@/types/game'
 
 interface NebulaCanvasProps {
   showFps?: boolean
-  onScanComplete?: (resourceType: ResourceType, amount: number) => void
+  onScanComplete?: (resourceType: ResourceType, amount: number, pointId: string) => void
 }
 
 export function NebulaCanvas({ showFps = false, onScanComplete }: NebulaCanvasProps) {

@@ -6,6 +6,9 @@ export {
   type ShipState,
   type ShipStatus,
   type ShipStore,
+  type ShipUpdateChanges,
+  type OptimisticShipStatus,
+  type OptimisticShipTransaction,
 } from './shipStore'
 
 export {
@@ -65,6 +68,8 @@ export {
   type GameState,
   type GameStore,
   type ScanCooldown,
+  type OptimisticOperationStatus,
+  type OptimisticGameOperation,
 } from './gameStore'
 
 export {
