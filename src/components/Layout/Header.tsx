@@ -32,7 +32,11 @@ function Header({ onOpenConnectModal }: HeaderProps) {
   }
 
   return (
-    <header className="site-header" role="banner">
+    <>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <header className="site-header" role="banner">
       {/* Brand / Logo */}
       <NavLink to="/" className="brand" aria-label="Stellar Nebula home" onClick={closeMenu}>
         <span className="brand-mark" aria-hidden="true" />
@@ -139,6 +143,7 @@ function Header({ onOpenConnectModal }: HeaderProps) {
         </nav>
       )}
     </header>
+    </>
   )
 }
 

@@ -2,6 +2,28 @@
   min-height: 100vh;
 }
 
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 100;
+  padding: 0.75rem 1.25rem;
+  background: #32d6a5;
+  color: #07111f;
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 160ms ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+*:focus-visible {
+  outline: 2px solid #9fd8ff;
+  outline-offset: 2px;
+}
+
 .app-shell {
   min-height: 100vh;
 }
