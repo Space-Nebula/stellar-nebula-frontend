@@ -2,10 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 import { VitePWA } from 'vite-plugin-pwa'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   plugins: [
     react(),
+    visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'icon-*.png', 'icon-*.webp', '**/*.webp'],
@@ -135,11 +137,20 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        // Code splitting for better caching
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
-          'stellar-vendor': ['@stellar/stellar-sdk', '@albedo-link/intent'],
+        // Code splitting by features
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('three') || id.includes('@react-three')) {
+              return 'feature-three'
+            }
+            if (id.includes('@stellar') || id.includes('@albedo-link')) {
+              return 'feature-stellar'
+            }
+            if (id.includes('react') || id.includes('react-router') || id.includes('react-dom')) {
+              return 'react-vendor'
+            }
+            return 'vendor'
+          }
         },
       },
     },
