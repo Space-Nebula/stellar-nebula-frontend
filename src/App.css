@@ -74,7 +74,7 @@
 
 .nav-link {
   border-radius: 999px;
-  color: #b9c6dd;
+  color: #c8d6ea;
   padding: 0.55rem 0.85rem;
   transition:
     background-color 160ms ease,
@@ -96,7 +96,7 @@
   border: 0;
   border-radius: 999px;
   background: rgba(50, 214, 165, 0.18);
-  color: #b8ffe9;
+  color: #c8ffe9;
   padding: 0.55rem 0.85rem;
   font: inherit;
   cursor: pointer;
@@ -189,7 +189,7 @@
   border: 1px solid rgba(159, 216, 255, 0.25);
   border-radius: 999px;
   background: transparent;
-  color: #d6e5ff;
+  color: #c8d6ea;
   padding: 0.35rem 0.75rem;
   cursor: pointer;
   min-height: 40px;
@@ -259,7 +259,7 @@
   border: 1px solid rgba(159, 216, 255, 0.2);
   border-radius: 999px;
   background: transparent;
-  color: #d6e5ff;
+  color: #c8d6ea;
   cursor: pointer;
   padding: 0.45rem 0.8rem;
 }
@@ -325,7 +325,7 @@
 
 .help-faq-empty {
   margin: 0;
-  color: #b9c6dd;
+  color: #c8d6ea;
 }
 
 .help-wallet-section,
@@ -1535,7 +1535,7 @@ h1 {
 .settings-close {
   background: none;
   border: none;
-  color: #b9c6dd;
+  color: #c8d6ea;
   cursor: pointer;
   font-size: 1rem;
   padding: 0.25rem 0.5rem;
@@ -1764,7 +1764,7 @@ h1 {
 .tutorial-hint {
   margin: 0;
   font-size: 0.82rem;
-  color: #b9c6dd;
+  color: #c8d6ea;
   background: rgba(50, 214, 165, 0.08);
   border: 1px solid rgba(50, 214, 165, 0.2);
   border-radius: 0.5rem;
@@ -1834,7 +1834,7 @@ h1 {
 .tutorial-skip {
   background: none;
   border: none;
-  color: #b9c6dd;
+  color: #c8d6ea;
   cursor: pointer;
   font-size: 0.82rem;
   padding: 0.25rem 0.5rem;
@@ -1888,7 +1888,7 @@ h1 {
 }
 
 .footer-link {
-  color: #b9c6dd;
+  color: #c8d6ea;
   font-size: 0.85rem;
   padding: 0.3rem 0.6rem;
   border-radius: 999px;
@@ -1911,7 +1911,7 @@ h1 {
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
-  color: #b9c6dd;
+  color: #c8d6ea;
   transition:
     color 160ms ease,
     background 160ms ease;
@@ -1935,7 +1935,7 @@ h1 {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.78rem;
-  color: #b9c6dd;
+  color: #c8d6ea;
   text-transform: capitalize;
 }
 
@@ -1943,7 +1943,7 @@ h1 {
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 999px;
-  background: #b9c6dd;
+  background: #c8d6ea;
 }
 
 .footer-network-dot--live {
@@ -1953,7 +1953,7 @@ h1 {
 
 .footer-copy {
   font-size: 0.78rem;
-  color: #b9c6dd;
+  color: #c8d6ea;
   white-space: nowrap;
 }
 
@@ -1980,7 +1980,7 @@ h1 {
 
 .header-wallet-address {
   font-size: 0.82rem;
-  color: #b9c6dd;
+  color: #c8d6ea;
   font-family: monospace;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 999px;
@@ -1991,7 +1991,7 @@ h1 {
   background: none;
   border: 1px solid rgba(210, 222, 255, 0.2);
   border-radius: 999px;
-  color: #b9c6dd;
+  color: #c8d6ea;
   cursor: pointer;
   font-size: 0.82rem;
   padding: 0.3rem 0.7rem;
@@ -2027,7 +2027,7 @@ h1 {
   display: block;
   width: 1.25rem;
   height: 2px;
-  background: #b9c6dd;
+  background: #c8d6ea;
   border-radius: 2px;
   will-change: transform, opacity;
   transition:
@@ -2064,7 +2064,7 @@ h1 {
 }
 
 .mobile-nav-link {
-  color: #b9c6dd;
+  color: #c8d6ea;
   font-size: 1rem;
   font-weight: 600;
   padding: 0.65rem 0.75rem;
