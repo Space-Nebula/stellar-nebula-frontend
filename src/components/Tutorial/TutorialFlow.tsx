@@ -1,4 +1,6 @@
-import { useTutorialStore } from '@/store/tutorialStore'
+import { useContext, useEffect } from 'react'
+import { useTutorialStore, type TutorialObjective } from '@/store/tutorialStore'
+import { WalletContext } from '@/contexts/WalletContext'
 import { TutorialHighlight } from './TutorialHighlight'
 
 interface TutorialStep {

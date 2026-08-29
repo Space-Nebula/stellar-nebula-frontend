@@ -16,7 +16,7 @@ const WALLET_OPTIONS: WalletOption[] = [
   {
     type: 'freighter',
     name: 'Freighter',
-    description: 'Browser extension wallet by Stellar Development Foundation',
+    description: 'Browser extension wallet (Supports Ledger & Hardware Wallets)',
     icon: '🚀',
   },
   {
