@@ -31,9 +31,7 @@ describe('translateContractError', () => {
 
     expect(result.category).toBe('insufficient')
     expect(result.title).toMatch(/balance/i)
-    expect(result.resolution).toEqual(
-      expect.arrayContaining([expect.stringMatching(/balance/i)])
-    )
+    expect(result.resolution).toEqual(expect.arrayContaining([expect.stringMatching(/balance/i)]))
   })
 
   it('translates network errors', () => {

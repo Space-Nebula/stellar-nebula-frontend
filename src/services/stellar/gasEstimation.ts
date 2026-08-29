@@ -1,4 +1,4 @@
-import { rpc, Contract, TransactionBuilder, BASE_FEE, nativeToScVal } from '@stellar/stellar-sdk'
+import { Contract, TransactionBuilder, BASE_FEE, type xdr } from '@stellar/stellar-sdk'
 import { createStellarRpcServer, getActiveStellarConfig } from '@/config/stellar'
 import type { StellarNetworkConfig } from '@/config/stellar'
 import { createScopedLogger } from '@/services/logging'
@@ -84,20 +84,6 @@ const FEE_THRESHOLDS = {
   critical: 10000,
 } as const
 
-// ─── Operation complexity estimates ───────────────────────────────────────────
-
-const OPERATION_COMPLEXITY: Record<string, number> = {
-  payment: 1,
-  path_payment: 2,
-  manage_data: 1,
-  create_claimable_balance: 1,
-  claim_claimable_balance: 1,
-  account_create: 2,
-  contract_invoke: 3,
-  contract_deploy: 5,
-  transfer: 1,
-}
-
 // ─── Core estimation functions ────────────────────────────────────────────────
 
 function stroopsToXlm(stroops: number): string {
@@ -165,13 +151,19 @@ async function fetchCurrentBaseFee(config: StellarNetworkConfig): Promise<number
       }
     }
   } catch (error) {
-    log.warn('Failed to fetch fee stats, using base fee', undefined, error instanceof Error ? error : new Error(String(error)))
+    log.warn(
+      'Failed to fetch fee stats, using base fee',
+      undefined,
+      error instanceof Error ? error : new Error(String(error))
+    )
   }
 
-  return BASE_FEE
+  return Number(BASE_FEE)
 }
 
-async function detectFeeTrend(config: StellarNetworkConfig): Promise<GasEstimateResult['feeTrend']> {
+async function detectFeeTrend(
+  config: StellarNetworkConfig
+): Promise<GasEstimateResult['feeTrend']> {
   const server = createStellarRpcServer(config)
 
   try {
@@ -270,7 +262,7 @@ export async function estimateGas(
 export async function estimateSorobanGas(
   contractId: string,
   methodName: string,
-  params: rpc.xdr.ScVal[],
+  params: xdr.ScVal[],
   callerPubKey: string,
   options: GasEstimateOptions = {}
 ): Promise<GasEstimateResult> {
@@ -314,14 +306,14 @@ export async function estimateSorobanGas(
     const simFee =
       'minResourceFee' in simulation
         ? Number((simulation as { minResourceFee?: string | number }).minResourceFee ?? BASE_FEE)
-        : BASE_FEE
+        : Number(BASE_FEE)
 
     // Also fetch current base fee for network condition info
     const baseFeeStroops = await fetchCurrentBaseFee(config)
     const feeTrend = await detectFeeTrend(config)
     const networkCondition = classifyNetwork(baseFeeStroops)
 
-    const feeStroops = Math.max(simFee, BASE_FEE)
+    const feeStroops = Math.max(simFee, Number(BASE_FEE))
     const warning = getFeeWarning(feeStroops)
 
     const result: GasEstimateResult = {
@@ -345,7 +337,10 @@ export async function estimateSorobanGas(
 
     return result
   } catch (error) {
-    log.error('Failed to estimate Soroban gas', error instanceof Error ? error : new Error(String(error)))
+    log.error(
+      'Failed to estimate Soroban gas',
+      error instanceof Error ? error : new Error(String(error))
+    )
 
     // Fallback to basic estimation
     return estimateGas(1, options)

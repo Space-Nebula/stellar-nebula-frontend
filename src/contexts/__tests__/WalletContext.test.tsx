@@ -1,18 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, waitFor } from '../../test/utils'
 import userEvent from '@testing-library/user-event'
+import type * as WalletsService from '@services/wallets'
 import { WalletProvider, useWallet } from '../WalletContext'
 
 // Mock wallet services
-vi.mock('@services/wallets', () => ({
-  isFreighterInstalled: vi.fn().mockResolvedValue(true),
-  connectFreighter: vi.fn().mockResolvedValue('GFREIGHTER123'),
-  getFreighterNetwork: vi.fn().mockResolvedValue('testnet'),
-  isAlbedoAvailable: vi.fn().mockReturnValue(true),
-  connectAlbedo: vi.fn().mockResolvedValue('GALBEDO123'),
-  signTransactionWithFreighter: vi.fn().mockResolvedValue('SIGNED_XDR'),
-  signTransactionWithAlbedo: vi.fn().mockResolvedValue('SIGNED_ALBEDO_XDR'),
-}))
+vi.mock('@services/wallets', async (importOriginal) => {
+  const actual = (await importOriginal()) as typeof WalletsService
+  return {
+    ...actual,
+    isFreighterInstalled: vi.fn().mockResolvedValue(true),
+    connectFreighter: vi.fn().mockResolvedValue('GFREIGHTER123'),
+    getFreighterNetwork: vi.fn().mockResolvedValue('testnet'),
+    isAlbedoAvailable: vi.fn().mockReturnValue(true),
+    connectAlbedo: vi.fn().mockResolvedValue('GALBEDO123'),
+    getAlbedoNetwork: vi.fn().mockResolvedValue('testnet'),
+    signTransactionWithFreighter: vi.fn().mockResolvedValue('SIGNED_XDR'),
+    signTransactionWithAlbedo: vi.fn().mockResolvedValue('SIGNED_ALBEDO_XDR'),
+  }
+})
 
 function TestConsumer() {
   const { walletState, connect, disconnect, isLoading, error, isReconnecting, reconnectError } =

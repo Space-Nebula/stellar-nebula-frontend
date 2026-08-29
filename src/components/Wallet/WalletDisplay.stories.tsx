@@ -16,11 +16,13 @@ function makeCtx(overrides: Partial<WalletContextValue>): WalletContextValue {
     reconnectError: null,
     isFreighterInstalled: false,
     isAlbedoAvailable: false,
+    networkMismatchWarning: null,
     connect: noopAsync,
     disconnect: noop,
     switchWallet: noopAsync,
     signTransaction: noopSign,
     clearError: noop,
+    clearNetworkWarning: noop,
     ...overrides,
   }
 }
