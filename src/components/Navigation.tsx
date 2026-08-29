@@ -20,6 +20,9 @@ function Navigation() {
 
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <header className="site-header">
         <NavLink to="/" className="brand" aria-label="Stellar Nebula home">
           <span className="brand-mark" aria-hidden="true" />
