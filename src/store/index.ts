@@ -68,6 +68,24 @@ export {
 } from './gameStore'
 
 export {
+  initialSettingsState,
+  settingsStoreKey,
+  useSettingsStore,
+  type GraphicsQuality,
+  type StellarNetwork,
+  type SettingsState,
+  type SettingsStore,
+} from './settingsStore'
+
+export {
+  initialTutorialState,
+  tutorialStoreKey,
+  useTutorialStore,
+  type TutorialState,
+  type TutorialStore,
+} from './tutorialStore'
+
+export {
   ACHIEVEMENT_DEFINITIONS,
   achievementStoreStorageKey,
   buildAchievements,

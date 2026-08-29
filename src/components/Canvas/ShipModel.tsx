@@ -1,9 +1,8 @@
-/* eslint-disable */
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import type { Group, Mesh, Object3D } from 'three'
+import { Mesh, type Group, type Object3D } from 'three'
 import type { ShipClass } from '@/types/game'
 
 interface ShipModelProps {
@@ -20,6 +19,25 @@ const SHIP_MODEL_PATHS: Record<ShipClass, string> = {
   freighter: '/models/ships/freighter.gltf',
   warship: '/models/ships/warship.gltf',
   explorer: '/models/ships/explorer.gltf',
+}
+
+// Single shared loader instance - GLTFLoader is stateless between load() calls.
+const gltfLoader = new GLTFLoader()
+
+// Cache in-flight/completed loads by model path so multiple ShipModel
+// instances of the same class (see NebulaScene) don't each issue their own
+// network request for the same .gltf file.
+const gltfCache = new Map<string, Promise<GLTF>>()
+
+function loadShipModel(path: string): Promise<GLTF> {
+  const cached = gltfCache.get(path)
+  if (cached) return cached
+
+  const promise = new Promise<GLTF>((resolve, reject) => {
+    gltfLoader.load(path, resolve, undefined, reject)
+  })
+  gltfCache.set(path, promise)
+  return promise
 }
 
 // Fallback geometry for when models aren't available
@@ -75,10 +93,9 @@ function LoadedShip({
     if (model.scene) {
       const cloned = model.scene.clone()
       cloned.traverse((child: Object3D) => {
-        const mesh = child as Mesh
-        if (mesh.isMesh) {
-          mesh.castShadow = true
-          mesh.receiveShadow = true
+        if (child instanceof Mesh) {
+          child.castShadow = true
+          child.receiveShadow = true
         }
       })
       setClonedScene(cloned)
@@ -100,6 +117,11 @@ function LoadedShip({
   )
 }
 
+/**
+ * Renders a ship's GLTF model, with an automatic procedural fallback while
+ * loading or if the asset for `shipClass` is unavailable (see
+ * public/models/ships/README.md for the expected filenames).
+ */
 export function ShipModel({
   shipClass,
   position = [0, 0, 0],
@@ -111,38 +133,32 @@ export function ShipModel({
   const [gltf, setGltf] = useState<GLTF | null>(null)
   const [error, setError] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
+  const modelPath = useMemo(() => SHIP_MODEL_PATHS[shipClass], [shipClass])
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setError(false)
 
-    const loader = new GLTFLoader()
-    const modelPath = SHIP_MODEL_PATHS[shipClass]
-
-    loader.load(
-      modelPath,
-      (loadedGltf) => {
+    loadShipModel(modelPath)
+      .then((loadedGltf) => {
+        if (cancelled) return
         setGltf(loadedGltf)
         setLoading(false)
-      },
-      undefined,
-      (err) => {
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
         console.warn(`Failed to load ship model for ${shipClass}:`, err)
         setError(true)
         setLoading(false)
-      }
-    )
-  }, [shipClass])
+      })
 
-  if (loading) {
-    return (
-      <group position={position}>
-        <FallbackShip shipClass={shipClass} />
-      </group>
-    )
-  }
+    return () => {
+      cancelled = true
+    }
+  }, [shipClass, modelPath])
 
-  if (error || !gltf) {
+  if (loading || error || !gltf) {
     return (
       <group position={position}>
         <FallbackShip shipClass={shipClass} />

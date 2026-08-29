@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { gameStoreStorageKey } from './storageKeys'
 
 export type GamePhase = 'loading' | 'menu' | 'playing' | 'paused' | 'gameover'
 
@@ -41,9 +42,12 @@ export interface GameActions {
 
 export type GameStore = GameState & GameActions
 
-export const gameStoreStorageKey = 'stellar-nebula:game-store'
+export { gameStoreStorageKey }
 
 const DEFAULT_SCAN_COOLDOWN_MS = 60_000
+
+/** Bump whenever the shape of the persisted GameState slice changes. */
+export const GAME_STORE_SCHEMA_VERSION = 1
 
 export const initialGameState: GameState = {
   phase: 'loading',
@@ -110,12 +114,14 @@ export const useGameStore = create<GameStore>()(
     {
       name: gameStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
+      version: GAME_STORE_SCHEMA_VERSION,
       partialize: ({ phase, currentNebulaId, scanCooldowns, elapsedSeconds }) => ({
         phase,
         currentNebulaId,
         scanCooldowns,
         elapsedSeconds,
       }),
+      migrate: (persistedState) => persistedState as GameState,
     }
   )
 )

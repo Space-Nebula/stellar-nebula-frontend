@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { shipStoreStorageKey } from './storageKeys'
 
 export type ShipStatus = 'docked' | 'in-flight' | 'maintenance'
 
@@ -39,7 +40,10 @@ export interface ShipActions {
 
 export type ShipStore = ShipState & ShipActions
 
-export const shipStoreStorageKey = 'stellar-nebula:ship-store'
+export { shipStoreStorageKey }
+
+/** Bump whenever the shape of the persisted ShipState slice changes. */
+export const SHIP_STORE_SCHEMA_VERSION = 1
 
 export const initialShipState: ShipState = {
   ships: [],
@@ -101,7 +105,9 @@ export const useShipStore = create<ShipStore>()(
     {
       name: shipStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
+      version: SHIP_STORE_SCHEMA_VERSION,
       partialize: ({ ships, activeShipId }) => ({ ships, activeShipId }),
+      migrate: (persistedState) => persistedState as ShipState,
     }
   )
 )
