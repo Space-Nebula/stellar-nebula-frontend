@@ -14,3 +14,14 @@ export type {
   ShipUpgradeRequirements,
   ShipUpgradeStats,
 } from './shipUpgrade'
+export {
+  detectContractUpgrade,
+  storeContractVersion,
+  getStoredContractVersion,
+  recordMigration,
+  getMigrationHistory,
+  isVersionCompatible,
+  getMigrationGuidance,
+  clearMigrationData,
+} from './migration'
+export type { ContractVersion, MigrationState } from './migration'
