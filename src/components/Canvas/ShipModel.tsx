@@ -3,7 +3,6 @@ import { useFrame } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { Mesh, type Group, type Object3D } from 'three'
-import { LOD } from '@react-three/drei'
 import type { ShipClass } from '@/types/game'
 
 interface ShipModelProps {
@@ -93,7 +92,7 @@ function LoadedShip({
   useEffect(() => {
     if (model.scene) {
       const cloned = model.scene.clone()
-      cloned.traverse((child) => {
+      cloned.traverse((child: Object3D) => {
         if (child instanceof Mesh) {
           child.castShadow = true
           child.receiveShadow = true
@@ -183,27 +182,12 @@ export function ShipModel({
 
   return (
     <group position={position}>
-      <LOD>
-        <LOD.Mesh distance={[0, 5]}>
-          <LoadedShip
-            model={gltf}
-            autoRotate={autoRotate}
-            rotationSpeed={rotationSpeed}
-            scale={scale}
-          />
-        </LOD.Mesh>
-        <LOD.Mesh distance={[5, 15]}>
-          <LoadedShip
-            model={gltf}
-            autoRotate={autoRotate}
-            rotationSpeed={rotationSpeed}
-            scale={scale * 0.8}
-          />
-        </LOD.Mesh>
-        <LOD.Mesh distance={[15, 50]}>
-          <FallbackShip shipClass={shipClass} />
-        </LOD.Mesh>
-      </LOD>
+      <LoadedShip
+        model={gltf}
+        autoRotate={autoRotate}
+        rotationSpeed={rotationSpeed}
+        scale={scale}
+      />
     </group>
   )
 }

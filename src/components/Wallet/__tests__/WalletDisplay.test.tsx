@@ -107,4 +107,52 @@ describe('WalletDisplay', () => {
       expect(writeText).toHaveBeenCalledWith(TEST_PUBKEY)
     })
   })
+
+  it('renders resource asset holdings toggle when non-native assets exist', async () => {
+    const { useAccountBalances } = await import('@utils/stellar/balance')
+    vi.mocked(useAccountBalances).mockReturnValue({
+      balances: [
+        { assetCode: 'XLM', balance: '100.5000000', isNative: true, assetType: 'native' },
+        {
+          assetCode: 'IRON',
+          balance: '50.0000000',
+          isNative: false,
+          assetType: 'credit_alphanum4',
+        },
+      ],
+      isLoading: false,
+      error: null,
+      isUnfunded: false,
+      refresh: vi.fn(),
+      isStreaming: false,
+      balanceChanged: false,
+    })
+
+    renderWithPersistedWallet()
+    await waitForConnectedWalletUI()
+
+    const assetsBtn = screen.getByRole('button', { name: /resource asset holdings: 1 assets/i })
+    expect(assetsBtn).toBeInTheDocument()
+
+    await userEvent.click(assetsBtn)
+    expect(screen.getByText('IRON')).toBeInTheDocument()
+    expect(screen.getByText('50.00')).toBeInTheDocument()
+  })
+
+  it('renders unfunded badge when account is unfunded', async () => {
+    const { useAccountBalances } = await import('@utils/stellar/balance')
+    vi.mocked(useAccountBalances).mockReturnValue({
+      balances: [],
+      isLoading: false,
+      error: null,
+      isUnfunded: true,
+      refresh: vi.fn(),
+      isStreaming: false,
+      balanceChanged: false,
+    })
+
+    renderWithPersistedWallet()
+    await waitForConnectedWalletUI()
+    expect(screen.getByText(/Unfunded \(0 XLM\)/i)).toBeInTheDocument()
+  })
 })

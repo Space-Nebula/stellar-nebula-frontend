@@ -11,7 +11,7 @@
  */
 
 import * as Sentry from '@sentry/react'
-import { logger, createScopedLogger } from './logging'
+import { createScopedLogger } from './logging'
 
 const log = createScopedLogger('Monitoring')
 
@@ -59,7 +59,11 @@ export function initializeMonitoring(config: MonitoringConfig): void {
     log.error(
       'Failed to initialize monitoring services',
       error instanceof Error ? error : new Error(String(error)),
-      { config: { ...config, sentryDsn: config.sentryDsn ? '[redacted]' : null } }
+      {
+        sentryConfigured: Boolean(config.sentryDsn),
+        sentryEnvironment: config.sentryEnvironment,
+        logRocketConfigured: Boolean(config.logRocketAppId),
+      }
     )
   }
 }

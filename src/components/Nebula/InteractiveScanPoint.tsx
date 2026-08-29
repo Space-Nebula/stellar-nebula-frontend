@@ -1,10 +1,10 @@
 import { useRef, useState, useCallback } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import type { Mesh } from 'three'
+import { DoubleSide } from 'three'
 import type { ResourceType, RarityTier } from '@/types/game'
 import { getRarityColor, getRarityLabel } from '@/utils/rarity'
-import * as THREE from 'three'
 
 interface ScanPointData {
   id: string
@@ -115,7 +115,7 @@ export function InteractiveScanPoint({
       {isOnCooldown && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[data.size * 1.2, data.size * 1.4, 32]} />
-          <meshBasicMaterial color="#4b5563" transparent opacity={0.6} side={THREE.DoubleSide} />
+          <meshBasicMaterial color="#4b5563" transparent opacity={0.6} side={DoubleSide} />
         </mesh>
       )}
 

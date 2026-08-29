@@ -38,8 +38,14 @@ const NotificationItem: React.FC<NotificationProps> = ({ achievement, onDismiss 
   )
 }
 
-export const AchievementNotification: React.FC<{ notifications: Achievement[] }> = ({
+interface AchievementNotificationProps {
+  notifications: Achievement[]
+  onDismiss?: (id: string) => void
+}
+
+export const AchievementNotification: React.FC<AchievementNotificationProps> = ({
   notifications,
+  onDismiss,
 }) => {
   const [active, setActive] = useState<Achievement[]>([])
 
@@ -49,6 +55,7 @@ export const AchievementNotification: React.FC<{ notifications: Achievement[] }>
 
   const handleDismiss = (id: string) => {
     setActive((prev) => prev.filter((n) => n.id !== id))
+    onDismiss?.(id)
   }
 
   if (active.length === 0) return null

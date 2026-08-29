@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { fn } from '@storybook/test'
 import { StatusIndicator } from './StatusIndicator'
 import { WalletContext } from '@/contexts/WalletContext'
 import type { WalletContextValue } from '@/contexts/WalletContext'
+
+const noop = () => undefined
+const noopAsync = async () => undefined
+const noopSign = async () => null
 
 function makeCtx(overrides: Partial<WalletContextValue>): WalletContextValue {
   return {
@@ -13,11 +16,11 @@ function makeCtx(overrides: Partial<WalletContextValue>): WalletContextValue {
     reconnectError: null,
     isFreighterInstalled: false,
     isAlbedoAvailable: false,
-    connect: fn(),
-    disconnect: fn(),
-    switchWallet: fn(),
-    signTransaction: fn(),
-    clearError: fn(),
+    connect: noopAsync,
+    disconnect: noop,
+    switchWallet: noopAsync,
+    signTransaction: noopSign,
+    clearError: noop,
     ...overrides,
   }
 }
@@ -33,7 +36,7 @@ const meta: Meta<typeof StatusIndicator> = {
     },
   },
   args: {
-    onOpenConnectModal: fn(),
+    onOpenConnectModal: noop,
   },
 }
 

@@ -5,19 +5,28 @@ import {
   connectFreighter,
   connectAlbedo,
   getFreighterNetwork,
+  getAlbedoNetwork,
   isFreighterInstalled,
   isAlbedoAvailable,
   signTransactionWithFreighter,
   signTransactionWithAlbedo,
+  validateNetworkMatch,
+  getNetworkMismatchMessage,
+  handleWalletConnectionError,
+  formatWalletError,
 } from '@services/wallets'
 import type { WalletState, WalletType, XDR, StellarNetwork } from '@/types'
 import { createScopedLogger } from '@/services/logging'
+import { getActiveStellarConfig } from '@/config/stellar'
 import {
   addMonitoringBreadcrumb,
   setMonitoringUser,
   clearMonitoringUser,
 } from '@/services/monitoring'
 import { trackEvent } from '@/services/analytics'
+import { purgeApplicationState } from '@/utils/stateCleanup'
+import { useSessionTimeout } from '@/hooks/useSessionTimeout'
+import { SessionTimeoutWarning } from '@/components/Wallet/SessionTimeoutWarning'
 
 const log = createScopedLogger('WalletContext')
 
@@ -41,11 +50,13 @@ export interface WalletContextValue {
   reconnectError: string | null
   isFreighterInstalled: boolean
   isAlbedoAvailable: boolean
+  networkMismatchWarning: string | null
   connect: (type: WalletType) => Promise<void>
   disconnect: () => void
   switchWallet: (type: WalletType) => Promise<void>
   signTransaction: (xdr: XDR) => Promise<XDR | null>
   clearError: () => void
+  clearNetworkWarning: () => void
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -143,7 +154,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [isReconnecting, setIsReconnecting] = useState(false)
   const [reconnectError, setReconnectError] = useState<string | null>(null)
   const [freighterInstalled, setFreighterInstalled] = useState(false)
+  const [networkMismatchWarning, setNetworkMismatchWarning] = useState<string | null>(null)
   const albedoAvailable = isAlbedoAvailable()
+  const appConfig = getActiveStellarConfig()
 
   // Check Freighter availability asynchronously
   useEffect(() => {
@@ -211,6 +224,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     log.info('Wallet connection initiated', { walletType: type })
     setIsLoading(true)
     setError(null)
+    setNetworkMismatchWarning(null)
 
     addMonitoringBreadcrumb('Wallet connection started', 'wallet', { walletType: type })
 
@@ -221,20 +235,38 @@ export function WalletProvider({ children }: WalletProviderProps) {
       if (type === 'freighter') {
         const installed = await isFreighterInstalled()
         if (!installed) {
-          throw new Error(
-            'Freighter is not installed. Visit https://www.freighter.app to install it.'
+          const walletError = handleWalletConnectionError(
+            new Error('Freighter is not installed'),
+            type
           )
+          throw new Error(formatWalletError(walletError))
         }
         publicKey = await connectFreighter()
         network = await getFreighterNetwork()
       } else if (type === 'albedo') {
         if (!isAlbedoAvailable()) {
-          throw new Error('Albedo is not available in this environment.')
+          const walletError = handleWalletConnectionError(
+            new Error('Albedo is not available'),
+            type
+          )
+          throw new Error(formatWalletError(walletError))
         }
         publicKey = await connectAlbedo()
-        network = 'testnet'
+        network = await getAlbedoNetwork()
       } else {
         throw new Error(`Wallet type "${type}" is not supported.`)
+      }
+
+      // Check for network mismatch
+      const mismatch = validateNetworkMatch(network, appConfig)
+      if (mismatch) {
+        const warningMessage = getNetworkMismatchMessage(mismatch)
+        setNetworkMismatchWarning(warningMessage)
+        log.warn('Network mismatch detected after wallet connection', mismatch)
+        addMonitoringBreadcrumb('Network mismatch warning shown', 'wallet', {
+          walletNetwork: mismatch.walletNetwork,
+          appNetwork: mismatch.appNetwork,
+        })
       }
 
       const newState: WalletState = { isConnected: true, publicKey, walletType: type, network }
@@ -257,9 +289,11 @@ export function WalletProvider({ children }: WalletProviderProps) {
         network,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to connect wallet'
-      log.error('Wallet connection failed', err instanceof Error ? err : new Error(message), {
+      const walletError = handleWalletConnectionError(err, type)
+      const message = formatWalletError(walletError)
+      log.error('Wallet connection failed', err instanceof Error ? err : new Error(String(err)), {
         walletType: type,
+        errorCode: walletError.code,
       })
       setError(message)
 
@@ -271,7 +305,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [appConfig])
 
   const disconnect = useCallback(() => {
     log.info('Wallet disconnected', { walletType: walletState.walletType })
@@ -280,8 +314,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
     setError(null)
     clearPersistedWallet()
 
-    // Clear user context in monitoring
-    clearMonitoringUser()
+    // Comprehensive purge of state, stores, and cached session storage
+    purgeApplicationState()
 
     addMonitoringBreadcrumb('Wallet disconnected', 'wallet')
 
@@ -289,6 +323,11 @@ export function WalletProvider({ children }: WalletProviderProps) {
       action: 'wallet_disconnect',
     })
   }, [walletState.walletType])
+
+  const { isWarningOpen, remainingWarningSeconds, extendSession } = useSessionTimeout({
+    enabled: walletState.isConnected,
+    onTimeout: disconnect,
+  })
 
   const switchWallet = useCallback(
     async (type: WalletType) => {
@@ -306,6 +345,15 @@ export function WalletProvider({ children }: WalletProviderProps) {
       if (!walletState.isConnected || !walletState.network || !walletState.walletType) {
         setError('Wallet is not connected')
         log.warn('Transaction signing attempted without connected wallet')
+        return null
+      }
+
+      // Prevent signing if there's a network mismatch
+      const mismatch = validateNetworkMatch(walletState.network, appConfig)
+      if (mismatch) {
+        const message = getNetworkMismatchMessage(mismatch)
+        setError(message)
+        log.warn('Transaction signing blocked due to network mismatch', mismatch)
         return null
       }
 
@@ -365,10 +413,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
         setIsLoading(false)
       }
     },
-    [walletState]
+    [walletState, appConfig]
   )
 
   const clearError = useCallback(() => setError(null), [])
+
+  const clearNetworkWarning = useCallback(() => setNetworkMismatchWarning(null), [])
 
   const value = useMemo<WalletContextValue>(
     () => ({
@@ -379,11 +429,13 @@ export function WalletProvider({ children }: WalletProviderProps) {
       reconnectError,
       isFreighterInstalled: freighterInstalled,
       isAlbedoAvailable: albedoAvailable,
+      networkMismatchWarning,
       connect,
       disconnect,
       switchWallet,
       signTransaction,
       clearError,
+      clearNetworkWarning,
     }),
     [
       walletState,
@@ -393,20 +445,31 @@ export function WalletProvider({ children }: WalletProviderProps) {
       reconnectError,
       freighterInstalled,
       albedoAvailable,
+      networkMismatchWarning,
       connect,
       disconnect,
       switchWallet,
       signTransaction,
       clearError,
+      clearNetworkWarning,
     ]
   )
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+  return (
+    <WalletContext.Provider value={value}>
+      {children}
+      <SessionTimeoutWarning
+        isOpen={isWarningOpen}
+        remainingSeconds={remainingWarningSeconds}
+        onExtend={extendSession}
+        onDisconnect={disconnect}
+      />
+    </WalletContext.Provider>
+  )
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useWallet(): WalletContextValue {
   const ctx = useContext(WalletContext)
   if (!ctx) {

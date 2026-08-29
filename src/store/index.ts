@@ -10,10 +10,15 @@ export {
 
 export {
   initialResourceState,
+  RESOURCE_TYPES,
+  HARVESTABLE_RESOURCE_TYPES,
+  isHarvestableResourceType,
+  isResourceType,
   resourceStoreStorageKey,
   useResourceStore,
   type HarvestEntry,
   type HarvestableResourceType,
+  type HarvestedResourceEvent,
   type ResourceInventory,
   type OptimisticResourceStatus,
   type OptimisticResourceTransaction,
@@ -79,3 +84,17 @@ export {
   type TutorialState,
   type TutorialStore,
 } from './tutorialStore'
+
+export {
+  ACHIEVEMENT_DEFINITIONS,
+  achievementStoreStorageKey,
+  buildAchievements,
+  initialAchievementState,
+  useAchievementStore,
+  type AchievementDefinition,
+  type AchievementState,
+  type AchievementStats,
+  type AchievementStore,
+  type GameEvent,
+  type GameEventType,
+} from './achievementStore'

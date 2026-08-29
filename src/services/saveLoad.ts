@@ -31,6 +31,10 @@ import {
   initialTutorialState,
   tutorialStoreKey,
   type TutorialState,
+  useAchievementStore,
+  initialAchievementState,
+  achievementStoreStorageKey,
+  type AchievementState,
 } from '@/store'
 import { logger } from './logging'
 
@@ -137,6 +141,16 @@ const tutorialSlice: StoreSlice<TutorialState> = {
     isRecord(value) && typeof value.completed === 'boolean',
 }
 
+const achievementSlice: StoreSlice<AchievementState> = {
+  name: 'achievement',
+  storageKey: achievementStoreStorageKey,
+  getState: () => useAchievementStore.getState(),
+  setState: (partial) => useAchievementStore.setState(partial),
+  getDefaults: () => initialAchievementState,
+  isValid: (value): value is AchievementState =>
+    isRecord(value) && isRecord(value.stats) && isRecord(value.unlockedAtById),
+}
+
 /** Every persisted slice the save/load system knows about, keyed by name. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const REGISTRY: StoreSlice<any>[] = [
@@ -148,6 +162,7 @@ const REGISTRY: StoreSlice<any>[] = [
   sessionSlice,
   graphicsSlice,
   tutorialSlice,
+  achievementSlice,
 ]
 
 export type SliceName = (typeof REGISTRY)[number]['name']

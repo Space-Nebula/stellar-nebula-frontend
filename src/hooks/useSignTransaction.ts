@@ -117,7 +117,7 @@ export function useSignTransaction(): UseSignTransactionReturn {
 
         let tx: Transaction
         try {
-          tx = TransactionBuilder.fromXDR(signedXdr, networkPassphrase)
+          tx = TransactionBuilder.fromXDR(signedXdr, networkPassphrase) as Transaction
         } catch {
           throw new Error(
             'Signed transaction could not be parsed for the selected network. Verify wallet network and passphrase.'
