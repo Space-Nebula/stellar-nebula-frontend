@@ -17,15 +17,25 @@ export interface ActiveOperation {
   startedAt: string // ISO-8601
 }
 
+export type OptimisticOperationStatus = 'pending' | 'confirmed' | 'failed'
+
+export interface OptimisticGameOperation {
+  id: string
+  label: string
+  operation: ActiveOperation
+  status: OptimisticOperationStatus
+  createdAt: string
+  completedAt?: string
+  error?: string
+}
+
 export interface GameState {
   phase: GamePhase
   currentNebulaId: string | null
   activeOperation: ActiveOperation | null
   scanCooldowns: ScanCooldown[]
   elapsedSeconds: number
-  lockedOperations: Record<string, boolean>
-  operationQueue: ActiveOperation[]
-  pendingState: boolean
+  optimisticOperations: OptimisticGameOperation[]
 }
 
 export interface GameActions {
@@ -46,8 +56,18 @@ export interface GameActions {
   completeOperationWithLock: () => ActiveOperation | null
   /** Check if operation type has active lock / conflict. */
   hasOperationConflict: (type: string) => boolean
+  startOptimisticOperation: (
+    operation: ActiveOperation,
+    label?: string,
+    cooldownMs?: number
+  ) => string
+  confirmOperation: (operationId: string) => void
+  rollbackOperation: (operationId: string, error?: string, removeCooldownNebulaId?: string) => void
+  isOperationPending: (operationId?: string) => boolean
   /** Record a scan cooldown for nebulaId lasting cooldownMs (default 60 s). */
   addScanCooldown: (nebulaId: string, cooldownMs?: number) => void
+  /** Remove a scan cooldown for a specific nebulaId (e.g. on rollback). */
+  removeScanCooldown: (nebulaId: string) => void
   /** Remove expired cooldowns from the list. */
   pruneExpiredCooldowns: () => void
   isNebulaOnCooldown: (nebulaId: string) => boolean
@@ -70,9 +90,14 @@ export const initialGameState: GameState = {
   activeOperation: null,
   scanCooldowns: [],
   elapsedSeconds: 0,
-  lockedOperations: {},
-  operationQueue: [],
-  pendingState: false,
+  optimisticOperations: [],
+}
+
+function createOpId(prefix = 'op'): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
@@ -171,82 +196,146 @@ export const useGameStore = create<GameStore>()(
             }
           }
 
-          const acquired = get().acquireLock(operation.type)
-          if (!acquired) {
-            return {
-              success: false,
-              reason: `Lock acquisition failed for operation type "${operation.type}"`,
+      startOptimisticOperation: (
+        operation,
+        label = `Operation: ${operation.type}`,
+        cooldownMs = DEFAULT_SCAN_COOLDOWN_MS
+      ) => {
+        const id = operation.id || createOpId()
+        const opWithId = { ...operation, id }
+
+        set((state) => {
+          let updatedCooldowns = state.scanCooldowns
+          if (operation.type === 'scan' && operation.targetId) {
+            const readyAt = new Date(Date.now() + cooldownMs).toISOString()
+            const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === operation.targetId)
+            if (existing === -1) {
+              updatedCooldowns = [...state.scanCooldowns, { nebulaId: operation.targetId, readyAt }]
+            } else {
+              const copy = [...state.scanCooldowns]
+              copy[existing] = { nebulaId: operation.targetId, readyAt }
+              updatedCooldowns = copy
             }
           }
 
-          set({ activeOperation: operation, pendingState: true })
-          return { success: true }
-        },
+          const optimisticOp: OptimisticGameOperation = {
+            id,
+            label,
+            operation: opWithId,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          }
 
-        completeOperationWithLock: () => {
-          const { activeOperation, operationQueue } = get()
-          if (!activeOperation) return null
+          return {
+            activeOperation: opWithId,
+            scanCooldowns: updatedCooldowns,
+            optimisticOperations: [optimisticOp, ...state.optimisticOperations],
+          }
+        })
 
-          const completed = activeOperation
-          const opType = activeOperation.type
+        return id
+      },
 
-          set({ activeOperation: null })
-          get().releaseLock(opType)
+      confirmOperation: (operationId) =>
+        set((state) => ({
+          activeOperation: state.activeOperation?.id === operationId ? null : state.activeOperation,
+          optimisticOperations: state.optimisticOperations.map((op) =>
+            op.id === operationId
+              ? {
+                  ...op,
+                  status: 'confirmed' as const,
+                  completedAt: new Date().toISOString(),
+                }
+              : op
+          ),
+        })),
 
-          return completed
-        },
+      rollbackOperation: (operationId, error, removeCooldownNebulaId) =>
+        set((state) => {
+          let updatedCooldowns = state.scanCooldowns
+          const targetOp = state.optimisticOperations.find((op) => op.id === operationId)
+          const targetNebulaId = removeCooldownNebulaId ?? targetOp?.operation.targetId
 
-        hasOperationConflict: (type) => {
-          const { lockedOperations, activeOperation } = get()
-          return Boolean(
-            lockedOperations[type] || (activeOperation && activeOperation.type === type)
-          )
-        },
+          if (targetNebulaId) {
+            updatedCooldowns = state.scanCooldowns.filter((c) => c.nebulaId !== targetNebulaId)
+          }
 
-        addScanCooldown: (nebulaId, cooldownMs = DEFAULT_SCAN_COOLDOWN_MS) =>
-          set((state) => {
-            const readyAt = new Date(Date.now() + cooldownMs).toISOString()
-            const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === nebulaId)
-            if (existing === -1) {
-              return { scanCooldowns: [...state.scanCooldowns, { nebulaId, readyAt }] }
-            }
-            const updated = [...state.scanCooldowns]
-            updated[existing] = { nebulaId, readyAt }
-            return { scanCooldowns: updated }
-          }),
-
-        pruneExpiredCooldowns: () =>
-          set((state) => ({
-            scanCooldowns: state.scanCooldowns.filter(
-              (c) => Date.now() < new Date(c.readyAt).getTime()
+          return {
+            activeOperation:
+              state.activeOperation?.id === operationId ? null : state.activeOperation,
+            scanCooldowns: updatedCooldowns,
+            optimisticOperations: state.optimisticOperations.map((op) =>
+              op.id === operationId
+                ? {
+                    ...op,
+                    status: 'failed' as const,
+                    completedAt: new Date().toISOString(),
+                    error,
+                  }
+                : op
             ),
-          })),
-
-        isNebulaOnCooldown: (nebulaId) => {
-          const { scanCooldowns } = get()
-          const entry = scanCooldowns.find((c) => c.nebulaId === nebulaId)
-          if (!entry) return false
-          return Date.now() < new Date(entry.readyAt).getTime()
-        },
-
-        tickElapsed: (deltaSec) =>
-          set((state) => ({ elapsedSeconds: state.elapsedSeconds + deltaSec })),
-
-        resetGame: () => set(initialGameState),
-      }),
-      {
-        name: gameStoreStorageKey,
-        storage: createJSONStorage(() => localStorage),
-        version: GAME_STORE_SCHEMA_VERSION,
-        partialize: ({ phase, currentNebulaId, scanCooldowns, elapsedSeconds }) => ({
-          phase,
-          currentNebulaId,
-          scanCooldowns,
-          elapsedSeconds,
+          }
         }),
-        migrate: (persistedState) => persistedState as GameState,
-      }
-    ),
-    { name: 'GameStore', enabled: isDev }
+
+      isOperationPending: (operationId) => {
+        const { optimisticOperations } = get()
+        if (operationId) {
+          return optimisticOperations.some((op) => op.id === operationId && op.status === 'pending')
+        }
+        return optimisticOperations.some((op) => op.status === 'pending')
+      },
+
+      addScanCooldown: (nebulaId, cooldownMs = DEFAULT_SCAN_COOLDOWN_MS) =>
+        set((state) => {
+          const readyAt = new Date(Date.now() + cooldownMs).toISOString()
+          const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === nebulaId)
+          if (existing === -1) {
+            return { scanCooldowns: [...state.scanCooldowns, { nebulaId, readyAt }] }
+          }
+
+      removeScanCooldown: (nebulaId) =>
+        set((state) => ({
+          scanCooldowns: state.scanCooldowns.filter((c) => c.nebulaId !== nebulaId),
+        })),
+
+      pruneExpiredCooldowns: () =>
+        set((state) => ({
+          scanCooldowns: state.scanCooldowns.filter(
+            (c) => Date.now() < new Date(c.readyAt).getTime()
+          ),
+        })),
+
+      isNebulaOnCooldown: (nebulaId) => {
+        const { scanCooldowns } = get()
+        const entry = scanCooldowns.find((c) => c.nebulaId === nebulaId)
+        if (!entry) return false
+        return Date.now() < new Date(entry.readyAt).getTime()
+      },
+
+      tickElapsed: (deltaSec) =>
+        set((state) => ({ elapsedSeconds: state.elapsedSeconds + deltaSec })),
+
+      resetGame: () => set(initialGameState),
+    }),
+    {
+      name: gameStoreStorageKey,
+      storage: createJSONStorage(() => localStorage),
+      version: GAME_STORE_SCHEMA_VERSION,
+      partialize: ({ phase, currentNebulaId, scanCooldowns, elapsedSeconds }) => ({
+        phase,
+        currentNebulaId,
+        scanCooldowns,
+        elapsedSeconds,
+      }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<GameState> | undefined
+        return {
+          ...current,
+          ...persistedState,
+          activeOperation: null,
+          optimisticOperations: current.optimisticOperations ?? [],
+        }
+      },
+    }
   )
 )

@@ -229,7 +229,7 @@ export function importSave(bundle: unknown): ImportResult {
       continue
     }
 
-    slice.setState(value)
+    slice.setState(value as never)
     result.applied.push(slice.name)
   }
 
@@ -308,7 +308,10 @@ export function repairCorruptedSaveData(): RepairReport {
   }
 
   if (report.cleared.length > 0) {
-    logger.warn('Cleared corrupted save data', { cleared: report.cleared })
+    logger.warn('Cleared corrupted save data', {
+      clearedCount: report.cleared.length,
+      keys: report.cleared.map((c) => c.key).join(', '),
+    })
   }
 
   return report

@@ -15,7 +15,8 @@ import { env } from './config'
 const saveRepairReport = repairCorruptedSaveData()
 if (saveRepairReport.cleared.length > 0) {
   logger.warn('Corrupted save data cleared on startup', {
-    cleared: saveRepairReport.cleared,
+    clearedCount: saveRepairReport.cleared.length,
+    keys: saveRepairReport.cleared.map((c) => c.key).join(', '),
   })
 }
 

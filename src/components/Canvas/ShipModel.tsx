@@ -77,30 +77,28 @@ function FallbackShip({ shipClass }: { shipClass: ShipClass }) {
 
 function LoadedShip({
   model,
+  scale = 1,
   autoRotate = true,
   rotationSpeed = 0.5,
-  scale = 1,
 }: {
   model: GLTF
+  scale?: number
   autoRotate?: boolean
   rotationSpeed?: number
-  scale?: number
 }) {
   const groupRef = useRef<Group>(null)
-  const [clonedScene, setClonedScene] = useState<Object3D | null>(null)
 
-  useEffect(() => {
-    if (model.scene) {
-      const cloned = model.scene.clone()
-      cloned.traverse((child: Object3D) => {
-        if (child instanceof Mesh) {
-          child.castShadow = true
-          child.receiveShadow = true
-        }
-      })
-      setClonedScene(cloned)
-    }
-  }, [model])
+  const clonedScene = useMemo(() => {
+    if (!model.scene) return null
+    const cloned = model.scene.clone()
+    cloned.traverse((child: Object3D) => {
+      if (child instanceof Mesh) {
+        child.castShadow = true
+        child.receiveShadow = true
+      }
+    })
+    return cloned
+  }, [model.scene])
 
   useFrame((_, delta) => {
     if (groupRef.current && autoRotate) {
@@ -137,13 +135,12 @@ export function ShipModel({
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(false)
 
     loadShipModel(modelPath)
       .then((loadedGltf) => {
         if (cancelled) return
         setGltf(loadedGltf)
+        setError(false)
         setLoading(false)
       })
       .catch((err: unknown) => {

@@ -77,7 +77,10 @@ function loadTransactions(accountId: string, network: string): PersistedTransact
     const parsed = JSON.parse(raw) as PersistedTransaction[]
     return Array.isArray(parsed) ? parsed : []
   } catch (error) {
-    log.error('Failed to load transactions from storage', error instanceof Error ? error : new Error(String(error)))
+    log.error(
+      'Failed to load transactions from storage',
+      error instanceof Error ? error : new Error(String(error))
+    )
     return []
   }
 }
@@ -93,7 +96,10 @@ function saveTransactions(
     const key = getStorageKey(accountId, network)
     localStorage.setItem(key, JSON.stringify(trimmed))
   } catch (error) {
-    log.error('Failed to save transactions to storage', error instanceof Error ? error : new Error(String(error)))
+    log.error(
+      'Failed to save transactions to storage',
+      error instanceof Error ? error : new Error(String(error))
+    )
   }
 }
 
@@ -118,16 +124,16 @@ function saveState(
     const key = getStateStorageKey(accountId, network)
     localStorage.setItem(key, JSON.stringify(state))
   } catch (error) {
-    log.error('Failed to save sync state', error instanceof Error ? error : new Error(String(error)))
+    log.error(
+      'Failed to save sync state',
+      error instanceof Error ? error : new Error(String(error))
+    )
   }
 }
 
 // ─── Transaction mapping ──────────────────────────────────────────────────────
 
-function toPersisted(
-  tx: StellarTransaction,
-  network: string
-): PersistedTransaction {
+function toPersisted(tx: StellarTransaction, network: string): PersistedTransaction {
   return {
     ...tx,
     persistedAt: Date.now(),
@@ -220,11 +226,7 @@ export async function syncTransactions(
   const state = loadState(accountId, network)
 
   // Respect cooldown unless forced
-  if (
-    !force &&
-    state.lastSyncedAt &&
-    Date.now() - state.lastSyncedAt < SYNC_COOLDOWN_MS
-  ) {
+  if (!force && state.lastSyncedAt && Date.now() - state.lastSyncedAt < SYNC_COOLDOWN_MS) {
     log.debug('Sync cooldown active, skipping', {
       lastSyncedAt: state.lastSyncedAt,
     })
@@ -246,11 +248,11 @@ export async function syncTransactions(
     const existingHashes = new Set(existing.map((tx) => tx.hash))
 
     // Fetch from Horizon
-    const { transactions: horizonTxs, hasMore, nextCursor } = await getTransactionHistory(
-      accountId,
-      { limit: 50, order: 'desc' },
-      config
-    )
+    const {
+      transactions: horizonTxs,
+      hasMore,
+      nextCursor,
+    } = await getTransactionHistory(accountId, { limit: 50, order: 'desc' }, config)
 
     // Convert and filter new transactions
     const newTxs = horizonTxs
@@ -302,11 +304,11 @@ export async function loadMoreTransactions(
   config?: StellarNetworkConfig
 ): Promise<SyncResult> {
   try {
-    const { transactions: horizonTxs, hasMore, nextCursor } = await getTransactionHistory(
-      accountId,
-      { limit: 50, cursor, order: 'desc' },
-      config
-    )
+    const {
+      transactions: horizonTxs,
+      hasMore,
+      nextCursor,
+    } = await getTransactionHistory(accountId, { limit: 50, cursor, order: 'desc' }, config)
 
     const existing = loadTransactions(accountId, network)
     const existingHashes = new Set(existing.map((tx) => tx.hash))
@@ -331,7 +333,10 @@ export async function loadMoreTransactions(
       hasMore,
     }
   } catch (error) {
-    log.error('Failed to load more transactions', error instanceof Error ? error : new Error(String(error)))
+    log.error(
+      'Failed to load more transactions',
+      error instanceof Error ? error : new Error(String(error))
+    )
     throw error
   }
 }
@@ -425,10 +430,7 @@ export function getTransactionStats(transactions: PersistedTransaction[]): {
   const total = transactions.length
   const successful = transactions.filter((tx) => tx.status === 'success').length
   const failed = transactions.filter((tx) => tx.status === 'failed').length
-  const totalFeesStroops = transactions.reduce(
-    (sum, tx) => sum + Number(tx.feeCharged || 0),
-    0
-  )
+  const totalFeesStroops = transactions.reduce((sum, tx) => sum + Number(tx.feeCharged || 0), 0)
   const averageFeesStroops = total > 0 ? totalFeesStroops / total : 0
 
   return {
@@ -452,6 +454,9 @@ export function clearTransactionHistory(accountId: string, network: string): voi
       network,
     })
   } catch (error) {
-    log.error('Failed to clear transaction history', error instanceof Error ? error : new Error(String(error)))
+    log.error(
+      'Failed to clear transaction history',
+      error instanceof Error ? error : new Error(String(error))
+    )
   }
 }

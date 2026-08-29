@@ -103,7 +103,8 @@ const ERROR_MAP: Array<{
     },
   },
   {
-    pattern: /insufficient.*resource|resource.*limit|compute.*budget|cpu.*exceeded|memory.*exceeded/i,
+    pattern:
+      /insufficient.*resource|resource.*limit|compute.*budget|cpu.*exceeded|memory.*exceeded/i,
     info: {
       title: 'Insufficient Resources',
       message:
@@ -198,7 +199,8 @@ const ERROR_MAP: Array<{
     pattern: /invalid.*address|bad.*address|malformed.*address|not.*a.*valid.*stellar/i,
     info: {
       title: 'Invalid Address',
-      message: 'The Stellar address provided is not in a valid format. Stellar addresses should start with G or C.',
+      message:
+        'The Stellar address provided is not in a valid format. Stellar addresses should start with G or C.',
       category: 'validation',
       severity: 'error',
       resolution: [
@@ -260,10 +262,7 @@ const ERROR_MAP: Array<{
         'Too many requests were sent to the network. Please wait a moment before trying again.',
       category: 'network',
       severity: 'warning',
-      resolution: [
-        'Wait a few seconds and try again',
-        'Reduce the frequency of your requests',
-      ],
+      resolution: ['Wait a few seconds and try again', 'Reduce the frequency of your requests'],
     },
   },
 
@@ -331,12 +330,11 @@ export function translateContractError(error: unknown): ContractErrorInfo {
   }
 
   // Fallback for unknown errors
-  log.warn('Unknown contract error', new Error(rawMessage))
+  log.warn('Unknown contract error', { rawMessage }, new Error(rawMessage))
   return {
     title: 'Unexpected Error',
     message:
-      rawMessage ||
-      'An unexpected error occurred while interacting with the smart contract.',
+      rawMessage || 'An unexpected error occurred while interacting with the smart contract.',
     category: 'unknown',
     severity: 'error',
     resolution: [

@@ -57,7 +57,10 @@ export function storeContractVersion(contractId: string, hash: string): void {
     }
     localStorage.setItem(CONTRACT_VERSION_STORAGE_KEY, JSON.stringify(versions))
   } catch (err) {
-    log.error('Failed to store contract version', err instanceof Error ? err : new Error(String(err)))
+    log.error(
+      'Failed to store contract version',
+      err instanceof Error ? err : new Error(String(err))
+    )
   }
 }
 
@@ -149,7 +152,7 @@ export function isVersionCompatible(
   log.warn('Version incompatibility detected', {
     userVersion,
     currentVersion,
-    compatible: compatibleVersions,
+    compatible: compatibleVersions.join(', '),
   })
 
   return false

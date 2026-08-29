@@ -4,7 +4,6 @@ import {
   syncTransactions,
   loadMoreTransactions,
   filterTransactions,
-  searchTransactions,
   getTransactionStats,
   clearTransactionHistory,
 } from '@/services/history/transactionPersistence'
@@ -108,20 +107,26 @@ export function useTransactionHistory(
   // Initialize on mount
   useEffect(() => {
     if (!accountId) {
-      setState((prev) => ({ ...prev, transactions: [] }))
-      setIsInitialized(true)
-      return
+      const timer = window.setTimeout(() => {
+        setState((prev) => ({ ...prev, transactions: [] }))
+        setIsInitialized(true)
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
 
-    const initialState = initTransactionHistory(accountId, network)
-    setState(initialState)
-    setIsInitialized(true)
+    const timer = window.setTimeout(() => {
+      const initialState = initTransactionHistory(accountId, network)
+      setState(initialState)
+      setIsInitialized(true)
 
-    log.info('Transaction history hook initialized', {
-      accountId: accountId.slice(0, 8),
-      network,
-      cachedCount: initialState.transactions.length,
-    })
+      log.info('Transaction history hook initialized', {
+        accountId: accountId.slice(0, 8),
+        network,
+        cachedCount: initialState.transactions.length,
+      })
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [accountId, network])
 
   // Auto-sync on mount

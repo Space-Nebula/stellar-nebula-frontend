@@ -41,14 +41,18 @@ function NebulaSphere() {
 interface NebulaSceneProps {
   starfieldDensity: number
   performanceMode?: boolean
-  onScanComplete?: (resourceType: ResourceType, amount: number) => void
+  onScanComplete?: (resourceType: ResourceType, amount: number, pointId: string) => void
 }
 
 function createInitialRng() {
   return createRNG(Date.now())
 }
 
-export function NebulaScene({ starfieldDensity, performanceMode = false }: NebulaSceneProps) {
+export function NebulaScene({
+  starfieldDensity,
+  performanceMode = false,
+  onScanComplete,
+}: NebulaSceneProps) {
   const [scanningPoints, setScanningPoints] = useState<Set<string>>(new Set())
   const [rarityMap, setRarityMap] = useState<Record<string, RarityTier>>({})
   const { getRemainingSeconds, startCooldown, canScan } = useScanCooldown()
@@ -85,6 +89,10 @@ export function NebulaScene({ starfieldDensity, performanceMode = false }: Nebul
         setRarityMap((prev) => ({ ...prev, [pointId]: reward.rarity }))
         startCooldown(pointId, SCAN_COOLDOWN_MS)
 
+        if (onScanComplete) {
+          onScanComplete(resourceType, finalAmount, pointId)
+        }
+
         trackEvent('scan_completed', {
           pointId,
           resourceType,
@@ -93,7 +101,7 @@ export function NebulaScene({ starfieldDensity, performanceMode = false }: Nebul
         })
       }, SCAN_CHANNEL_DURATION_SEC * 1000)
     },
-    [canScan, startCooldown]
+    [canScan, startCooldown, onScanComplete]
   )
 
   const remainingSecondsMap: Record<string, number> = {}
