@@ -8,6 +8,7 @@ export interface TutorialState {
   currentStep: number
   dismissed: boolean
   startedAt: string | null
+  completedObjectives: TutorialObjective[]
 }
 
 export interface TutorialActions {
@@ -27,6 +28,7 @@ export const initialTutorialState: TutorialState = {
   currentStep: 0,
   dismissed: false,
   startedAt: null,
+  completedObjectives: [],
 }
 
 export const useTutorialStore = create<TutorialStore>()(
@@ -38,9 +40,22 @@ export const useTutorialStore = create<TutorialStore>()(
           currentStep,
           startedAt: state.startedAt ?? new Date().toISOString(),
         })),
+      completeObjective: (objective) =>
+        set((state) => ({
+          completedObjectives: state.completedObjectives.includes(objective)
+            ? state.completedObjectives
+            : [...state.completedObjectives, objective],
+        })),
       complete: () => set({ completed: true, dismissed: true }),
       dismiss: () => set({ dismissed: true }),
-      replay: () => set({ completed: false, dismissed: false, currentStep: 0, startedAt: null }),
+      replay: () =>
+        set({
+          completed: false,
+          dismissed: false,
+          currentStep: 0,
+          startedAt: null,
+          completedObjectives: [],
+        }),
     }),
     {
       name: tutorialStoreKey,

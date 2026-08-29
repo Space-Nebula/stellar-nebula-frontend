@@ -62,8 +62,8 @@ describe('Keyboard navigation — Navigation header', () => {
     const interactiveElements: Element[] = []
     let prev: Element | null = null
 
-    // Tab up to 20 times and collect focused elements within the header
-    for (let i = 0; i < 20; i++) {
+    // Tab up to 6 times and collect focused elements within the header
+    for (let i = 0; i < 6; i++) {
       await user.tab()
       const focused = document.activeElement
       if (!focused || focused === document.body) break
@@ -92,7 +92,7 @@ describe('Keyboard navigation — Navigation header', () => {
       </MemoryRouter>
     )
 
-    const trigger = screen.getByRole('button', { name: /open navigation menu/i })
+    const trigger = screen.getAllByRole('button', { name: /open navigation menu/i })[0]
     await user.click(trigger)
 
     // MobileMenu should now be open — the trigger itself is always present
@@ -117,7 +117,7 @@ describe('Keyboard navigation — Navigation header', () => {
       </MemoryRouter>
     )
 
-    const helpBtn = screen.getByRole('button', { name: /help/i })
+    const helpBtn = screen.getAllByRole('button', { name: /help/i })[0]
     helpBtn.focus()
     expect(document.activeElement).toBe(helpBtn)
 

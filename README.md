@@ -18,7 +18,7 @@ This frontend demonstrates Stellar's low-latency for real time gaming, targeting
 
 ## Features
 
-- **Wallet Integration**: Connect via Freighter or Albedo; sign txns for scans/upgrades.
+- **Wallet Integration**: Connect via Freighter or Albedo with full Ledger Hardware Wallet support ([Hardware Wallet Guide](docs/HARDWARE_WALLETS.md)); sign txns for scans/upgrades.
 - **Immersive Nebula View**: Three.js canvas renders procedural clouds with interactive scanning (click to harvest).
 - **Ship Dashboard**: Real-time stats, asset viewer for NFTs/resources, upgrade flows with txn previews.
 - **Responsive Design**: Mobile-first (Tailwind CSS), dark mode, haptics for scans.
