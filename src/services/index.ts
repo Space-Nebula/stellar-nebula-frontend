@@ -1,6 +1,7 @@
 export * from './wallets'
 export * from './assets/resources'
 export * from './history/transactions'
+export * from './history/transactionPersistence'
 export * from './nft/shipNFT'
 export * from './contracts/shipUpgrade'
 export * from './contracts'
