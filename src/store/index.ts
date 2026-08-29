@@ -54,6 +54,7 @@ export {
   type SessionPreferences,
   type SessionState,
   type SessionStore,
+  type SyncStatus,
 } from './sessionStore'
 
 export {
