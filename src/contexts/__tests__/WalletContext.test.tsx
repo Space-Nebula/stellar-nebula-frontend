@@ -100,6 +100,15 @@ describe('WalletProvider', () => {
   })
 
   it('clears localStorage on disconnect', async () => {
+    localStorage.setItem(
+      'stellar-nebula:resource-store',
+      JSON.stringify({ inventory: { nebulite: 100 } })
+    )
+    localStorage.setItem(
+      'stellar-nebula:balance-cache:GFREIGHTER123',
+      JSON.stringify([{ assetCode: 'XLM', balance: '10' }])
+    )
+
     renderWithProvider()
     await act(async () => {
       await userEvent.click(screen.getByText('Connect Freighter'))
@@ -108,6 +117,8 @@ describe('WalletProvider', () => {
       await userEvent.click(screen.getByText('Disconnect'))
     })
     expect(localStorage.getItem('stellar-nebula:wallet')).toBeNull()
+    expect(localStorage.getItem('stellar-nebula:balance-cache:GFREIGHTER123')).toBeNull()
+    expect(localStorage.getItem('stellar-nebula:resource-store')).toBeNull()
   })
 
   describe('Auto-reconnect', () => {

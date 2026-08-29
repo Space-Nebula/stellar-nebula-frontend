@@ -12,12 +12,11 @@ import {
 } from '@services/wallets'
 import type { WalletState, WalletType, XDR, StellarNetwork } from '@/types'
 import { createScopedLogger } from '@/services/logging'
-import {
-  addMonitoringBreadcrumb,
-  setMonitoringUser,
-  clearMonitoringUser,
-} from '@/services/monitoring'
+import { addMonitoringBreadcrumb, setMonitoringUser } from '@/services/monitoring'
 import { trackEvent } from '@/services/analytics'
+import { purgeApplicationState } from '@/utils/stateCleanup'
+import { useSessionTimeout } from '@/hooks/useSessionTimeout'
+import { SessionTimeoutWarning } from '@/components/Wallet/SessionTimeoutWarning'
 
 const log = createScopedLogger('WalletContext')
 
@@ -280,8 +279,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
     setError(null)
     clearPersistedWallet()
 
-    // Clear user context in monitoring
-    clearMonitoringUser()
+    // Comprehensive purge of state, stores, and cached session storage
+    purgeApplicationState()
 
     addMonitoringBreadcrumb('Wallet disconnected', 'wallet')
 
@@ -289,6 +288,11 @@ export function WalletProvider({ children }: WalletProviderProps) {
       action: 'wallet_disconnect',
     })
   }, [walletState.walletType])
+
+  const { isWarningOpen, remainingWarningSeconds, extendSession } = useSessionTimeout({
+    enabled: walletState.isConnected,
+    onTimeout: disconnect,
+  })
 
   const switchWallet = useCallback(
     async (type: WalletType) => {
@@ -401,7 +405,17 @@ export function WalletProvider({ children }: WalletProviderProps) {
     ]
   )
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+  return (
+    <WalletContext.Provider value={value}>
+      {children}
+      <SessionTimeoutWarning
+        isOpen={isWarningOpen}
+        remainingSeconds={remainingWarningSeconds}
+        onExtend={extendSession}
+        onDisconnect={disconnect}
+      />
+    </WalletContext.Provider>
+  )
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
