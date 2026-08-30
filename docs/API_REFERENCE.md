@@ -75,7 +75,8 @@ Low-level helper to build, sign, submit, and poll a transaction through the conn
 ```ts
 import { useSignTransaction } from '@/hooks'
 
-const { signAndSubmit, isLoading, error, result, reset } = useSignTransaction()
+const { signAndSubmit, isLoading, error, result, simulation, costPreview, reset } =
+  useSignTransaction()
 
 const handle = async () => {
   const outcome = await signAndSubmit(async () => {
@@ -85,6 +86,8 @@ const handle = async () => {
 }
 ```
 
+Before requesting a wallet signature, `signAndSubmit` simulates the built transaction (via `simulateContractTransaction`) and estimates its cost (via `estimateTransactionFee` + `buildCostPreview`). Both are stored in state so the UI can preview fees and simulation results, and signing is aborted with an error if the simulation fails.
+
 **Options** (`SignTransactionOptions`)
 
 - `rpcUrl?: string`
@@ -93,7 +96,10 @@ const handle = async () => {
 **Returns**
 
 - `signAndSubmit(buildTransaction: BuildTransactionFn, options?): Promise<TransactionSubmissionResult | null>`
-- `isLoading`, `error`, `result: TransactionSubmissionResult | null`, `reset()`
+- `isLoading`, `error`, `result: TransactionSubmissionResult | null`
+- `simulation: ParsedSimulationResult | null` — the pre-signature dry-run result
+- `costPreview: TransactionCostPreview | null` — estimated network fee, gas cost, and total XLM required
+- `reset()`
 
 ---
 
@@ -491,12 +497,17 @@ const result = await simulateContractTransaction(tx, options)
 import {
   estimateTransactionFee,
   formatFeeInXlm,
+  buildCostPreview,
   MIN_TRANSACTION_FEE_STROOPS,
 } from '@/utils/stellar'
-import type { FeeEstimateInput, FeeEstimateResult } from '@/utils/stellar'
+import type { FeeEstimateInput, FeeEstimateResult, TransactionCostPreview } from '@/utils/stellar'
 
 const estimate: FeeEstimateResult = await estimateTransactionFee(input)
 const xlm = formatFeeInXlm(estimate.stroops)
+
+// Combine the network fee with a simulation's `minResourceFee` for a full
+// pre-signature cost preview (estimated fee, gas cost, total XLM required).
+const preview: TransactionCostPreview = buildCostPreview(estimate, simulation.minResourceFee)
 ```
 
 ### Balance
