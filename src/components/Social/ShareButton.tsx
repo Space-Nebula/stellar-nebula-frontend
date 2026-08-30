@@ -1,202 +1,206 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import html2canvas from 'html2canvas'
 import { analytics } from '@/services/analytics'
+import { useAchievementStore } from '@/store'
+
+type ShareSubject = 'achievement' | 'scan' | 'leaderboard'
 
 interface ShareButtonProps {
-  achievementTitle: string
-  achievementDescription: string
+  title?: string
+  description?: string
+  achievementTitle?: string
+  achievementDescription?: string
+  subject?: ShareSubject
   playerStats?: {
     scans?: number
     upgrades?: number
     resources?: number
+    rank?: number
+    score?: number
   }
   variant?: 'icon' | 'full'
 }
 
+interface GeneratedImage {
+  dataUrl: string
+  blob: Blob
+}
+
+const SUBJECT_LABELS: Record<ShareSubject, string> = {
+  achievement: 'Achievement Unlocked',
+  scan: 'Nebula Scan Complete',
+  leaderboard: 'Leaderboard Result',
+}
+
+function createStat(label: string, value: number): HTMLDivElement {
+  const stat = document.createElement('div')
+  stat.style.cssText = `
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+  `
+
+  const valueNode = document.createElement('div')
+  valueNode.textContent = value.toLocaleString()
+  valueNode.style.cssText = `
+    font-size: 46px;
+    font-weight: 800;
+    color: #32d6a5;
+    margin-bottom: 8px;
+  `
+
+  const labelNode = document.createElement('div')
+  labelNode.textContent = label
+  labelNode.style.cssText = `
+    font-size: 17px;
+    color: #aabbd3;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  `
+
+  stat.append(valueNode, labelNode)
+  return stat
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob)
+      } else {
+        reject(new Error('Unable to generate share image'))
+      }
+    }, 'image/png')
+  })
+}
+
 export function ShareButton({
+  title,
+  description,
   achievementTitle,
   achievementDescription,
+  subject = 'achievement',
   playerStats,
   variant = 'full',
 }: ShareButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const recordShareCreated = useAchievementStore((state) => state.recordShareCreated)
+  const shareTitle = title ?? achievementTitle ?? 'Stellar Nebula Progress'
+  const shareDescription =
+    description ?? achievementDescription ?? 'New progress logged in Stellar Nebula.'
 
-  const generateShareImage = async (): Promise<string> => {
-    // Create a temporary card element for image generation
+  const reportShare = (channel: string) => {
+    recordShareCreated({ channel, subject })
+    analytics.track('share_created', {
+      channel,
+      subject,
+    })
+  }
+
+  const generateShareImage = async (): Promise<GeneratedImage> => {
     const tempCard = document.createElement('div')
     tempCard.style.cssText = `
       position: fixed;
       left: -9999px;
+      top: 0;
       width: 1200px;
-      height: 630px;
-      background: linear-gradient(135deg, #0a1020 0%, #1a1a2e 100%);
+      min-height: 630px;
+      background: linear-gradient(135deg, #07111f 0%, #13233d 100%);
       padding: 60px;
-      font-family: Inter, sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
       color: white;
     `
 
-    tempCard.innerHTML = `
-      <div style="
-        width: 100%;
-        height: 100%;
-        border: 2px solid rgba(50, 214, 165, 0.3);
-        border-radius: 24px;
-        padding: 48px;
-        background: radial-gradient(circle at top right, rgba(50, 214, 165, 0.15), transparent 60%),
-                    radial-gradient(circle at bottom left, rgba(157, 76, 237, 0.15), transparent 60%);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-      ">
-        <div>
-          <div style="
-            display: inline-block;
-            background: rgba(50, 214, 165, 0.2);
-            color: #32d6a5;
-            padding: 8px 20px;
-            border-radius: 999px;
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            margin-bottom: 32px;
-          ">
-            🏆 Achievement Unlocked
-          </div>
-          
-          <h1 style="
-            font-size: 64px;
-            font-weight: 800;
-            margin: 0 0 24px 0;
-            line-height: 1.1;
-            background: linear-gradient(135deg, #32d6a5, #9d4edd);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-          ">
-            ${achievementTitle}
-          </h1>
-          
-          <p style="
-            font-size: 28px;
-            color: #c8d4e6;
-            margin: 0;
-            line-height: 1.4;
-          ">
-            ${achievementDescription}
-          </p>
-        </div>
-
-        ${
-          playerStats
-            ? `
-        <div style="
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-          margin-top: 48px;
-        ">
-          ${
-            playerStats.scans !== undefined
-              ? `
-          <div style="
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-          ">
-            <div style="font-size: 48px; font-weight: 800; color: #32d6a5; margin-bottom: 8px;">
-              ${playerStats.scans}
-            </div>
-            <div style="font-size: 18px; color: #aabbd3; text-transform: uppercase; letter-spacing: 0.05em;">
-              Scans
-            </div>
-          </div>
-          `
-              : ''
-          }
-          ${
-            playerStats.upgrades !== undefined
-              ? `
-          <div style="
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-          ">
-            <div style="font-size: 48px; font-weight: 800; color: #9d4edd; margin-bottom: 8px;">
-              ${playerStats.upgrades}
-            </div>
-            <div style="font-size: 18px; color: #aabbd3; text-transform: uppercase; letter-spacing: 0.05em;">
-              Upgrades
-            </div>
-          </div>
-          `
-              : ''
-          }
-          ${
-            playerStats.resources !== undefined
-              ? `
-          <div style="
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-          ">
-            <div style="font-size: 48px; font-weight: 800; color: #60a5fa; margin-bottom: 8px;">
-              ${playerStats.resources}
-            </div>
-            <div style="font-size: 18px; color: #aabbd3; text-transform: uppercase; letter-spacing: 0.05em;">
-              Resources
-            </div>
-          </div>
-          `
-              : ''
-          }
-        </div>
-        `
-            : ''
-        }
-
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-top: 48px;
-          padding-top: 32px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-        ">
-          <div style="
-            font-size: 32px;
-            font-weight: 800;
-            color: #f8fbff;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-          ">
-            <span style="
-              width: 12px;
-              height: 12px;
-              background: #32d6a5;
-              border-radius: 50%;
-              box-shadow: 0 0 0 6px rgba(50, 214, 165, 0.2);
-            "></span>
-            Nebula Nomad
-          </div>
-          <div style="
-            font-size: 20px;
-            color: #aabbd3;
-          ">
-            nebula-nomad.vercel.app
-          </div>
-        </div>
-      </div>
+    const frame = document.createElement('div')
+    frame.style.cssText = `
+      width: 100%;
+      min-height: 510px;
+      border: 2px solid rgba(50, 214, 165, 0.32);
+      border-radius: 24px;
+      padding: 48px;
+      background:
+        radial-gradient(circle at top right, rgba(50, 214, 165, 0.16), transparent 56%),
+        radial-gradient(circle at bottom left, rgba(159, 216, 255, 0.16), transparent 54%),
+        rgba(7, 17, 31, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 42px;
     `
 
+    const content = document.createElement('div')
+    const badge = document.createElement('div')
+    badge.textContent = SUBJECT_LABELS[subject]
+    badge.style.cssText = `
+      display: inline-block;
+      background: rgba(50, 214, 165, 0.18);
+      color: #7ff0c8;
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    `
+
+    const heading = document.createElement('h1')
+    heading.textContent = shareTitle
+    heading.style.cssText = `
+      font-size: 62px;
+      font-weight: 800;
+      margin: 0 0 24px;
+      line-height: 1.08;
+      color: #f8fbff;
+    `
+
+    const copy = document.createElement('p')
+    copy.textContent = shareDescription
+    copy.style.cssText = `
+      font-size: 28px;
+      color: #c8d4e6;
+      margin: 0;
+      line-height: 1.4;
+    `
+
+    content.append(badge, heading, copy)
+    frame.append(content)
+
+    if (playerStats) {
+      const stats = document.createElement('div')
+      stats.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+      `
+
+      if (playerStats.rank !== undefined) stats.append(createStat('Rank', playerStats.rank))
+      if (playerStats.score !== undefined) stats.append(createStat('Score', playerStats.score))
+      if (playerStats.scans !== undefined) stats.append(createStat('Scans', playerStats.scans))
+      if (playerStats.upgrades !== undefined) {
+        stats.append(createStat('Upgrades', playerStats.upgrades))
+      }
+      if (playerStats.resources !== undefined) {
+        stats.append(createStat('Resources', playerStats.resources))
+      }
+
+      frame.append(stats)
+    }
+
+    const footer = document.createElement('div')
+    footer.textContent = 'Stellar Nebula'
+    footer.style.cssText = `
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      padding-top: 26px;
+      color: #f8fbff;
+      font-size: 30px;
+      font-weight: 800;
+    `
+    frame.append(footer)
+    tempCard.append(frame)
     document.body.appendChild(tempCard)
 
     try {
@@ -204,26 +208,36 @@ export function ShareButton({
         backgroundColor: null,
         scale: 2,
       })
-      const dataUrl = canvas.toDataURL('image/png')
-      return dataUrl
+
+      return {
+        dataUrl: canvas.toDataURL('image/png'),
+        blob: await canvasToBlob(canvas),
+      }
     } finally {
       document.body.removeChild(tempCard)
     }
   }
 
-  const shareToTwitter = async () => {
+  const shareText = `Logged "${shareTitle}" in Stellar Nebula.\n\n${shareDescription}\n\nhttps://nebula-nomad.vercel.app`
+
+  const shareToX = async () => {
     setIsGenerating(true)
     try {
-      const text = `🚀 Just unlocked "${achievementTitle}" in Nebula Nomad!\n\n${achievementDescription}\n\nJoin me in exploring the cosmos on Stellar blockchain! 🌌\n\n#NebulaNomad #StellarBlockchain #Web3Gaming`
-      const url = 'https://nebula-nomad.vercel.app'
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
+      const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`
+      window.open(xUrl, '_blank', 'width=550,height=520')
+      reportShare('x')
+    } finally {
+      setIsGenerating(false)
+      setShowMenu(false)
+    }
+  }
 
-      window.open(twitterUrl, '_blank', 'width=550,height=420')
-
-      analytics.track('achievement_shared' as any, {
-        platform: 'twitter',
-        achievement: achievementTitle,
-      })
+  const openDiscord = async () => {
+    setIsGenerating(true)
+    try {
+      await navigator.clipboard?.writeText(shareText)
+      window.open('https://discord.com/channels/@me', '_blank', 'noopener,noreferrer')
+      reportShare('discord')
     } finally {
       setIsGenerating(false)
       setShowMenu(false)
@@ -233,88 +247,84 @@ export function ShareButton({
   const downloadImage = async () => {
     setIsGenerating(true)
     try {
-      const dataUrl = await generateShareImage()
+      const image = await generateShareImage()
       const link = document.createElement('a')
-      link.download = `nebula-nomad-${achievementTitle.toLowerCase().replace(/\s+/g, '-')}.png`
-      link.href = dataUrl
+      link.download = `stellar-nebula-${shareTitle.toLowerCase().replace(/\s+/g, '-')}.png`
+      link.href = image.dataUrl
       link.click()
-
-      analytics.track('achievement_shared' as any, {
-        platform: 'download',
-        achievement: achievementTitle,
-      })
+      reportShare('download')
     } finally {
       setIsGenerating(false)
       setShowMenu(false)
     }
   }
 
-  const copyToClipboard = async () => {
-    const text = `🚀 Just unlocked "${achievementTitle}" in Nebula Nomad!\n\n${achievementDescription}\n\nJoin me: https://nebula-nomad.vercel.app`
-
+  const copyImageToClipboard = async () => {
+    setIsGenerating(true)
     try {
-      await navigator.clipboard.writeText(text)
-      alert('Copied to clipboard!')
+      const image = await generateShareImage()
 
-      analytics.track('achievement_shared' as any, {
-        platform: 'clipboard',
-        achievement: achievementTitle,
-      })
-    } catch (err) {
-      console.error('Failed to copy:', err)
+      if ('ClipboardItem' in window && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': image.blob })])
+      } else {
+        await navigator.clipboard?.writeText(shareText)
+      }
+
+      reportShare('clipboard')
+    } finally {
+      setIsGenerating(false)
+      setShowMenu(false)
     }
-    setShowMenu(false)
   }
 
-  if (variant === 'icon') {
-    return (
-      <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          style={iconButtonStyle}
-          disabled={isGenerating}
-          aria-label="Share achievement"
-        >
-          {isGenerating ? '⏳' : '🔗'}
-        </button>
-
-        {showMenu && (
-          <div style={menuStyle}>
-            <button onClick={shareToTwitter} style={menuItemStyle}>
-              🐦 Share on Twitter/X
-            </button>
-            <button onClick={downloadImage} style={menuItemStyle}>
-              💾 Download Image
-            </button>
-            <button onClick={copyToClipboard} style={menuItemStyle}>
-              📋 Copy Text
-            </button>
-          </div>
-        )}
-      </div>
-    )
-  }
+  const buttonStyle = variant === 'icon' ? iconButtonStyle : fullButtonStyle
+  const buttonLabel = variant === 'icon' ? 'Share' : isGenerating ? 'Generating...' : 'Share'
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
       <button
+        type="button"
         onClick={() => setShowMenu(!showMenu)}
-        style={fullButtonStyle}
+        style={buttonStyle}
         disabled={isGenerating}
+        aria-label={`Share ${subject}`}
       >
-        {isGenerating ? '⏳ Generating...' : '🔗 Share Achievement'}
+        {buttonLabel}
       </button>
 
       {showMenu && (
         <div style={menuStyle}>
-          <button onClick={shareToTwitter} style={menuItemStyle}>
-            🐦 Share on Twitter/X
+          <button
+            type="button"
+            onClick={shareToX}
+            style={menuItemStyle}
+            aria-label="Share to X (Twitter)"
+          >
+            Share on X
           </button>
-          <button onClick={downloadImage} style={menuItemStyle}>
-            💾 Download Image
+          <button
+            type="button"
+            onClick={openDiscord}
+            style={menuItemStyle}
+            aria-label="Share to Discord"
+          >
+            Open Discord
           </button>
-          <button onClick={copyToClipboard} style={menuItemStyle}>
-            📋 Copy Text
+          <button
+            type="button"
+            onClick={copyImageToClipboard}
+            style={menuItemStyle}
+            aria-label="Copy image to clipboard"
+          >
+            Copy image
+          </button>
+          <button
+            type="button"
+            onClick={downloadImage}
+            style={menuItemStyle}
+            aria-label="Download share image"
+          >
+            Download image
           </button>
         </div>
       )}
@@ -322,34 +332,33 @@ export function ShareButton({
   )
 }
 
-// Styles
 const iconButtonStyle: React.CSSProperties = {
   background: 'rgba(50, 214, 165, 0.15)',
   border: '1px solid rgba(50, 214, 165, 0.3)',
-  borderRadius: '50%',
-  width: '2.5rem',
-  height: '2.5rem',
-  display: 'flex',
+  borderRadius: '999px',
+  minWidth: '2.75rem',
+  minHeight: '2.25rem',
+  display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   cursor: 'pointer',
-  fontSize: '1.2rem',
-  transition: 'all 0.2s',
+  color: '#7ff0c8',
+  fontSize: '0.82rem',
+  fontWeight: 800,
 }
 
 const fullButtonStyle: React.CSSProperties = {
   background: 'rgba(50, 214, 165, 0.15)',
   border: '1px solid rgba(50, 214, 165, 0.3)',
   borderRadius: '999px',
-  padding: '0.75rem 1.5rem',
-  color: '#32d6a5',
+  padding: '0.75rem 1rem',
+  color: '#7ff0c8',
   cursor: 'pointer',
   fontSize: '0.95rem',
-  fontWeight: 600,
-  transition: 'all 0.2s',
-  display: 'flex',
+  fontWeight: 800,
+  display: 'inline-flex',
   alignItems: 'center',
-  gap: '0.5rem',
+  justifyContent: 'center',
 }
 
 const menuStyle: React.CSSProperties = {
@@ -359,9 +368,9 @@ const menuStyle: React.CSSProperties = {
   zIndex: 50,
   background: 'rgba(10, 16, 32, 0.98)',
   border: '1px solid rgba(210, 222, 255, 0.2)',
-  borderRadius: '1rem',
+  borderRadius: '0.75rem',
   padding: '0.5rem',
-  minWidth: '200px',
+  minWidth: '180px',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
 }
 
@@ -369,14 +378,10 @@ const menuItemStyle: React.CSSProperties = {
   width: '100%',
   background: 'none',
   border: 'none',
-  padding: '0.75rem 1rem',
+  padding: '0.7rem 0.85rem',
   color: '#f8fbff',
   cursor: 'pointer',
   fontSize: '0.9rem',
   textAlign: 'left',
-  borderRadius: '0.5rem',
-  transition: 'background 0.2s',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
+  borderRadius: '0.45rem',
 }

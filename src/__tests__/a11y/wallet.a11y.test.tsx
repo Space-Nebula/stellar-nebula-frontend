@@ -29,7 +29,10 @@ vi.mock('@/services/analytics', () => ({ trackEvent: vi.fn() }))
 
 vi.mock('@/services/logging', () => ({
   createScopedLogger: vi.fn().mockReturnValue({
-    info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   }),
 }))
 
@@ -64,10 +67,10 @@ describe('ConnectModal — accessibility', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Freighter')).toBeInTheDocument()
+      expect(screen.getAllByText(/Freighter/i)[0]).toBeInTheDocument()
     })
 
-    const freighterBtn = screen.getByText('Freighter').closest('button')
+    const freighterBtn = screen.getAllByText(/Freighter/i)[0].closest('button')
     expect(freighterBtn).not.toBeNull()
     // Button text itself is the accessible name
     expect(freighterBtn?.textContent?.trim().length).toBeGreaterThan(0)

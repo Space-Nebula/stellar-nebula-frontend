@@ -7,5 +7,16 @@ export { useNebulaZoom, ZOOM_LEVELS } from './useNebulaZoom'
 export type { ZoomLevelConfig } from './useNebulaZoom'
 export { useNebulaScan } from './contracts'
 export type { UseNebulaScanOptions, UseNebulaScanReturn } from './contracts'
+export { useTransactionRetry } from './useTransactionRetry'
+export type {
+  TransactionRetryFrame,
+  TransactionRetryOptions,
+  UseTransactionRetryReturn,
+} from './useTransactionRetry'
 export { useFrameRateMonitor } from './useFrameRateMonitor'
 export { useRenderResourceTracker } from './useRenderResourceTracker'
+export { useTransactionHistory } from './useTransactionHistory'
+export type {
+  UseTransactionHistoryOptions,
+  UseTransactionHistoryReturn,
+} from './useTransactionHistory'

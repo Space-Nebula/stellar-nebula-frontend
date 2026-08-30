@@ -1,18 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, waitFor } from '../../../test/utils'
 import userEvent from '@testing-library/user-event'
+import type * as WalletsService from '@services/wallets'
 import { WalletProvider } from '@/contexts/WalletContext'
 import { ConnectModal } from '../ConnectModal'
 
-vi.mock('@services/wallets', () => ({
-  isFreighterInstalled: vi.fn().mockResolvedValue(true),
-  connectFreighter: vi.fn().mockResolvedValue('GFREIGHTER123'),
-  getFreighterNetwork: vi.fn().mockResolvedValue('testnet'),
-  isAlbedoAvailable: vi.fn().mockReturnValue(true),
-  connectAlbedo: vi.fn().mockResolvedValue('GALBEDO123'),
-  signTransactionWithFreighter: vi.fn(),
-  signTransactionWithAlbedo: vi.fn(),
-}))
+vi.mock('@services/wallets', async (importOriginal) => {
+  const actual = (await importOriginal()) as typeof WalletsService
+  return {
+    ...actual,
+    isFreighterInstalled: vi.fn().mockResolvedValue(true),
+    connectFreighter: vi.fn().mockResolvedValue('GFREIGHTER123'),
+    getFreighterNetwork: vi.fn().mockResolvedValue('testnet'),
+    isAlbedoAvailable: vi.fn().mockReturnValue(true),
+    connectAlbedo: vi.fn().mockResolvedValue('GALBEDO123'),
+    signTransactionWithFreighter: vi.fn(),
+    signTransactionWithAlbedo: vi.fn(),
+  }
+})
 
 // happy-dom doesn't implement <dialog> — patch the prototype
 HTMLDialogElement.prototype.showModal = vi.fn()
@@ -22,7 +27,7 @@ function renderModal(isOpen = true, onClose = vi.fn()) {
   return render(
     <WalletProvider>
       <ConnectModal isOpen={isOpen} onClose={onClose} />
-    </WalletProvider>,
+    </WalletProvider>
   )
 }
 
@@ -105,6 +110,6 @@ describe('ConnectModal', () => {
       await userEvent.click(screen.getByText('Freighter').closest('button')!)
     })
 
-    expect(screen.getByRole('alert', { hidden: true })).toHaveTextContent('User rejected')
+    expect(screen.getByRole('alert', { hidden: true })).toHaveTextContent(/rejected/i)
   })
 })

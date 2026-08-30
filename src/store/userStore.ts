@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { userStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export interface UserSession {
   id: string
@@ -21,7 +23,10 @@ export interface UserActions {
 
 export type UserStore = UserState & UserActions
 
-export const userStoreStorageKey = 'stellar-nebula:user-store'
+export { userStoreStorageKey }
+
+/** Bump whenever the shape of the persisted UserState slice changes. */
+export const USER_STORE_SCHEMA_VERSION = 1
 
 export const initialUserState: UserState = {
   session: null,
@@ -51,7 +56,12 @@ export const useUserStore = create<UserStore>()(
     {
       name: userStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
+      version: USER_STORE_SCHEMA_VERSION,
       partialize: ({ session, isAuthenticated }) => ({ session, isAuthenticated }),
+      migrate: createVersionedMigrate('userStore', USER_STORE_SCHEMA_VERSION, (state) => ({
+        ...initialUserState,
+        ...(state as Partial<UserState>),
+      })),
     }
   )
 )

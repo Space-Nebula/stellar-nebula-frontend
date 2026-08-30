@@ -26,3 +26,11 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Mimo
+.mimo
+mimo
+*.mimo
+.mimo/*
+mimo/*
+

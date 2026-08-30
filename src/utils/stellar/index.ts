@@ -23,9 +23,14 @@ export type { SimulateContractTransactionOptions } from './simulate'
 export {
   estimateTransactionFee,
   formatFeeInXlm,
+  buildCostPreview,
   MIN_TRANSACTION_FEE_STROOPS,
 } from './feeEstimation'
-export type { FeeEstimateInput, FeeEstimateResult } from './feeEstimation'
+export type {
+  FeeEstimateInput,
+  FeeEstimateResult,
+  TransactionCostPreview,
+} from './feeEstimation'
 export { formatBalance, useAccountBalances } from './balance'
 export type { FormattedBalance } from './balance'
 export {

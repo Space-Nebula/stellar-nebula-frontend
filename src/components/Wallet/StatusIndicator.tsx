@@ -116,7 +116,8 @@ const dotStyle = (status: Status): React.CSSProperties => ({
   borderRadius: '50%',
   backgroundColor: statusColors[status],
   boxShadow: `0 0 8px ${statusColors[status]}88`,
-  animation: status === 'connecting' || status === 'connected' ? 'pulse 1.6s ease-in-out infinite' : 'none',
+  animation:
+    status === 'connecting' || status === 'connected' ? 'pulse 1.6s ease-in-out infinite' : 'none',
   flexShrink: 0,
 })
 

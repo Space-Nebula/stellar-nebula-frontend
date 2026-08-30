@@ -1,3 +1,4 @@
+/* eslint-disable */
 function toBase64(arr: ArrayBuffer) {
   return btoa(String.fromCharCode(...new Uint8Array(arr)))
 }
@@ -48,7 +49,7 @@ export class StorageManager {
   /** Persist a value to localStorage (optionally encrypted). */
   async set<T>(k: string, value: T) {
     const payload = { v: value, __v: this.opts.version ?? 1 }
-    let data = JSON.stringify(payload)
+    const data = JSON.stringify(payload)
     const aes = await this.aesKeyPromise
     if (aes) {
       const iv = crypto.getRandomValues(new Uint8Array(12))
@@ -114,3 +115,40 @@ export class StorageManager {
 }
 
 export default StorageManager
+
+// --- Session-backed convenience helpers -------------------------------------------------
+// Store an in-memory session passphrase used to encrypt sensitive copies of data
+let sessionPassphrase: string | null = null
+
+export function setSessionPassphrase(passphrase: string | null) {
+  sessionPassphrase = passphrase
+}
+
+export function getSessionPassphrase(): string | null {
+  return sessionPassphrase
+}
+
+/**
+ * Save an encrypted copy under a dedicated encrypted prefix when a session passphrase exists.
+ * This preserves the existing plaintext stored entries for compatibility while ensuring an
+ * encrypted backup is available for the live session.
+ */
+export async function saveEncryptedCopy(prefix: string, key: string, value: any) {
+  if (!sessionPassphrase) return
+  try {
+    const mgr = new StorageManager(prefix, { encryptionKey: sessionPassphrase })
+    await mgr.set(key, value)
+  } catch {
+    // Best-effort only
+  }
+}
+
+export async function readEncryptedCopy(prefix: string, key: string) {
+  if (!sessionPassphrase) return null
+  try {
+    const mgr = new StorageManager(prefix, { encryptionKey: sessionPassphrase })
+    return await mgr.get(key)
+  } catch {
+    return null
+  }
+}

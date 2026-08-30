@@ -7,6 +7,7 @@ import {
   type Transaction,
 } from '@stellar/stellar-sdk'
 import type { StellarNetworkConfig } from '@config/stellar'
+import { getActiveStellarConfig } from '@config/stellar'
 import { env } from '@config/env'
 import type { ResourceAssetBalance } from '@services/assets/resources'
 import type { ShipNFTRecord } from '@services/nft/shipNFT'
@@ -40,6 +41,12 @@ export interface ShipUpgradeBuildResult {
   transaction: Transaction
   quote: ShipUpgradeQuote
   simulation: ParsedSimulationResult<ContractNativeValue>
+}
+
+export interface ShipUpgradeContractValidation {
+  isValid: boolean
+  errors: string[]
+  quote: ShipUpgradeQuote
 }
 
 function asNumber(value: string | number | undefined): number {
@@ -135,6 +142,59 @@ export function validateUpgrade(
   }
 }
 
+function formatMissingResources(missing: ShipUpgradeQuote['missing']): string {
+  return missing.map((item) => `${item.resource}: ${item.deficit.toLocaleString()}`).join(', ')
+}
+
+/**
+ * Validate the inputs that will be sent to the upgrade_ship contract call.
+ */
+export function validateUpgradeContractCall(params: {
+  accountId: string
+  shipId: string
+  ship: ShipNFTRecord | null
+  balances: ResourceAssetBalance[]
+}): ShipUpgradeContractValidation {
+  const errors: string[] = []
+
+  if (!params.accountId.trim()) {
+    errors.push('A source account is required.')
+  }
+
+  if (!params.shipId.trim()) {
+    errors.push('A ship ID is required.')
+  }
+
+  const requirements = calculateUpgradeRequirements(params.shipId, params.ship)
+  const updatedStats = calculateUpgradedStats(params.ship)
+  const quote = {
+    ...validateUpgrade(requirements, params.balances),
+    updatedStats,
+  }
+
+  for (const [resource, amount] of Object.entries(requirements)) {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      errors.push(`Invalid ${resource} requirement.`)
+    }
+  }
+
+  for (const [stat, value] of Object.entries(updatedStats)) {
+    if (!Number.isFinite(value) || value <= 0) {
+      errors.push(`Invalid upgraded ${stat} stat.`)
+    }
+  }
+
+  if (!quote.canUpgrade) {
+    errors.push(`Insufficient resources: ${formatMissingResources(quote.missing)}.`)
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    quote,
+  }
+}
+
 /**
  * Build a ship upgrade transaction for the Stellar network.
  * Includes simulation before returning the final result.
@@ -146,15 +206,19 @@ export async function buildShipUpgradeTransaction(params: {
   balances: ResourceAssetBalance[]
   config?: StellarNetworkConfig
 }): Promise<ShipUpgradeBuildResult> {
-  const config = params.config
-  const rpcServer = new rpc.Server(config?.rpcUrl ?? env.STELLAR_RPC_URL)
-  const networkPassphrase = config?.networkPassphrase ?? env.STELLAR_PASSPHRASE
-  const requirements = calculateUpgradeRequirements(params.shipId, params.ship)
-  const updatedStats = calculateUpgradedStats(params.ship)
-  const quote = {
-    ...validateUpgrade(requirements, params.balances),
-    updatedStats,
+  const config = params.config ?? getActiveStellarConfig()
+  const rpcServer = new rpc.Server(config.rpcUrl)
+  const networkPassphrase = config.networkPassphrase
+  const nebulaContractId = config.nebulaContractId || env.NEBULA_CONTRACT_ID
+  const validation = validateUpgradeContractCall(params)
+
+  if (!validation.isValid) {
+    throw new Error(validation.errors.join(' '))
   }
+
+  const requirements = validation.quote.requirements
+  const updatedStats = validation.quote.updatedStats
+  const quote = validation.quote
 
   const sourceAccount = await rpcServer.getAccount(params.accountId)
   const payload = {
@@ -171,7 +235,7 @@ export async function buildShipUpgradeTransaction(params: {
   })
     .addOperation(
       Operation.invokeContractFunction({
-        contract: env.NEBULA_CONTRACT_ID,
+        contract: nebulaContractId,
         function: 'upgrade_ship',
         args: [xdr.ScVal.scvString(JSON.stringify(payload))],
       })

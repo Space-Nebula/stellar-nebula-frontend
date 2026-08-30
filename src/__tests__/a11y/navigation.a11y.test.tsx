@@ -27,7 +27,10 @@ vi.mock('@/services/analytics', () => ({ trackEvent: vi.fn() }))
 
 vi.mock('@/services/logging', () => ({
   createScopedLogger: vi.fn().mockReturnValue({
-    info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   }),
 }))
 
@@ -62,24 +65,26 @@ describe('Navigation — accessibility', () => {
 
   it('header landmark is present', async () => {
     await renderNavigation()
-    expect(screen.getByRole('banner')).toBeInTheDocument()
+    expect(screen.getAllByRole('banner')[0]).toBeInTheDocument()
   })
 
   it('primary navigation landmark is present', async () => {
     await renderNavigation()
-    expect(screen.getByRole('navigation', { name: /primary navigation/i })).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('navigation', { name: /primary navigation/i })[0]
+    ).toBeInTheDocument()
   })
 
   it('brand logo has an accessible label', async () => {
     await renderNavigation()
-    expect(screen.getByRole('link', { name: /stellar nebula home/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /stellar nebula home/i })[0]).toBeInTheDocument()
   })
 
   it('all nav links are keyboard reachable', async () => {
     const user = userEvent.setup()
     await renderNavigation()
 
-    const firstLink = screen.getByRole('link', { name: /stellar nebula home/i })
+    const firstLink = screen.getAllByRole('link', { name: /stellar nebula home/i })[0]
     firstLink.focus()
 
     // Tab through nav links and ensure each receives focus
@@ -92,7 +97,7 @@ describe('Navigation — accessibility', () => {
 
   it('nav links have visible text', async () => {
     await renderNavigation()
-    const nav = screen.getByRole('navigation', { name: /primary navigation/i })
+    const nav = screen.getAllByRole('navigation', { name: /primary navigation/i })[0]
     const links = Array.from(nav.querySelectorAll('a'))
     links.forEach((link) => {
       expect(link.textContent?.trim().length).toBeGreaterThan(0)
@@ -101,14 +106,12 @@ describe('Navigation — accessibility', () => {
 
   it('mobile menu trigger has an accessible label', async () => {
     await renderNavigation()
-    expect(
-      screen.getByRole('button', { name: /open navigation menu/i })
-    ).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /open navigation menu/i })[0]).toBeInTheDocument()
   })
 
   it('mobile menu button has aria-expanded attribute', async () => {
     await renderNavigation()
-    const trigger = screen.getByRole('button', { name: /open navigation menu/i })
+    const trigger = screen.getAllByRole('button', { name: /open navigation menu/i })[0]
     expect(trigger).toHaveAttribute('aria-expanded')
   })
 })

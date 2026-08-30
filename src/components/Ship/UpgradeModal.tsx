@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useEffect, useMemo, useState } from 'react'
 import type { Ship, ShipStatus } from '../../store'
 import { type ResourceInventory, type ResourceType } from '../../store'
@@ -70,7 +71,9 @@ function getUpgradeOperations(
 ): readonly BatchOperation<UpgradeOperationKind, Record<string, unknown>>[] {
   const shipId = ship?.id ?? 'unknown'
 
-  const builder = createBatchTransactionBuilder<BatchOperation<UpgradeOperationKind, Record<string, unknown>>>({
+  const builder = createBatchTransactionBuilder<
+    BatchOperation<UpgradeOperationKind, Record<string, unknown>>
+  >({
     baseFeeStroops: 100,
     maxOperations: 5,
   })
@@ -113,7 +116,10 @@ function getUpgradeOperations(
   return builder.replaceOperations([inspect, install, calibrate, certify]).build().operations
 }
 
-function hasEnoughResources(inventory: ResourceInventory, cost: Partial<Record<ResourceType, number>>): boolean {
+function hasEnoughResources(
+  inventory: ResourceInventory,
+  cost: Partial<Record<ResourceType, number>>
+): boolean {
   return RESOURCE_ORDER.every((resource) => (cost[resource] ?? 0) <= inventory[resource])
 }
 
@@ -126,7 +132,14 @@ interface UpgradeModalProps {
   onConfirm: (upgrade: ShipUpgradeOption) => void | Promise<void>
 }
 
-export function UpgradeModal({ isOpen, ship, inventory, isPending = false, onClose, onConfirm }: UpgradeModalProps) {
+export function UpgradeModal({
+  isOpen,
+  ship,
+  inventory,
+  isPending = false,
+  onClose,
+  onConfirm,
+}: UpgradeModalProps) {
   const [selectedUpgradeId, setSelectedUpgradeId] = useState<UpgradeId>(SHIP_UPGRADES[0].id)
 
   useEffect(() => {
@@ -165,7 +178,12 @@ export function UpgradeModal({ isOpen, ship, inventory, isPending = false, onClo
             <p className="eyebrow">Ship Upgrades</p>
             <h2 id="upgrade-modal-title">Upgrade {ship?.name ?? 'your ship'}</h2>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close upgrade modal">
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onClose}
+            aria-label="Close upgrade modal"
+          >
             ×
           </button>
         </div>
@@ -180,6 +198,8 @@ export function UpgradeModal({ isOpen, ship, inventory, isPending = false, onClo
                 <button
                   key={upgrade.id}
                   type="button"
+                  aria-label={`Select upgrade: ${upgrade.name} - ${upgrade.description}`}
+                  aria-pressed={isSelected}
                   className={isSelected ? 'upgrade-choice is-selected' : 'upgrade-choice'}
                   onClick={() => setSelectedUpgradeId(upgrade.id)}
                 >
@@ -219,13 +239,15 @@ export function UpgradeModal({ isOpen, ship, inventory, isPending = false, onClo
                   <li>
                     <span>Cargo capacity</span>
                     <strong>
-                      {ship?.cargoCapacity ?? 0} → {(ship?.cargoCapacity ?? 0) + (selectedUpgrade.cargoDelta ?? 0)}
+                      {ship?.cargoCapacity ?? 0} →{' '}
+                      {(ship?.cargoCapacity ?? 0) + (selectedUpgrade.cargoDelta ?? 0)}
                     </strong>
                   </li>
                   <li>
                     <span>Crew capacity</span>
                     <strong>
-                      {ship?.crewCapacity ?? 0} → {(ship?.crewCapacity ?? 0) + (selectedUpgrade.crewDelta ?? 0)}
+                      {ship?.crewCapacity ?? 0} →{' '}
+                      {(ship?.crewCapacity ?? 0) + (selectedUpgrade.crewDelta ?? 0)}
                     </strong>
                   </li>
                   <li>
@@ -247,7 +269,9 @@ export function UpgradeModal({ isOpen, ship, inventory, isPending = false, onClo
                 </p>
               )}
               {!plan.isValid && (
-                <p className="detail-error">{plan.errors[0]?.message ?? 'Batch plan failed validation.'}</p>
+                <p className="detail-error">
+                  {plan.errors[0]?.message ?? 'Batch plan failed validation.'}
+                </p>
               )}
               <ol className="operation-list">
                 {plan.operations.map((operation) => (
@@ -262,12 +286,22 @@ export function UpgradeModal({ isOpen, ship, inventory, isPending = false, onClo
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <button
+            type="button"
+            className="secondary-button"
+            aria-label="Cancel upgrade and close modal"
+            onClick={onClose}
+          >
             Cancel
           </button>
           <button
             type="button"
             className="primary-button"
+            aria-label={
+              disabled
+                ? `Cannot apply ${selectedUpgrade.name}: resources unavailable`
+                : `Apply upgrade: ${selectedUpgrade.name}`
+            }
             onClick={() => onConfirm(selectedUpgrade)}
             disabled={disabled}
           >

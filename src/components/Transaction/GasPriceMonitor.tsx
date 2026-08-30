@@ -91,13 +91,16 @@ export function GasPriceMonitor({ config }: GasPriceMonitorProps) {
 
       {snapshot && (
         <p style={detailStyle}>
-          Suggested inclusion fee: {snapshot.baseFeeStroops} stroops per operation. Network mode:
-          {' '}
+          Suggested inclusion fee: {snapshot.baseFeeStroops} stroops per operation. Network mode:{' '}
           {snapshot.networkCondition}.
         </p>
       )}
 
-      {error && <p role="alert" style={errorStyle}>{error}</p>}
+      {error && (
+        <p role="alert" style={errorStyle}>
+          {error}
+        </p>
+      )}
     </section>
   )
 }

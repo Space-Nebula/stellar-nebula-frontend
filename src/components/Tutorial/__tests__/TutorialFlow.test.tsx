@@ -9,7 +9,12 @@ function renderTutorial(onClose?: () => void) {
 
 describe('TutorialFlow', () => {
   beforeEach(() => {
-    useTutorialStore.setState({ completed: false, currentStep: 0, dismissed: false })
+    useTutorialStore.setState({
+      completed: false,
+      currentStep: 0,
+      dismissed: false,
+      startedAt: null,
+    })
   })
 
   it('renders the first step', () => {
@@ -25,9 +30,14 @@ describe('TutorialFlow', () => {
   })
 
   it('goes back to previous step', () => {
-    useTutorialStore.setState({ currentStep: 1, completed: false, dismissed: false })
+    useTutorialStore.setState({
+      currentStep: 1,
+      completed: false,
+      dismissed: false,
+      startedAt: null,
+    })
     renderTutorial()
-    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    fireEvent.click(screen.getByRole('button', { name: /back|previous/i }))
     expect(useTutorialStore.getState().currentStep).toBe(0)
   })
 
@@ -42,7 +52,12 @@ describe('TutorialFlow', () => {
   })
 
   it('completes tutorial on last step', () => {
-    useTutorialStore.setState({ currentStep: 4, completed: false, dismissed: false })
+    useTutorialStore.setState({
+      currentStep: 4,
+      completed: false,
+      dismissed: false,
+      startedAt: null,
+    })
     let closed = false
     renderTutorial(() => {
       closed = true
@@ -53,7 +68,12 @@ describe('TutorialFlow', () => {
   })
 
   it('can replay the tutorial', () => {
-    useTutorialStore.setState({ completed: true, dismissed: false, currentStep: 4 })
+    useTutorialStore.setState({
+      completed: true,
+      dismissed: false,
+      currentStep: 4,
+      startedAt: '2024-01-01T00:00:00.000Z',
+    })
     renderTutorial()
     fireEvent.click(screen.getByRole('button', { name: /replay tutorial/i }))
     expect(useTutorialStore.getState().completed).toBe(false)

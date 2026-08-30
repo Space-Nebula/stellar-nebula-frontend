@@ -1,0 +1,176 @@
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Achievements/AchievementList.tsx
+  107:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  117:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Achievements/AchievementNotification.tsx
+  46:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Achievements/AchievementNotification.tsx:46:5
+  44 |
+  45 |   useEffect(() => {
+> 46 |     setActive(notifications)
+     |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |   }, [notifications])
+  48 |
+  49 |   const handleDismiss = (id: string) => {  react-hooks/set-state-in-effect
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Debug/PerformanceMonitor.tsx
+  59:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Debug/PerformanceMonitor.tsx:59:7
+  57 |     const mem = (performance as PerformanceWithMemory).memory
+  58 |     if (mem) {
+> 59 |       setMemUsed(mem.usedJSHeapSize)
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  60 |       setMemLimit(mem.jsHeapSizeLimit)
+  61 |     }
+  62 |   }, [particleCount, performanceMode, visible])  react-hooks/set-state-in-effect
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Help/HelpModal.tsx
+  78:7  error  Visible, non-interactive elements with click handlers must have at least one keyboard listener  jsx-a11y/click-events-have-key-events
+  78:7  error  Non-interactive elements should not be assigned mouse or keyboard event listeners               jsx-a11y/no-noninteractive-element-interactions
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/History/TransactionHistory.tsx
+  99:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/History/TransactionHistory.tsx:99:10
+   97 |
+   98 |   useEffect(() => {
+>  99 |     void loadPage(undefined, false)
+      |          ^^^^^^^^ Avoid calling setState() directly within an effect
+  100 |   }, [loadPage])
+  101 |
+  102 |   if (!accountId) {  react-hooks/set-state-in-effect
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Leaderboard/Leaderboard.tsx
+  48:14  error  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  56:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Leaderboard/Leaderboard.tsx:56:5
+  54 |
+  55 |   useEffect(() => {
+> 56 |     fetchData();
+     |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  57 |     // Poll every 30 seconds for real-time updates
+  58 |     const interval = setInterval(fetchData, 30000);
+  59 |     return () => clearInterval(interval);  react-hooks/set-state-in-effect
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Marketplace/DEXInterface.tsx
+  28:41  error  'i' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  45:22  error  'setQuoteAsset' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Nebula/ParticleSystem.tsx
+  33:7  error  'NEBULA_RADIUS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Nebula/ShipModel.tsx
+   79:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Nebula/ShipModel.tsx:79:7
+  77 |         }
+  78 |       })
+> 79 |       setClonedScene(cloned)
+     |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  80 |     }
+  81 |   }, [model])
+  82 |                                 react-hooks/set-state-in-effect
+  111:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Nebula/ShipModel.tsx:111:5
+  109 |
+  110 |   useEffect(() => {
+> 111 |     setLoading(true)
+      |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  112 |     setError(false)
+  113 |
+  114 |     const loader = new GLTFLoader()  react-hooks/set-state-in-effect
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/PWA/InstallPrompt.tsx
+  16:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/PWA/InstallPrompt.tsx:16:7
+  14 |     // Check if already installed
+  15 |     if (window.matchMedia('(display-mode: standalone)').matches) {
+> 16 |       setIsInstalled(true)
+     |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  17 |       return
+  18 |     }
+  19 |  react-hooks/set-state-in-effect
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Ship/UpgradeModal.tsx
+   25:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-refresh/only-export-components
+  134:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Ship/UpgradeModal.tsx:134:7
+  132 |   useEffect(() => {
+  133 |     if (isOpen) {
+> 134 |       setSelectedUpgradeId(SHIP_UPGRADES[0].id)
+      |       ^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  135 |     }
+  136 |   }, [isOpen, ship?.id])
+  137 |  react-hooks/set-state-in-effect
+  156:7   error  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    jsx-a11y/click-events-have-key-events
+  156:7   error  Non-interactive elements should not be assigned mouse or keyboard event listeners                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 jsx-a11y/no-noninteractive-element-interactions
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/components/Social/ShareButton.tsx
+    1:20  error  'useRef' is defined but never used        @typescript-eslint/no-unused-vars
+  223:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  242:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  259:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/contexts/ThemeContext.tsx
+  47:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/trinnex/Documents/CodeBase/drips/newcatch/stellar-nebula-frontend/src/contexts/WalletContext.tsx
+  48:14  error  Fast refresh only works when a file only exports components. Move your React context(s) to a separate file  react-refresh/only-export-components
+
+✖ 25 problems (25 errors, 0 warnings)
+

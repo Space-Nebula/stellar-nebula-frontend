@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { fn } from '@storybook/test'
 import { WalletDisplay } from './WalletDisplay'
 import { WalletContext } from '@/contexts/WalletContext'
 import type { WalletContextValue } from '@/contexts/WalletContext'
+
+const noop = () => undefined
+const noopAsync = async () => undefined
+const noopSign = async () => null
 
 function makeCtx(overrides: Partial<WalletContextValue>): WalletContextValue {
   return {
@@ -13,11 +16,13 @@ function makeCtx(overrides: Partial<WalletContextValue>): WalletContextValue {
     reconnectError: null,
     isFreighterInstalled: false,
     isAlbedoAvailable: false,
-    connect: fn(),
-    disconnect: fn(),
-    switchWallet: fn(),
-    signTransaction: fn(),
-    clearError: fn(),
+    networkMismatchWarning: null,
+    connect: noopAsync,
+    disconnect: noop,
+    switchWallet: noopAsync,
+    signTransaction: noopSign,
+    clearError: noop,
+    clearNetworkWarning: noop,
     ...overrides,
   }
 }
@@ -32,7 +37,7 @@ const meta: Meta<typeof WalletDisplay> = {
       values: [{ name: 'dark', value: '#080815' }],
     },
   },
-  args: { onOpenConnectModal: fn() },
+  args: { onOpenConnectModal: noop },
 }
 
 export default meta

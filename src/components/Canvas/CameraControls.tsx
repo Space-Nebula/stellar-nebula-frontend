@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { Vector3 } from 'three'
+import { Spherical, Vector3 } from 'three'
+import type { Camera } from 'three'
 import { useTouchGestures } from '@/hooks/useTouchGestures'
 import { useNebulaZoom } from '@/hooks/useNebulaZoom'
+import { useGraphicsStore } from '@/store/graphicsStore'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -17,6 +19,24 @@ const KEYBOARD_ZOOM_SPEED = 0.8
 const PRECISION_MODIFIER = 0.3
 const TOUCH_ROTATE_SENSITIVITY = 0.003
 const TOUCH_ZOOM_SENSITIVITY = 0.8
+
+function rotateCameraOrbit(
+  controls: OrbitControlsImpl,
+  camera: Camera,
+  thetaDelta: number,
+  phiDelta: number
+) {
+  const offset = new Vector3().subVectors(camera.position, controls.target)
+  const spherical = new Spherical().setFromVector3(offset)
+
+  spherical.theta += thetaDelta
+  spherical.phi = Math.min(Math.PI - 0.05, Math.max(0.05, spherical.phi + phiDelta))
+  spherical.makeSafe()
+
+  offset.setFromSpherical(spherical)
+  camera.position.copy(controls.target.clone().add(offset))
+  controls.update()
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -37,6 +57,8 @@ export function CameraControls({
   const canvasRef = useRef<HTMLElement>(gl.domElement)
 
   const { jumpToLevel } = useNebulaZoom(controlsRef)
+  const autoRotateEnabled = useGraphicsStore((state) => state.autoRotateEnabled)
+  const setAutoRotateEnabled = useGraphicsStore((state) => state.setAutoRotateEnabled)
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -48,9 +70,7 @@ export function CameraControls({
       }
       if (key === ' ' && gl.domElement === e.target) {
         e.preventDefault()
-        if (controlsRef.current) {
-          controlsRef.current.autoRotate = !controlsRef.current.autoRotate
-        }
+        setAutoRotateEnabled(!autoRotateEnabled)
       }
 
       // Zoom level keyboard shortcuts
@@ -58,7 +78,7 @@ export function CameraControls({
       if (key === '2') jumpToLevel('exploration')
       if (key === '3') jumpToLevel('detail')
     },
-    [gl, jumpToLevel]
+    [gl, jumpToLevel, autoRotateEnabled, setAutoRotateEnabled]
   )
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
@@ -69,6 +89,7 @@ export function CameraControls({
     const canvas = gl.domElement
     canvasRef.current = canvas
     canvas.setAttribute('tabindex', '0')
+    canvas.style.touchAction = 'none'
     canvas.addEventListener('keydown', handleKeyDown)
     canvas.addEventListener('keyup', handleKeyUp)
     return () => {
@@ -96,7 +117,14 @@ export function CameraControls({
       controls.update()
     },
     onSwipeRotate: (dx, dy) => {
-      controlsRef.current?.rotate(dx * TOUCH_ROTATE_SENSITIVITY, dy * TOUCH_ROTATE_SENSITIVITY)
+      const controls = controlsRef.current
+      if (!controls) return
+      rotateCameraOrbit(
+        controls,
+        camera,
+        dx * TOUCH_ROTATE_SENSITIVITY,
+        dy * TOUCH_ROTATE_SENSITIVITY
+      )
     },
     onTwoFingerPan: (dx, dy) => {
       const controls = controlsRef.current
@@ -128,16 +156,16 @@ export function CameraControls({
     const orbitSpeed = KEYBOARD_ORBIT_SPEED * delta * (shift ? PRECISION_MODIFIER : 1)
 
     if (keys.has('a') || keys.has('arrowleft')) {
-      controls.rotate(-orbitSpeed, 0)
+      rotateCameraOrbit(controls, camera, -orbitSpeed, 0)
     }
     if (keys.has('d') || keys.has('arrowright')) {
-      controls.rotate(orbitSpeed, 0)
+      rotateCameraOrbit(controls, camera, orbitSpeed, 0)
     }
     if (keys.has('w') || keys.has('arrowup')) {
-      controls.rotate(0, -orbitSpeed)
+      rotateCameraOrbit(controls, camera, 0, -orbitSpeed)
     }
     if (keys.has('s') || keys.has('arrowdown')) {
-      controls.rotate(0, orbitSpeed)
+      rotateCameraOrbit(controls, camera, 0, orbitSpeed)
     }
 
     const zoomSpeed = KEYBOARD_ZOOM_SPEED * delta * (shift ? PRECISION_MODIFIER : 1)
@@ -174,7 +202,7 @@ export function CameraControls({
       maxDistance={MAX_DISTANCE}
       minPolarAngle={0.05}
       maxPolarAngle={Math.PI - 0.05}
-      autoRotate
+      autoRotate={autoRotateEnabled}
       autoRotateSpeed={AUTO_ROTATE_SPEED}
       zoomSpeed={isMobile ? 0.6 : 1}
       rotateSpeed={isMobile ? 0.4 : 0.6}

@@ -6,12 +6,22 @@ export {
   type ShipState,
   type ShipStatus,
   type ShipStore,
+  type ShipUpdateChanges,
+  type OptimisticShipStatus,
+  type OptimisticShipTransaction,
 } from './shipStore'
 
 export {
   initialResourceState,
+  RESOURCE_TYPES,
+  HARVESTABLE_RESOURCE_TYPES,
+  isHarvestableResourceType,
+  isResourceType,
   resourceStoreStorageKey,
   useResourceStore,
+  type HarvestEntry,
+  type HarvestableResourceType,
+  type HarvestedResourceEvent,
   type ResourceInventory,
   type OptimisticResourceStatus,
   type OptimisticResourceTransaction,
@@ -47,6 +57,7 @@ export {
   type SessionPreferences,
   type SessionState,
   type SessionStore,
+  type SyncStatus,
 } from './sessionStore'
 
 export {
@@ -58,4 +69,53 @@ export {
   type GameState,
   type GameStore,
   type ScanCooldown,
+  type OptimisticOperationStatus,
+  type OptimisticGameOperation,
 } from './gameStore'
+
+export {
+  initialSettingsState,
+  settingsStoreKey,
+  useSettingsStore,
+  type GraphicsQuality,
+  type StellarNetwork,
+  type SettingsState,
+  type SettingsStore,
+} from './settingsStore'
+
+export {
+  initialTutorialState,
+  tutorialStoreKey,
+  useTutorialStore,
+  type TutorialState,
+  type TutorialStore,
+} from './tutorialStore'
+
+export {
+  ACHIEVEMENT_DEFINITIONS,
+  achievementStoreStorageKey,
+  buildAchievements,
+  initialAchievementState,
+  useAchievementStore,
+  type AchievementDefinition,
+  type AchievementState,
+  type AchievementStats,
+  type AchievementStore,
+  type GameEvent,
+  type GameEventType,
+} from './achievementStore'
+
+export { createPerformanceMonitor } from './storePerformanceMonitor'
+export type {
+  StorePerformanceConfig,
+  StorePerformanceMetrics,
+} from './storePerformanceMonitor'
+
+export {
+  getAppVersion,
+  setAppVersion,
+  getMigrationLog,
+  clearMigrationData,
+  createVersionedMigrate,
+  type MigrationLogEntry,
+} from './stateMigration'

@@ -16,7 +16,7 @@ const WALLET_OPTIONS: WalletOption[] = [
   {
     type: 'freighter',
     name: 'Freighter',
-    description: 'Browser extension wallet by Stellar Development Foundation',
+    description: 'Browser extension wallet (Supports Ledger & Hardware Wallets)',
     icon: '🚀',
   },
   {
@@ -24,6 +24,12 @@ const WALLET_OPTIONS: WalletOption[] = [
     name: 'Albedo',
     description: 'Web-based wallet — no extension required',
     icon: '🌐',
+  },
+  {
+    type: 'walletconnect',
+    name: 'WalletConnect',
+    description: 'Connect mobile wallets via QR code',
+    icon: '📱',
   },
 ]
 
@@ -35,7 +41,7 @@ interface ConnectModalProps {
 }
 
 export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
-  const { connect, isLoading, error, isFreighterInstalled, isAlbedoAvailable, clearError } =
+  const { connect, isLoading, error, isFreighterInstalled, isAlbedoAvailable, isWalletConnectAvailable, clearError } =
     useWallet()
 
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -58,7 +64,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         onClose()
       }
     },
-    [onClose, clearError],
+    [onClose, clearError]
   )
 
   const handleKeyDown = useCallback(
@@ -68,7 +74,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         onClose()
       }
     },
-    [onClose, clearError],
+    [onClose, clearError]
   )
 
   const handleClose = useCallback(() => {
@@ -84,16 +90,17 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         onClose()
       }
     },
-    [connect, error, onClose],
+    [connect, error, onClose]
   )
 
   const isAvailable = useCallback(
     (type: WalletType): boolean => {
       if (type === 'freighter') return isFreighterInstalled
       if (type === 'albedo') return isAlbedoAvailable
+      if (type === 'walletconnect') return isWalletConnectAvailable
       return false
     },
-    [isFreighterInstalled, isAlbedoAvailable],
+    [isFreighterInstalled, isAlbedoAvailable, isWalletConnectAvailable]
   )
 
   if (!isOpen) return null
@@ -133,6 +140,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
                 <button
                   type="button"
                   disabled={isLoading || !available}
+                  aria-label={`Connect with ${opt.name} wallet${!available ? ' (not installed)' : ''}`}
                   onClick={() => handleConnect(opt.type)}
                   aria-disabled={!available}
                   style={{

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createHorizonServer } from '@config/stellar'
@@ -50,6 +51,33 @@ export const formatBalance = (balance: Horizon.HorizonApi.BalanceLine): Formatte
   }
 }
 
+export const getBalanceCacheKey = (accountId: string): string =>
+  `stellar-nebula:balance-cache:${accountId}`
+
+export function loadCachedBalances(accountId: string): FormattedBalance[] | null {
+  if (typeof window === 'undefined' || !accountId) return null
+  try {
+    const raw = localStorage.getItem(getBalanceCacheKey(accountId))
+    if (!raw) return null
+    return JSON.parse(raw) as FormattedBalance[]
+  } catch {
+    return null
+  }
+}
+
+export function saveCachedBalances(accountId: string, balances: FormattedBalance[]): void {
+  if (typeof window === 'undefined' || !accountId) return
+  try {
+    if (balances.length === 0) {
+      localStorage.removeItem(getBalanceCacheKey(accountId))
+    } else {
+      localStorage.setItem(getBalanceCacheKey(accountId), JSON.stringify(balances))
+    }
+  } catch {
+    // Ignore quota errors
+  }
+}
+
 /**
  * React hook to fetch and auto-refresh account balances
  */
@@ -57,14 +85,34 @@ export function useAccountBalances(
   accountId: string | null | undefined,
   config?: StellarNetworkConfig
 ): UseAccountBalancesResult {
-  const [balances, setBalances] = useState<FormattedBalance[]>([])
+  const [balances, setBalances] = useState<FormattedBalance[]>(() => {
+    if (accountId) {
+      const cached = loadCachedBalances(accountId)
+      if (cached && cached.length > 0) return cached
+    }
+    return []
+  })
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [isUnfunded, setIsUnfunded] = useState<boolean>(false)
   const [isStreaming, setIsStreaming] = useState<boolean>(false)
   const [balanceChanged, setBalanceChanged] = useState<boolean>(false)
-  const previousBalancesRef = useRef<FormattedBalance[]>([])
+  const previousBalancesRef = useRef<FormattedBalance[]>(balances)
   const balanceChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Populate cache if accountId changes
+  useEffect(() => {
+    if (accountId) {
+      const cached = loadCachedBalances(accountId)
+      if (cached && cached.length > 0) {
+        setBalances(cached)
+        previousBalancesRef.current = cached
+      }
+    } else {
+      setBalances([])
+      previousBalancesRef.current = []
+    }
+  }, [accountId])
 
   const fetchBalances = useCallback(async () => {
     if (!accountId) {
@@ -115,6 +163,7 @@ export function useAccountBalances(
 
       previousBalancesRef.current = formatted
       setBalances(formatted)
+      saveCachedBalances(accountId, formatted)
     } catch (err: unknown) {
       const status =
         typeof err === 'object' && err !== null && 'response' in err

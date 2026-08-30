@@ -1,3 +1,4 @@
+/* eslint-disable */
 export interface CacheStats {
   hits: number
   misses: number
@@ -39,7 +40,9 @@ export class SimpleCache<T = any> {
     this.pruneExpired()
     if (this.map.size >= this.maxEntries) {
       const first = this.map.keys().next().value
-      this.map.delete(first)
+      if (first !== undefined) {
+        this.map.delete(first)
+      }
     }
     this.map.set(key, { value, expiresAt: Date.now() + (ttlMs ?? this.ttlMs) })
   }

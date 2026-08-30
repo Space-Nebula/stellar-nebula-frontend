@@ -1,0 +1,179 @@
+{
+  "timestamp": "2026-08-30T14:59:48.508Z",
+  "total": {
+    "raw": 3256084,
+    "gzip": 933637,
+    "brotli": 762804,
+    "formatted": {
+      "raw": "3.11 MB",
+      "gzip": "911.8 kB",
+      "brotli": "744.9 kB"
+    }
+  },
+  "css": {
+    "raw": 30196,
+    "gzip": 6975,
+    "formatted": {
+      "raw": "29.5 kB",
+      "gzip": "6.8 kB"
+    }
+  },
+  "chunks": [
+    {
+      "file": "assets/feature-stellar-CBtAqnF5.js",
+      "name": "feature-stellar-CBtAqnF5.js",
+      "category": "feature-stellar",
+      "raw": 1044874,
+      "gzip": 283974,
+      "brotli": 216441
+    },
+    {
+      "file": "assets/feature-three-D4FMvoxv.js",
+      "name": "feature-three-D4FMvoxv.js",
+      "category": "feature-three",
+      "raw": 913022,
+      "gzip": 248330,
+      "brotli": 204334
+    },
+    {
+      "file": "assets/vendor-C5pWCk0n.js",
+      "name": "vendor-C5pWCk0n.js",
+      "category": "vendor",
+      "raw": 776106,
+      "gzip": 233676,
+      "brotli": 195920
+    },
+    {
+      "file": "assets/react-vendor-Ca5DN6U5.js",
+      "name": "react-vendor-Ca5DN6U5.js",
+      "category": "react-vendor",
+      "raw": 249816,
+      "gzip": 80273,
+      "brotli": 69207
+    },
+    {
+      "file": "assets/App-C0ppa3Xy.js",
+      "name": "App-C0ppa3Xy.js",
+      "category": "other",
+      "raw": 47940,
+      "gzip": 15523,
+      "brotli": 13470
+    },
+    {
+      "file": "assets/ShipDashboard-DZ84ylNd.js",
+      "name": "ShipDashboard-DZ84ylNd.js",
+      "category": "other",
+      "raw": 43873,
+      "gzip": 13869,
+      "brotli": 12378
+    },
+    {
+      "file": "assets/NebulaView-BsiHULov.js",
+      "name": "NebulaView-BsiHULov.js",
+      "category": "other",
+      "raw": 35629,
+      "gzip": 12370,
+      "brotli": 10930
+    },
+    {
+      "file": "assets/stellar-DqBWTgV4.js",
+      "name": "stellar-DqBWTgV4.js",
+      "category": "other",
+      "raw": 34024,
+      "gzip": 9665,
+      "brotli": 8614
+    },
+    {
+      "file": "workbox-7334f08a.js",
+      "name": "workbox-7334f08a.js",
+      "category": "other",
+      "raw": 23221,
+      "gzip": 7787,
+      "brotli": 7049
+    },
+    {
+      "file": "assets/WalletDisplay-BomM-hdu.js",
+      "name": "WalletDisplay-BomM-hdu.js",
+      "category": "other",
+      "raw": 13567,
+      "gzip": 4576,
+      "brotli": 4050
+    },
+    {
+      "file": "assets/Marketplace-BNwexaw5.js",
+      "name": "Marketplace-BNwexaw5.js",
+      "category": "other",
+      "raw": 11496,
+      "gzip": 3709,
+      "brotli": 3261
+    },
+    {
+      "file": "assets/LeaderboardPage-qijceg1r.js",
+      "name": "LeaderboardPage-qijceg1r.js",
+      "category": "other",
+      "raw": 7565,
+      "gzip": 2660,
+      "brotli": 2381
+    },
+    {
+      "file": "assets/ShareButton-BnRotZjZ.js",
+      "name": "ShareButton-BnRotZjZ.js",
+      "category": "other",
+      "raw": 6530,
+      "gzip": 2457,
+      "brotli": 2059
+    },
+    {
+      "file": "assets/index-dgBNhtOA.js",
+      "name": "index-dgBNhtOA.js",
+      "category": "main",
+      "raw": 4641,
+      "gzip": 1967,
+      "brotli": 1695
+    },
+    {
+      "file": "assets/Inventory-B-m5NHPe.js",
+      "name": "Inventory-B-m5NHPe.js",
+      "category": "other",
+      "raw": 4782,
+      "gzip": 1907,
+      "brotli": 1672
+    },
+    {
+      "file": "sw.js",
+      "name": "sw.js",
+      "category": "other",
+      "raw": 3148,
+      "gzip": 1340,
+      "brotli": 1180
+    },
+    {
+      "file": "assets/Home-SHxxaz5t.js",
+      "name": "Home-SHxxaz5t.js",
+      "category": "other",
+      "raw": 2879,
+      "gzip": 1205,
+      "brotli": 1031
+    },
+    {
+      "file": "assets/NotFound-DyReDkg1.js",
+      "name": "NotFound-DyReDkg1.js",
+      "category": "other",
+      "raw": 538,
+      "gzip": 344,
+      "brotli": 282
+    },
+    {
+      "file": "registerSW.js",
+      "name": "registerSW.js",
+      "category": "other",
+      "raw": 134,
+      "gzip": 125,
+      "brotli": 87
+    }
+  ],
+  "visualization": {
+    "html": "stats.html",
+    "json": null
+  }
+}

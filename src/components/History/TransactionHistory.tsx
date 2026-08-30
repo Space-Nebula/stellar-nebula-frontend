@@ -1,11 +1,8 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { StellarNetworkConfig } from '@config/stellar'
-import {
-  loadTransactionHistoryPage,
-  summarizeHistoryOperation,
-  type HistoryTransaction,
-} from '@services/history/transactions'
+import { getTransactionHistory, type PaginatedTransactions } from '@services/history/transactions'
+import type { StellarTransaction } from '@/types'
 
 interface TransactionHistoryProps {
   accountId: string | null | undefined
@@ -26,24 +23,44 @@ function formatTimestamp(value: string): string {
       })
 }
 
-function TransactionItem({ tx }: { tx: HistoryTransaction }) {
-  const summary = tx.operations.slice(0, 3).map((op) => summarizeHistoryOperation(op))
+function formatPublicKey(value: string): string {
+  if (value.length <= 16) return value
+  return `${value.slice(0, 8)}…${value.slice(-6)}`
+}
+
+function TransactionItem({ tx }: { tx: StellarTransaction }) {
+  const summary: ReactNode[] = [
+    <span key="source">
+      Source: <strong>{formatPublicKey(tx.sourceAccount)}</strong>
+    </span>,
+    <span key="fee">Fee: {tx.feeCharged} stroops</span>,
+  ]
+
+  if (tx.ledger !== undefined) {
+    summary.push(
+      <span key="ledger">
+        Ledger: <strong>{tx.ledger}</strong>
+      </span>
+    )
+  }
 
   return (
     <article style={itemStyle}>
       <div style={itemHeaderStyle}>
         <div>
           <strong style={hashStyle}>{tx.hash.slice(0, 12)}…</strong>
-          <p style={metaStyle}>{formatTimestamp(tx.created_at)}</p>
+          <p style={metaStyle}>{formatTimestamp(tx.createdAt)}</p>
         </div>
-        <span style={statusStyle(tx.successful)}>{tx.successful ? 'Successful' : 'Failed'}</span>
+        <span style={statusStyle(tx.status === 'success')}>
+          {tx.status === 'success' ? 'Successful' : 'Failed'}
+        </span>
       </div>
 
       <p style={memoStyle}>{tx.memo ?? 'No memo attached'}</p>
 
       <ul style={opListStyle}>
         {summary.map((line, index) => (
-          <li key={`${tx.hash}-${index}`} style={opItemStyle}>
+          <li key={index} style={opItemStyle}>
             {line}
           </li>
         ))}
@@ -58,7 +75,7 @@ export function TransactionHistory({
   pageSize = 8,
   config,
 }: TransactionHistoryProps) {
-  const [transactions, setTransactions] = useState<HistoryTransaction[]>([])
+  const [transactions, setTransactions] = useState<StellarTransaction[]>([])
   const [nextHref, setNextHref] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +83,7 @@ export function TransactionHistory({
   const canLoadMore = useMemo(() => Boolean(nextHref), [nextHref])
 
   const loadPage = useCallback(
-    async (href?: string, append = false) => {
+    async (cursor?: string, append = false) => {
       if (!accountId) {
         setTransactions([])
         setNextHref(null)
@@ -78,14 +95,18 @@ export function TransactionHistory({
       setError(null)
 
       try {
-        const page = await loadTransactionHistoryPage(accountId, config, href, pageSize)
+        const page: PaginatedTransactions = await getTransactionHistory(
+          accountId,
+          { limit: pageSize, order: 'desc', cursor },
+          config
+        )
         setTransactions((current) => {
-          const next = append ? [...current, ...page.records] : page.records
+          const next = append ? [...current, ...page.transactions] : page.transactions
           return next.sort(
-            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           )
         })
-        setNextHref(page.nextHref)
+        setNextHref(page.nextCursor)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load transaction history')
       } finally {
@@ -96,7 +117,11 @@ export function TransactionHistory({
   )
 
   useEffect(() => {
-    void loadPage(undefined, false)
+    const timer = window.setTimeout(() => {
+      void loadPage(undefined, false)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [loadPage])
 
   if (!accountId) {
@@ -113,7 +138,7 @@ export function TransactionHistory({
       <div style={panelHeaderStyle}>
         <h2 style={titleStyle}>{title}</h2>
         <p style={subtitleStyle}>
-          Filtered for game-relevant transactions with pagination from Horizon.
+          Game-relevant transactions for {formatPublicKey(accountId)}, fetched from Horizon.
         </p>
       </div>
 
@@ -130,7 +155,12 @@ export function TransactionHistory({
       )}
 
       <div style={actionsStyle}>
-        <button type="button" onClick={() => void loadPage(undefined, false)} style={buttonStyle}>
+        <button
+          type="button"
+          onClick={() => void loadPage(undefined, false)}
+          style={buttonStyle}
+          aria-label="Retry loading transaction history"
+        >
           Refresh
         </button>
         <button
@@ -152,8 +182,7 @@ const panelStyle: CSSProperties = {
   padding: 20,
   borderRadius: 20,
   border: '1px solid rgba(159, 216, 255, 0.16)',
-  background:
-    'linear-gradient(180deg, rgba(6, 12, 26, 0.92), rgba(9, 17, 33, 0.98))',
+  background: 'linear-gradient(180deg, rgba(6, 12, 26, 0.92), rgba(9, 17, 33, 0.98))',
   boxShadow: '0 18px 50px rgba(0, 0, 0, 0.28)',
 }
 

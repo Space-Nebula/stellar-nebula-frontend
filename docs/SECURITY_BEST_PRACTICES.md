@@ -1,62 +1,116 @@
 # Security Best Practices
 
-This document defines the security practices for the Stellar Nebula frontend. The frontend prepares transactions and delegates signing to supported wallets; it must never act as a key store.
+Security guidance for developers working on the Nebula Nomad frontend. This complements the [Security Audit Checklist](../../SECURITY.md) and covers wallet security, XSS prevention, `localStorage` safety, API key / secret management, and Soroban contract risks.
 
-## Wallet Integration
+## Core Principles
 
-- Never request, accept, store, or log seed phrases, secret keys, private keys, or wallet export data.
-- Use the supported Freighter and Albedo adapters for connection and signing.
-- Display the connected public key and network so users can verify the active account before a sensitive action.
-- Treat wallet approval as a user decision. Do not hide, alter, or silently submit transaction details.
-- Validate the wallet network and public key before restoring a persisted session or preparing a transaction.
-- Persist only non-secret session metadata: public key, wallet type, and network.
-- Clear persisted wallet metadata on disconnect, session invalidation, or account mismatch.
+- The frontend is a **client-side** application; assume everything shipped to the browser is public.
+- **Never** store or process private keys, seed phrases, or secret keys in the frontend.
+- Wallet signing is delegated to trusted adapters (Freighter, Albedo) — never re-implement or intercept signing.
+- Treat environment variables as configuration, not secrets. Anything prefixed with `VITE_` is embedded in the public bundle.
 
-## Transaction Safety
+## Wallet Security
 
-- Build transactions with the configured Stellar network passphrase and trusted contract or asset identifiers.
-- Validate recipient, asset, issuer, amount, fee, timeout, and contract parameters before signing.
-- Simulate contract transactions where supported and review resource requirements before requesting approval.
-- Prevent duplicate sign and submit operations at both the hook and UI action levels.
-- Treat `PENDING` and timeout states as indeterminate until the transaction is checked by hash.
-- Do not automatically retry user cancellations, invalid transactions, or confirmed on-chain failures.
-- Retry only transient network, timeout, HTTP 429, and HTTP 5xx failures with bounded exponential backoff.
-- Never assume a successful wallet signature means that the network accepted the transaction.
+- Route all signing through `@/services/wallets` (`connectFreighter`, `connectAlbedo`, `signTransactionWith*`) and the `useFreighterWallet` hook.
+- Only request the public key and signed XDR; never ask for a key grant/seed phrase.
+- Display a clear, human-readable preview of what the user is signing; require an explicit user confirmation before submitting.
+- Validate the transaction against the **active network** before submission. A transaction built for one network must not silently be submitted to another.
+- On wallet errors, treat user cancellation (`W-1xx`, see `docs/ERROR_CODES.md`) as expected — do not retry.
+- Never log `publicKey`/`XDR` payloads beyond what is necessary; redact if logged.
+- Handle wallet absence gracefully: if Freighter is not installed, offer Albedo or prompt installation (`freighter.app`).
 
-## Configuration and Deployment
+```ts
+// Good: explicit, network-aware signing via the wallet adapter
+const signedXdr = await signTransactionWithFreighter(unsignedXdr)
+```
 
-- Treat all `VITE_*` values as public browser configuration. Never place secrets in them.
-- Use HTTPS for RPC, Horizon, API, analytics, and monitoring endpoints in production.
-- Keep `.env`, `.env.local`, and other environment-specific files out of source control; commit only safe example values.
-- Pin and audit dependencies through the lockfile and CI. Investigate high and critical findings before release.
-- Configure a Content Security Policy and secure response headers at the hosting layer.
-- Use protected deployment environments, signed releases, and source maps restricted to monitoring systems where possible.
+## XSS Prevention
 
-## Logging, Monitoring, and Privacy
+- React **escapes text by default** — use `{value}` for text, never `dangerouslySetInnerHTML` unless the content is fully trusted and sanitized (there is currently no use case in this repo that justifies it).
+- When rendering on-chain / user-provided strings (ship metadata, names, messages), treat them as untrusted data. Render as text, not HTML.
+- Sanitize any URL before using it as an `href`/`src` or in a redirect:
+  - Allow only `https:` / `http:` (and only where appropriate).
+  - Reject `javascript:`, `data:` (except known-safe), and obfuscated schemes.
+- Do not use `eval`/`new Function`. If dynamic evaluation is unavoidable, use a vetted sandbox.
+- Keep dependency versions updated; run `npm audit` in CI and fix high/critical advisories.
 
-- Use scoped structured logging and stable error codes rather than ad hoc sensitive messages.
-- Never log secret keys, seed phrases, signed XDR, authentication tokens, or full wallet identifiers.
-- Sanitize analytics and monitoring payloads before transmission. Public keys are still user-linked data and should be minimized.
-- Include network, operation, wallet type, error code, and transaction hash only when needed for diagnosis.
-- Keep session replay masking and media blocking enabled for wallet and transaction interfaces.
-- Provide a way to clear monitoring user context on disconnect or logout.
+```ts
+// Good: build a safe URL
+function safeHref(raw: string): string {
+  const url = new URL(raw, window.location.origin)
+  return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '#'
+}
+```
 
-## Frontend Attack Surface
+## localStorage Safety
 
-- Render user-controlled values as text and avoid unsafe HTML injection.
-- Validate external URLs and allow only trusted HTTPS endpoints for configurable services.
-- Do not trust client-side wallet state as backend authorization. Any backend service must verify signatures and enforce access control independently.
-- Rate-limit and authenticate backend endpoints associated with wallet actions.
-- Review third-party scripts, wallet providers, and dependency updates before enabling them in production.
+- Use `StorageManager` (`src/utils/storage.ts`) with a namespace prefix (`stellar-nebula:`).
+- **Do not** persist secrets, private keys, seed phrases, or raw signed transaction XDRs.
+- Store only low-sensitivity UI/UX state (theme, network selection, analytics opt-out, cached resource snapshots, NFT metadata).
+- Cache entries (ship NFT, resource snapshots) already include TTLs — respect and keep them short.
+- Handle quota / privacy-mode failures gracefully. Reading and writing must be inside `try/catch` so the app still works when `localStorage` is unavailable (`S-601`, see `docs/ERROR_CODES.md`).
+- Sanitize values before persisting and revalidate inputs read back from storage.
 
-## Release Checklist
+```ts
+import { StorageManager } from '@/utils/storage'
 
-- [ ] No secrets or private key material are present in source, logs, bundles, or environment files.
-- [ ] Wallet network and account validation are covered by tests.
-- [ ] Transaction confirmation, pending, failure, and duplicate-submit states are handled.
-- [ ] Production RPC and API endpoints use HTTPS and trusted hosts.
-- [ ] Dependency audit and build checks pass.
-- [ ] Monitoring and analytics payloads are sanitized.
-- [ ] Security headers and CSP are configured by the hosting platform.
+const storage = new StorageManager({ prefix: 'stellar-nebula:' })
+try {
+  storage.setItem('theme', 'dark')
+} catch {
+  // fall back to in-memory state; never crash
+}
+```
 
-See [SECURITY.md](../SECURITY.md) for the project security audit and outstanding recommendations.
+## API Key Management
+
+- All `VITE_*` env vars are bundled into the client and are **public** — never put secrets there.
+- Server-side secrets (API keys, Soroban admin keys, decrypt keys) belong in backend/serverless code or the Soroban contract, never in the frontend bundle.
+- Use the `.env.example` as the template; never commit real `.env`, `.env.local`, `.env.production`, or `.env.staging` files (they are gitignored).
+- Rotate any key that is exposed; treat leaked client keys as compromised.
+- Analytics / monitoring DSNs and App IDs (`VITE_SENTRY_DSN`, `VITE_LOGROCKET_APP_ID`) are public identifiers — they still should not appear in source diffs unnecessarily; load from env.
+
+## Soroban Contract Risks
+
+- Keep contract interactions behind the typed client (`SorobanContractClient`) and typed hooks (`useNebulaScan`, `useShipUpgrade`).
+- **Validate inputs before building transactions** — never pass unsanitized user input (account IDs, ship IDs, amounts) directly into contract calls.
+- Respect per-network contract IDs and pass the active network config explicitly; a transaction must target the current network's contract.
+- Treat contract return values as untrusted data. Parse them with the `responseParser` utilities and guard against malformed payloads (`ContractResponseParseError`).
+- Never hardcode secrets needed to authorize contract state changes on the client. Privileged operations belong server-side or in the contract.
+- After a network switch, verify the wallet is disconnected/reconnected (`docs/DEPLOYMENT.md`, network switching docs) so a transaction isn't signed for the wrong network.
+
+```ts
+// Good: validate then build via the typed client
+const params: ScanNebulaParams = {
+  nebulaId: String(nebulaId).slice(0, 64),
+  scannerPublicKey: publicKey,
+}
+const xdr = await client.buildScanTransaction(params)
+```
+
+## Dependency & Supply Chain
+
+- Keep `package-lock.json` committed and up to date for deterministic installs.
+- Run `npm audit` in CI; fail the build on high/critical vulnerabilities.
+- Pin and review critical dependencies (`@stellar/stellar-sdk`, `@albedo-link/intent`, `freighter-api`).
+- Review PRs that bump `react`, `vite`, build tooling, or wallet/SDK packages.
+
+## Privacy
+
+- Analytics intentionally strips PII — allow only event names/payloads that pass `sanitizeAnalyticsPayload`.
+- Provide an analytics opt-out and respect it (see `src/services/analytics.ts`).
+- Avoid collecting addresses, emails, keys, or personally identifiable data in logs, Sentry breadcrumbs, or analytics events.
+
+## Release & Review Checklist
+
+- [ ] `npm run lint` and `npm run format:check` pass
+- [ ] `npm run build` (TypeScript) passes
+- [ ] `npm test` and coverage thresholds pass
+- [ ] `npm audit` reports no high/critical findings
+- [ ] No `VITE_*` secrets, `.env*` files, or keys are committed
+- [ ] New untrusted inputs are sanitized / rendered as text
+- [ ] Wallet signing remains adapter-delegated and network-aware
+- [ ] `STORAGE` additions respect the `stellar-nebula:` prefix and TTLs
+- [ ] Security review completed before merge (see `SECURITY.md`)
+
+See also: [Security Audit Checklist](../SECURITY.md), [Error Codes](ERROR_CODES.md), [Deployment Guide](DEPLOYMENT.md).

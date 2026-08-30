@@ -23,6 +23,83 @@ export interface GasMonitorConfig {
 
 export type GasTrend = 'falling' | 'stable' | 'rising' | 'spiking'
 
+export type GasFeeStats = FeeStats
+
+export interface GasPriceSnapshot {
+  baseFeeStroops: number
+  p95FeeStroops: number
+  latestLedger: number | null
+  trend: 'up' | 'down' | 'stable'
+  networkCondition: 'calm' | 'busy' | 'congested'
+  alertLevel: 'calm' | 'watch' | 'high'
+  recordedAt: string
+}
+
+export interface GasMonitorOptions {
+  config?: StellarNetworkConfig
+  pollIntervalMs?: number
+  onUpdate?: (snapshot: GasPriceSnapshot) => void
+  onError?: (error: Error) => void
+}
+
+function readPercentile(record: Record<string, unknown>, key: string, fallback: number): number {
+  const soroban = record.soroban as Record<string, unknown> | undefined
+  const inclusionFee = soroban?.inclusionFee as Record<string, unknown> | undefined
+  const value = Number(inclusionFee?.[key] ?? record[key] ?? fallback)
+  return Number.isFinite(value) ? value : fallback
+}
+
+function classifySnapshot(stats: FeeStats, previous?: FeeStats): GasPriceSnapshot {
+  const ratio = previous ? stats.p95 / Math.max(1, previous.p95) : 1
+  const trend = ratio >= 1.1 ? 'up' : ratio <= 0.9 ? 'down' : 'stable'
+  const networkCondition = stats.p95 >= 5000 ? 'congested' : stats.p95 >= 1000 ? 'busy' : 'calm'
+  const alertLevel = stats.p95 >= 5000 ? 'high' : stats.p95 >= 1000 ? 'watch' : 'calm'
+
+  return {
+    baseFeeStroops: stats.p50,
+    p95FeeStroops: stats.p95,
+    latestLedger: null,
+    trend,
+    networkCondition,
+    alertLevel,
+    recordedAt: stats.recordedAt,
+  }
+}
+
+export async function fetchGasPriceSnapshot(
+  config: StellarNetworkConfig = getActiveStellarConfig()
+): Promise<GasPriceSnapshot> {
+  const rpcServer = createStellarRpcServer(config)
+  const rawStats = (await rpcServer.getFeeStats()) as unknown as Record<string, unknown>
+  const stats: FeeStats = {
+    p10: readPercentile(rawStats, 'p10', 100),
+    p50: readPercentile(rawStats, 'p50', 100),
+    p90: readPercentile(rawStats, 'p90', 100),
+    p95: readPercentile(rawStats, 'p95', 100),
+    recordedAt: new Date().toISOString(),
+  }
+
+  return classifySnapshot(stats)
+}
+
+export function startGasPriceMonitor(options: GasMonitorOptions): () => void {
+  let previous: FeeStats | undefined
+
+  const wrappedMonitor = createGasMonitor({
+    networkConfig: options.config,
+    pollIntervalMs: options.pollIntervalMs,
+    onError: options.onError,
+    onUpdate: (stats) => {
+      options.onUpdate?.(classifySnapshot(stats, previous))
+      previous = stats
+    },
+  })
+
+  wrappedMonitor.start()
+
+  return () => wrappedMonitor.stop()
+}
+
 /**
  * Monitor Stellar network fee trends with periodic polling.
  *
@@ -43,7 +120,7 @@ export function createGasMonitor(config: GasMonitorConfig) {
   async function poll(): Promise<void> {
     try {
       const rawStats = await rpcServer.getFeeStats()
-      const record = rawStats as Record<string, unknown>
+      const record = rawStats as unknown as Record<string, unknown>
 
       const soroban = record.soroban as Record<string, unknown> | undefined
       const inclusionFee = soroban?.inclusionFee as Record<string, unknown> | undefined

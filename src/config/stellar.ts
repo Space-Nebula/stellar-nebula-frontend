@@ -7,6 +7,8 @@ export interface StellarEnvConfig {
   STELLAR_RPC_URL?: string
   STELLAR_HORIZON_URL?: string
   STELLAR_PASSPHRASE?: string
+  NEBULA_CONTRACT_ID?: string
+  TOKEN_CONTRACT_ID?: string
 }
 
 export interface StellarNetworkConfig {
@@ -14,6 +16,8 @@ export interface StellarNetworkConfig {
   rpcUrl: string
   horizonUrl: string
   networkPassphrase: string
+  nebulaContractId: string
+  tokenContractId: string
 }
 
 export interface StellarConnectionClients {
@@ -29,6 +33,40 @@ export interface StellarConnectionStatus {
   networkPassphrase: string
 }
 
+/**
+ * Environment variables that select the Soroban contract addresses for a
+ * specific network. Preferred over the generic contract-ID variables so each
+ * network (testnet / futurenet / mainnet) can target its own deployment.
+ */
+const CONTRACT_ID_ENV_KEYS: Record<
+  StellarNetwork,
+  { nebula: string; token: string }
+> = {
+  testnet: {
+    nebula: 'VITE_NEBULA_CONTRACT_ID_TESTNET',
+    token: 'VITE_TOKEN_CONTRACT_ID_TESTNET',
+  },
+  futurenet: {
+    nebula: 'VITE_NEBULA_CONTRACT_ID_FUTURENET',
+    token: 'VITE_TOKEN_CONTRACT_ID_FUTURENET',
+  },
+  mainnet: {
+    nebula: 'VITE_NEBULA_CONTRACT_ID_MAINNET',
+    token: 'VITE_TOKEN_CONTRACT_ID_MAINNET',
+  },
+}
+
+function readContractId(network: StellarNetwork, kind: 'nebula' | 'token'): string {
+  const keys = CONTRACT_ID_ENV_KEYS[network][kind]
+  const networkSpecific = import.meta.env[keys]
+  if (typeof networkSpecific === 'string' && networkSpecific.length > 0) {
+    return networkSpecific
+  }
+
+  const generic = import.meta.env[kind === 'nebula' ? 'VITE_NEBULA_CONTRACT_ID' : 'VITE_TOKEN_CONTRACT_ID']
+  return typeof generic === 'string' ? generic : ''
+}
+
 /** Preconfigured Stellar network definitions. */
 export const STELLAR_NETWORK_CONFIGS: Record<StellarNetwork, StellarNetworkConfig> = {
   testnet: {
@@ -36,18 +74,24 @@ export const STELLAR_NETWORK_CONFIGS: Record<StellarNetwork, StellarNetworkConfi
     rpcUrl: 'https://soroban-testnet.stellar.org',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     networkPassphrase: Networks.TESTNET,
+    nebulaContractId: readContractId('testnet', 'nebula'),
+    tokenContractId: readContractId('testnet', 'token'),
   },
   futurenet: {
     network: 'futurenet',
     rpcUrl: 'https://rpc-futurenet.stellar.org',
     horizonUrl: 'https://horizon-futurenet.stellar.org',
     networkPassphrase: Networks.FUTURENET,
+    nebulaContractId: readContractId('futurenet', 'nebula'),
+    tokenContractId: readContractId('futurenet', 'token'),
   },
   mainnet: {
     network: 'mainnet',
     rpcUrl: 'https://soroban-rpc.stellar.org',
     horizonUrl: 'https://horizon.stellar.org',
     networkPassphrase: Networks.PUBLIC,
+    nebulaContractId: readContractId('mainnet', 'nebula'),
+    tokenContractId: readContractId('mainnet', 'token'),
   },
 }
 
@@ -63,6 +107,12 @@ export function getStellarEnvConfig(): StellarEnvConfig {
     STELLAR_RPC_URL: import.meta.env.VITE_STELLAR_RPC_URL,
     STELLAR_HORIZON_URL: import.meta.env.VITE_STELLAR_HORIZON_URL,
     STELLAR_PASSPHRASE: import.meta.env.VITE_STELLAR_PASSPHRASE,
+    NEBULA_CONTRACT_ID:
+      import.meta.env.VITE_NEBULA_CONTRACT_ID ||
+      (import.meta.env.VITE_NEBULA_CONTRACT_ID_TESTNET as string | undefined),
+    TOKEN_CONTRACT_ID:
+      import.meta.env.VITE_TOKEN_CONTRACT_ID ||
+      (import.meta.env.VITE_TOKEN_CONTRACT_ID_TESTNET as string | undefined),
   }
 }
 
@@ -73,13 +123,16 @@ export function getStellarEnvConfig(): StellarEnvConfig {
 export function getActiveStellarConfig(
   config: StellarEnvConfig = getStellarEnvConfig()
 ): StellarNetworkConfig {
-  const baseConfig = getStellarNetworkConfig(config.STELLAR_NETWORK ?? 'testnet')
+  const network = config.STELLAR_NETWORK ?? 'testnet'
+  const baseConfig = getStellarNetworkConfig(network)
 
   return {
     ...baseConfig,
     rpcUrl: config.STELLAR_RPC_URL || baseConfig.rpcUrl,
     horizonUrl: config.STELLAR_HORIZON_URL || baseConfig.horizonUrl,
     networkPassphrase: config.STELLAR_PASSPHRASE || baseConfig.networkPassphrase,
+    nebulaContractId: config.NEBULA_CONTRACT_ID || baseConfig.nebulaContractId,
+    tokenContractId: config.TOKEN_CONTRACT_ID || baseConfig.tokenContractId,
   }
 }
 

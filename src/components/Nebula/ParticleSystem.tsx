@@ -2,6 +2,11 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color } from 'three'
 import type { Points, ShaderMaterial } from 'three'
+import {
+  particleVertexShader,
+  particleFragmentShader,
+  particlePerfFragmentShader,
+} from './shaders'
 
 // ─── Device detection ────────────────────────────────────────────────────────
 
@@ -30,7 +35,6 @@ function useDeviceHints() {
 
 const MAX_PARTICLE_COUNT = 50000
 const MIN_PARTICLE_COUNT = 10000
-const NEBULA_RADIUS = 70
 const CORE_RADIUS = 12
 
 const NEBULA_PALETTE = [
@@ -47,11 +51,7 @@ const NEBULA_PALETTE = [
 // ─── Geometry ─────────────────────────────────────────────────────────────────
 
 function lerpColor(a: Color, b: Color, t: number): Color {
-  return new Color(
-    a.r + (b.r - a.r) * t,
-    a.g + (b.g - a.g) * t,
-    a.b + (b.b - a.b) * t,
-  )
+  return new Color(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t)
 }
 
 function sampleNebulaColor(t: number): Color {
@@ -148,69 +148,6 @@ function createNebulaGeometry(particleCount: number, performanceMode: boolean) {
   return geometry
 }
 
-// ─── Shaders ──────────────────────────────────────────────────────────────────
-
-const vertexShader = /* glsl */ `
-  precision highp float;
-
-  attribute float aSize;
-  attribute vec3 aColor;
-  attribute float aOpacity;
-
-  varying vec3 vColor;
-  varying float vOpacity;
-
-  void main() {
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    float perspectiveScale = 180.0 / max(1.0, -mvPosition.z);
-
-    vColor = aColor;
-    vOpacity = aOpacity;
-    gl_PointSize = clamp(aSize * perspectiveScale, 0.8, 14.0);
-    gl_Position = projectionMatrix * mvPosition;
-  }
-`
-
-const fragmentShader = /* glsl */ `
-  precision highp float;
-
-  varying vec3 vColor;
-  varying float vOpacity;
-
-  void main() {
-    vec2 uv = gl_PointCoord - vec2(0.5);
-    float dist = length(uv) * 2.0;
-    float core = smoothstep(0.7, 0.0, dist);
-    float halo = smoothstep(1.0, 0.3, dist);
-    float alpha = (core * 0.82 + halo * 0.28) * vOpacity;
-
-    if (alpha <= 0.003) {
-      discard;
-    }
-
-    gl_FragColor = vec4(vColor, alpha);
-  }
-`
-
-const fragmentShaderPerf = /* glsl */ `
-  precision highp float;
-
-  varying vec3 vColor;
-  varying float vOpacity;
-
-  void main() {
-    vec2 uv = gl_PointCoord - vec2(0.5);
-    float dist = length(uv) * 2.0;
-    float alpha = smoothstep(1.0, 0.0, dist) * vOpacity;
-
-    if (alpha <= 0.005) {
-      discard;
-    }
-
-    gl_FragColor = vec4(vColor, alpha);
-  }
-`
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface ParticleSystemProps {
@@ -235,7 +172,7 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
 
   const geometry = useMemo(
     () => createNebulaGeometry(particleCount, performanceMode || isMobile),
-    [particleCount, performanceMode, isMobile],
+    [particleCount, performanceMode, isMobile]
   )
 
   const uniforms = useMemo(
@@ -243,10 +180,10 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
       uTime: { value: 0 },
       uRotationSpeed: { value: prefersReducedMotion ? 0.02 : 0.06 },
     }),
-    [prefersReducedMotion],
+    [prefersReducedMotion]
   )
 
-  const shader = performanceMode || isMobile ? fragmentShaderPerf : fragmentShader
+  const shader = performanceMode || isMobile ? particlePerfFragmentShader : particleFragmentShader
   const blending = AdditiveBlending
 
   useFrame(({ clock }) => {
@@ -269,7 +206,7 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
         transparent
         depthWrite={false}
         depthTest={true}
-        vertexShader={vertexShader}
+        vertexShader={particleVertexShader}
         fragmentShader={shader}
         blending={blending}
         uniforms={uniforms}

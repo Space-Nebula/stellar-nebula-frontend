@@ -17,6 +17,7 @@ export interface ConfirmModalProps {
   cancelLabel?: string
   onConfirm: () => void
   onCancel: () => void
+  children?: React.ReactNode
 }
 
 export function ConfirmModal({
@@ -31,6 +32,7 @@ export function ConfirmModal({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  children,
 }: ConfirmModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -64,7 +66,12 @@ export function ConfirmModal({
             <p style={eyebrowStyle}>Transaction review</p>
             <h2 style={titleStyle}>{title}</h2>
           </div>
-          <button type="button" onClick={onCancel} aria-label="Close confirmation" style={closeStyle}>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close confirmation"
+            style={closeStyle}
+          >
             ✕
           </button>
         </div>
@@ -83,6 +90,8 @@ export function ConfirmModal({
           ))}
         </div>
 
+        {children}
+
         {error && (
           <div role="alert" style={errorBoxStyle}>
             {error}
@@ -90,10 +99,22 @@ export function ConfirmModal({
         )}
 
         <div style={actionRowStyle}>
-          <button type="button" onClick={onCancel} style={secondaryButtonStyle} disabled={isSubmitting}>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={`Cancel ${operationType} transaction`}
+            style={secondaryButtonStyle}
+            disabled={isSubmitting}
+          >
             {cancelLabel}
           </button>
-          <button type="button" onClick={onConfirm} style={primaryButtonStyle} disabled={isSubmitting}>
+          <button
+            type="button"
+            aria-label={`Confirm ${operationType} transaction`}
+            onClick={onConfirm}
+            style={primaryButtonStyle}
+            disabled={isSubmitting}
+          >
             {isSubmitting ? 'Processing…' : confirmLabel}
           </button>
         </div>
@@ -107,8 +128,7 @@ const panelStyle: React.CSSProperties = {
   border: '1px solid rgba(159, 216, 255, 0.24)',
   borderRadius: 24,
   padding: 24,
-  background:
-    'linear-gradient(180deg, rgba(8, 14, 30, 0.96), rgba(11, 20, 39, 0.98))',
+  background: 'linear-gradient(180deg, rgba(8, 14, 30, 0.96), rgba(11, 20, 39, 0.98))',
   color: '#f8fbff',
   boxShadow: '0 28px 80px rgba(0, 0, 0, 0.55)',
 }

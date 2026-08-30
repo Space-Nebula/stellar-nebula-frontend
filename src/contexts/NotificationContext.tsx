@@ -37,12 +37,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       setNotifications((current) => [{ ...input, id, createdAt, read: false }, ...current])
     },
-    [],
+    []
   )
 
   const markAsRead = useCallback((id: string) => {
     setNotifications((current) =>
-      current.map((item) => (item.id === id ? { ...item, read: true } : item)),
+      current.map((item) => (item.id === id ? { ...item, read: true } : item))
     )
   }, [])
 
@@ -56,7 +56,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.read).length,
-    [notifications],
+    [notifications]
   )
 
   const value = useMemo<NotificationContextValue>(
@@ -68,7 +68,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       clearAll,
       markAllAsRead,
     }),
-    [notifications, unreadCount, addNotification, markAsRead, clearAll, markAllAsRead],
+    [notifications, unreadCount, addNotification, markAsRead, clearAll, markAllAsRead]
   )
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>

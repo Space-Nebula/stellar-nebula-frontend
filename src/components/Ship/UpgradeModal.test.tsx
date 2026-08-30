@@ -18,6 +18,10 @@ const fundedInventory: ResourceInventory = {
   fuel: 260,
   minerals: 180,
   nebulaDust: 90,
+  nebulite: 0,
+  stellarium: 0,
+  voidcrystal: 0,
+  darkMatter: 0,
 }
 
 describe('UpgradeModal', () => {
@@ -68,6 +72,11 @@ describe('UpgradeModal', () => {
     )
 
     expect(screen.getByRole('status')).toHaveTextContent(/pending confirmation/i)
-    expect(screen.getByRole('button', { name: /confirming/i })).toBeDisabled()
+    // Button is disabled and shows pending state — accessible name may be dynamic (Apply upgrade: ... or Confirming...)
+    const btn = screen.getByRole('button', {
+      name: /confirming|apply upgrade|resources unavailable/i,
+    })
+    expect(btn).toBeDisabled()
+    expect(btn.textContent).toMatch(/confirming/i)
   })
 })

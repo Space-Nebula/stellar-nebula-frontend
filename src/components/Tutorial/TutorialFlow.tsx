@@ -1,10 +1,16 @@
-import { useTutorialStore } from '@/store/tutorialStore'
+import { useContext, useEffect } from 'react'
+import { useTutorialStore, type TutorialObjective } from '@/store/tutorialStore'
+import { WalletContext } from '@/contexts/WalletContext'
+import { TutorialHighlight } from './TutorialHighlight'
 
 interface TutorialStep {
   title: string
   description: string
   highlight?: string
   icon: string
+  objective?: TutorialObjective
+  actionLabel?: string
+  route?: string
 }
 
 const STEPS: TutorialStep[] = [
@@ -12,7 +18,7 @@ const STEPS: TutorialStep[] = [
     icon: '🚀',
     title: 'Welcome to Stellar Nebula',
     description:
-      'Drift through procedurally generated nebulae, harvest stardust, and upgrade your NFT ship — all on the Stellar blockchain.',
+      'Drift through procedurally generated nebulae, harvest resources, and upgrade your NFT ship on Stellar.',
     highlight: '.brand',
   },
   {
@@ -21,20 +27,27 @@ const STEPS: TutorialStep[] = [
     description:
       'Connect a Freighter or Albedo wallet to sign transactions. Your wallet is your identity in the nebula.',
     highlight: '.wallet-connect-btn',
+    objective: 'connect-wallet',
   },
   {
     icon: '🌌',
-    title: 'Explore the Nebula',
+    title: 'Complete Your First Scan',
     description:
-      'Navigate to the Nebula view to scan cosmic anomalies. Click scan points to harvest stardust resources.',
+      'Open the Nebula view and select a scan point. Completed scans add the harvested resource to inventory.',
     highlight: '[href="/nebula"]',
+    objective: 'first-scan',
+    actionLabel: 'Open Nebula',
+    route: '/nebula',
   },
   {
     icon: '🛸',
-    title: 'Upgrade Your Ship',
+    title: 'Apply Your First Upgrade',
     description:
-      'Visit the Ship Dashboard to view your NFT modules and spend resources on upgrades for better yields.',
+      'Open the Ship dashboard, choose an affordable upgrade, review the cost, and apply it.',
     highlight: '[href="/dashboard"]',
+    objective: 'first-upgrade',
+    actionLabel: 'Open Ship Dashboard',
+    route: '/dashboard',
   },
   {
     icon: '✅',
@@ -49,16 +62,35 @@ interface TutorialFlowProps {
 }
 
 function TutorialFlow({ onClose }: TutorialFlowProps) {
-  const { currentStep, completed, dismissed, setStep, complete, dismiss, replay } =
-    useTutorialStore()
+  const {
+    currentStep,
+    completed,
+    dismissed,
+    completedObjectives,
+    setStep,
+    completeObjective,
+    complete,
+    dismiss,
+    replay,
+  } = useTutorialStore()
+  const walletContext = useContext(WalletContext)
 
-  if (dismissed && !completed) return null
+  useEffect(() => {
+    if (walletContext?.walletState.isConnected) {
+      completeObjective('connect-wallet')
+    }
+  }, [completeObjective, walletContext?.walletState.isConnected])
+
+  if (dismissed) return null
 
   const step = STEPS[currentStep]
   const isLast = currentStep === STEPS.length - 1
   const isFirst = currentStep === 0
+  const objectiveComplete = !step.objective || completedObjectives.includes(step.objective)
 
   function handleNext() {
+    if (!objectiveComplete) return
+
     if (isLast) {
       complete()
       onClose?.()
@@ -81,16 +113,24 @@ function TutorialFlow({ onClose }: TutorialFlowProps) {
   }
 
   // Show replay button if completed
-  if (completed && !dismissed) {
+  if (completed) {
     return (
-      <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="true">
+      <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="false">
         <div className="tutorial-card">
           <p className="tutorial-completed-msg">Tutorial completed! Want to replay it?</p>
           <div className="tutorial-actions">
-            <button onClick={handleReplay} className="tutorial-btn tutorial-btn--primary">
+            <button
+              onClick={handleReplay}
+              className="tutorial-btn tutorial-btn--primary"
+              aria-label="Replay tutorial from beginning"
+            >
               Replay Tutorial
             </button>
-            <button onClick={onClose} className="tutorial-btn tutorial-btn--ghost">
+            <button
+              onClick={onClose}
+              className="tutorial-btn tutorial-btn--ghost"
+              aria-label="Close tutorial"
+            >
               Close
             </button>
           </div>
@@ -100,50 +140,66 @@ function TutorialFlow({ onClose }: TutorialFlowProps) {
   }
 
   return (
-    <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="true">
-      <div className="tutorial-card">
-        <div
-          className="tutorial-progress"
-          aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
-        >
-          {STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`tutorial-dot ${i === currentStep ? 'tutorial-dot--active' : i < currentStep ? 'tutorial-dot--done' : ''}`}
-              aria-hidden="true"
-            />
-          ))}
-        </div>
+    <>
+      <TutorialHighlight selector={step.highlight ?? null} visible={!!step.highlight} />
 
-        <div className="tutorial-icon" aria-hidden="true">
-          {step.icon}
-        </div>
+      <div className="tutorial-overlay" role="dialog" aria-label="Tutorial" aria-modal="true">
+        <div className="tutorial-card">
+          <div
+            className="tutorial-progress"
+            role="progressbar"
+            aria-valuenow={currentStep + 1}
+            aria-valuemin={1}
+            aria-valuemax={STEPS.length}
+            aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
+          >
+            {STEPS.map((_, i) => (
+              <span
+                key={i}
+                className={`tutorial-dot ${i === currentStep ? 'tutorial-dot--active' : i < currentStep ? 'tutorial-dot--done' : ''}`}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
 
-        <h2 className="tutorial-title">{step.title}</h2>
-        <p className="tutorial-description">{step.description}</p>
+          <div className="tutorial-icon" aria-hidden="true">
+            {step.icon}
+          </div>
 
-        {step.highlight && (
-          <p className="tutorial-hint">
-            <span aria-hidden="true">👆</span> Look for the highlighted element on the page.
-          </p>
-        )}
+          <h2 className="tutorial-title">{step.title}</h2>
+          <p className="tutorial-description">{step.description}</p>
 
-        <div className="tutorial-actions">
-          {!isFirst && (
-            <button onClick={handleBack} className="tutorial-btn tutorial-btn--ghost">
-              Back
-            </button>
+          {step.highlight && (
+            <p className="tutorial-hint">
+              <span aria-hidden="true">👆</span> Look for the highlighted element on the page.
+            </p>
           )}
-          <button onClick={handleNext} className="tutorial-btn tutorial-btn--primary">
-            {isLast ? 'Get Started' : 'Next'}
+
+          <div className="tutorial-actions">
+            {!isFirst && (
+              <button
+                onClick={handleBack}
+                className="tutorial-btn tutorial-btn--ghost"
+                aria-label="Go to previous tutorial step"
+              >
+                Back
+              </button>
+            )}
+            <button
+              onClick={handleNext}
+              className="tutorial-btn tutorial-btn--primary"
+              aria-label={isLast ? 'Complete tutorial and get started' : 'Go to next tutorial step'}
+            >
+              {isLast ? 'Get Started' : 'Next'}
+            </button>
+          </div>
+
+          <button onClick={handleSkip} className="tutorial-skip" aria-label="Skip tutorial">
+            Skip tutorial
           </button>
         </div>
-
-        <button onClick={handleSkip} className="tutorial-skip" aria-label="Skip tutorial">
-          Skip tutorial
-        </button>
       </div>
-    </div>
+    </>
   )
 }
 

@@ -1,6 +1,7 @@
 import { env } from '../config'
 import { createScopedLogger } from './logging'
 import { addMonitoringBreadcrumb } from './monitoring'
+import { applyCsrfHeaders, generateCsrfToken, getCsrfToken } from '../utils/csrf'
 
 const log = createScopedLogger('API')
 
@@ -62,6 +63,11 @@ function buildUrl(path: string): string {
   return `${base}/${cleanPath}`
 }
 
+function shouldRefreshCsrf(response: Response): boolean {
+  const bodyText = response.headers.get('x-csrf-token') ?? ''
+  return response.status === 403 || /csrf|xsrf/i.test(bodyText)
+}
+
 async function executeFetch(
   url: string,
   config: ApiRequestConfig,
@@ -79,6 +85,15 @@ async function executeFetch(
 
     try {
       const response = await fetch(url, { ...config, signal })
+      if (response.status === 403 && shouldRefreshCsrf(response)) {
+        const token = generateCsrfToken()
+        const refreshedHeaders = applyCsrfHeaders({ ...config.headers, 'X-CSRF-Token': token })
+        const refreshedConfig = { ...config, headers: refreshedHeaders }
+        const refreshedResponse = await fetch(url, { ...refreshedConfig, signal })
+        if (refreshedResponse.status !== 403) {
+          return refreshedResponse
+        }
+      }
       return response
     } catch (error) {
       if (signal.aborted) throw error
@@ -110,6 +125,21 @@ async function request<T>(
   for (const interceptor of requestInterceptors) {
     const result = interceptor(config)
     config = result instanceof Promise ? await result : result
+  }
+
+  const csrfSafeMethod = method.toUpperCase()
+  const headers = new Headers(config.headers ?? {})
+  const resolvedHeaders = ['GET', 'HEAD', 'OPTIONS'].includes(csrfSafeMethod)
+    ? headers
+    : applyCsrfHeaders(headers)
+
+  config = {
+    ...config,
+    headers: resolvedHeaders,
+  }
+
+  if (!getCsrfToken()) {
+    generateCsrfToken()
   }
 
   const finalUrl = config.url
@@ -174,9 +204,13 @@ async function request<T>(
     }
 
     const errorMessage = error instanceof Error ? error.message : 'Network error'
-    log.error(`${method} ${path} network error`, error instanceof Error ? error : new Error(errorMessage), {
-      duration,
-    })
+    log.error(
+      `${method} ${path} network error`,
+      error instanceof Error ? error : new Error(errorMessage),
+      {
+        duration,
+      }
+    )
     addMonitoringBreadcrumb(`API Network Error: ${method} ${path}`, 'api-error', {
       duration,
       error: errorMessage,

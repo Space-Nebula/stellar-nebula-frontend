@@ -3,9 +3,10 @@ import type { Achievement } from './types'
 
 interface Props {
   achievement: Achievement
+  footer?: React.ReactNode
 }
 
-export const AchievementCard: React.FC<Props> = ({ achievement }) => {
+export const AchievementCard: React.FC<Props> = ({ achievement, footer }) => {
   const percentage = Math.min(100, (achievement.progress / achievement.target) * 100)
 
   const rarityColors = {
@@ -75,6 +76,8 @@ export const AchievementCard: React.FC<Props> = ({ achievement }) => {
               Unlocked: {new Date(achievement.unlockedAt).toLocaleDateString()}
             </p>
           )}
+
+          {footer && <div className="mt-3">{footer}</div>}
         </div>
       </div>
     </div>

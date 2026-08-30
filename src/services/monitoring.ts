@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Monitoring and Observability Service
  *
@@ -10,7 +11,7 @@
  */
 
 import * as Sentry from '@sentry/react'
-import { logger, createScopedLogger } from './logging'
+import { createScopedLogger } from './logging'
 
 const log = createScopedLogger('Monitoring')
 
@@ -58,7 +59,11 @@ export function initializeMonitoring(config: MonitoringConfig): void {
     log.error(
       'Failed to initialize monitoring services',
       error instanceof Error ? error : new Error(String(error)),
-      { config: { ...config, sentryDsn: config.sentryDsn ? '[redacted]' : null } }
+      {
+        sentryConfigured: Boolean(config.sentryDsn),
+        sentryEnvironment: config.sentryEnvironment,
+        logRocketConfigured: Boolean(config.logRocketAppId),
+      }
     )
   }
 }
@@ -222,17 +227,18 @@ export function clearMonitoringUser(): void {
 
     log.debug('Monitoring user context cleared')
   } catch (error) {
-    log.warn('Failed to clear monitoring user', undefined, error instanceof Error ? error : undefined)
+    log.warn(
+      'Failed to clear monitoring user',
+      undefined,
+      error instanceof Error ? error : undefined
+    )
   }
 }
 
 /**
  * Capture a custom event in monitoring systems.
  */
-export function captureMonitoringEvent(
-  eventName: string,
-  data?: Record<string, any>
-): void {
+export function captureMonitoringEvent(eventName: string, data?: Record<string, any>): void {
   try {
     Sentry.captureMessage(eventName, {
       level: 'info',

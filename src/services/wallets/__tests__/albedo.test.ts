@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { isAlbedoAvailable, connectAlbedo, signTransactionWithAlbedo } from '../albedo'
 
-vi.mock('@albedo-link/intent', () => ({
-  default: {
-    publicKey: vi.fn(),
-    tx: vi.fn(),
-  },
-}))
+vi.mock('@albedo-link/intent', () => {
+  const publicKey = vi.fn()
+  const tx = vi.fn()
+
+  return {
+    publicKey,
+    tx,
+    default: { publicKey, tx },
+  }
+})
 
 import albedo from '@albedo-link/intent'
 
@@ -74,7 +78,7 @@ describe('signTransactionWithAlbedo', () => {
     } as unknown as TxResult
     vi.mocked(albedo.tx).mockResolvedValue(response)
     await expect(signTransactionWithAlbedo('RAW_XDR', 'testnet')).rejects.toThrow(
-      'Albedo did not return a signed transaction',
+      'Albedo did not return a signed transaction'
     )
   })
 
@@ -88,8 +92,6 @@ describe('signTransactionWithAlbedo', () => {
     } as unknown as TxResult
     vi.mocked(albedo.tx).mockResolvedValue(response)
     await signTransactionWithAlbedo('RAW_XDR', 'mainnet')
-    expect(albedo.tx).toHaveBeenCalledWith(
-      expect.objectContaining({ network: undefined }),
-    )
+    expect(albedo.tx).toHaveBeenCalledWith(expect.objectContaining({ network: undefined }))
   })
 })

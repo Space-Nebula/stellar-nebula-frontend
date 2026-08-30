@@ -19,12 +19,15 @@ interface WalletDisplayProps {
 
 export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
   const { walletState, disconnect, isReconnecting, reconnectError } = useWallet()
-  const { balances, isStreaming, balanceChanged } = useAccountBalances(walletState.publicKey)
+  const { balances, isLoading, error, isUnfunded, isStreaming, balanceChanged } =
+    useAccountBalances(walletState.publicKey)
   const [copied, setCopied] = useState(false)
   const [tooltipVisible, setTooltipVisible] = useState(false)
+  const [assetsOpen, setAssetsOpen] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const xlmBalance = balances.find((b) => b.isNative)
+  const resourceAssetHoldings = balances.filter((b) => !b.isNative)
 
   const handleCopy = useCallback(async () => {
     if (!walletState.publicKey) return
@@ -59,7 +62,12 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
   // Show reconnect error
   if (reconnectError && !walletState.isConnected) {
     return (
-      <button type="button" onClick={onOpenConnectModal} style={connectButtonStyle}>
+      <button
+        type="button"
+        onClick={onOpenConnectModal}
+        style={connectButtonStyle}
+        aria-label="Connect wallet"
+      >
         Connect Wallet
       </button>
     )
@@ -67,7 +75,12 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
 
   if (!walletState.isConnected || !walletState.publicKey) {
     return (
-      <button type="button" onClick={onOpenConnectModal} style={connectButtonStyle}>
+      <button
+        type="button"
+        onClick={onOpenConnectModal}
+        style={connectButtonStyle}
+        aria-label="Connect wallet"
+      >
         Connect Wallet
       </button>
     )
@@ -77,7 +90,33 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
 
   return (
     <div style={containerStyle}>
-      {/* Balance chip with streaming indicator */}
+      {/* Loading indicator if initial balance fetch */}
+      {isLoading && balances.length === 0 && !isUnfunded && (
+        <div style={balanceChipStyle} aria-label="Loading balance">
+          <div style={spinnerStyle} aria-hidden="true" />
+          <span style={balanceAmountStyle}>Loading…</span>
+        </div>
+      )}
+
+      {/* Unfunded badge */}
+      {isUnfunded && (
+        <div
+          style={unfundedChipStyle}
+          title="Account not funded on Stellar network"
+          aria-label="Unfunded account"
+        >
+          Unfunded (0 XLM)
+        </div>
+      )}
+
+      {/* Error badge */}
+      {error && !isUnfunded && balances.length === 0 && (
+        <div style={errorChipStyle} title={error} aria-label={`Balance error: ${error}`}>
+          Error loading balance
+        </div>
+      )}
+
+      {/* XLM Balance chip with streaming indicator */}
       {xlmBalance && (
         <div
           style={{
@@ -95,6 +134,34 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
           )}
           <span style={balanceLabelStyle}>XLM</span>
           <span style={balanceAmountStyle}>{Number(xlmBalance.balance).toFixed(2)}</span>
+        </div>
+      )}
+
+      {/* Resource Asset Holdings */}
+      {resourceAssetHoldings.length > 0 && (
+        <div style={assetsWrapperStyle}>
+          <button
+            type="button"
+            onClick={() => setAssetsOpen((prev) => !prev)}
+            aria-label={`Resource asset holdings: ${resourceAssetHoldings.length} assets`}
+            aria-expanded={assetsOpen}
+            style={assetsButtonStyle}
+          >
+            <span style={assetsIconStyle}>📦</span>
+            <span>{resourceAssetHoldings.length} Assets</span>
+          </button>
+
+          {assetsOpen && (
+            <div role="region" aria-label="Asset holdings details" style={assetsDropdownStyle}>
+              <div style={assetsHeaderStyle}>Resource Asset Holdings</div>
+              {resourceAssetHoldings.map((asset, i) => (
+                <div key={asset.assetCode + i} style={assetItemStyle}>
+                  <span style={assetCodeStyle}>{asset.assetCode}</span>
+                  <span style={assetAmountStyle}>{Number(asset.balance).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -280,4 +347,91 @@ const streamingDotStyle: React.CSSProperties = {
 const balanceChangedStyle: React.CSSProperties = {
   animation: 'balanceGlow 0.5s ease-out',
   boxShadow: '0 0 12px rgba(50, 214, 165, 0.6)',
+}
+
+const unfundedChipStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  padding: '2px 8px',
+  borderRadius: 8,
+  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+  border: '1px solid rgba(239, 68, 68, 0.3)',
+  color: '#f87171',
+  fontSize: '0.78em',
+  fontWeight: 500,
+}
+
+const errorChipStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  padding: '2px 8px',
+  borderRadius: 8,
+  backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  color: '#fbbf24',
+  fontSize: '0.78em',
+}
+
+const assetsWrapperStyle: React.CSSProperties = {
+  position: 'relative',
+}
+
+const assetsButtonStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: '2px 8px',
+  borderRadius: 8,
+  backgroundColor: 'rgba(167, 139, 250, 0.18)',
+  border: '1px solid rgba(167, 139, 250, 0.3)',
+  color: '#c084fc',
+  fontSize: '0.78em',
+  fontWeight: 600,
+  cursor: 'pointer',
+}
+
+const assetsIconStyle: React.CSSProperties = {
+  fontSize: '0.9em',
+}
+
+const assetsDropdownStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 'calc(100% + 6px)',
+  right: 0,
+  backgroundColor: '#0f172a',
+  border: '1px solid rgba(167, 139, 250, 0.3)',
+  borderRadius: 10,
+  padding: '8px 12px',
+  minWidth: 160,
+  zIndex: 100,
+  boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+}
+
+const assetsHeaderStyle: React.CSSProperties = {
+  fontSize: '0.72em',
+  color: '#94a3b8',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginBottom: 6,
+  fontWeight: 700,
+  borderBottom: '1px solid rgba(255,255,255,0.08)',
+  paddingBottom: 4,
+}
+
+const assetItemStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '4px 0',
+  fontSize: '0.8em',
+}
+
+const assetCodeStyle: React.CSSProperties = {
+  color: '#c084fc',
+  fontWeight: 600,
+  fontFamily: 'monospace',
+}
+
+const assetAmountStyle: React.CSSProperties = {
+  color: 'rgba(255, 255, 255, 0.9)',
+  fontFamily: 'monospace',
 }

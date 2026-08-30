@@ -4,7 +4,9 @@ import '@testing-library/jest-dom'
 // --localstorage-file flag. Provide a reliable in-memory shim for all tests.
 const localStorageStore: Record<string, string> = {}
 const localStorageMock: Storage = {
-  length: 0,
+  get length() {
+    return Object.keys(localStorageStore).length
+  },
   getItem: (key: string) => localStorageStore[key] ?? null,
   setItem: (key: string, value: string) => {
     localStorageStore[key] = value

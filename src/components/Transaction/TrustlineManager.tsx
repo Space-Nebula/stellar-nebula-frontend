@@ -205,6 +205,7 @@ export function TrustlineManager() {
             value={assetCode}
             onChange={(event) => setAssetCode(event.target.value.toUpperCase())}
             placeholder="GAME"
+            aria-label="Asset code for trustline"
             style={inputStyle}
           />
         </label>
@@ -215,6 +216,7 @@ export function TrustlineManager() {
             value={issuer}
             onChange={(event) => setIssuer(event.target.value.trim())}
             placeholder="G..."
+            aria-label="Issuer public key for trustline asset"
             style={inputStyle}
           />
         </label>
@@ -225,6 +227,7 @@ export function TrustlineManager() {
             value={limit}
             onChange={(event) => setLimit(event.target.value)}
             placeholder="Leave empty for the default maximum"
+            aria-label="Trustline limit amount"
             style={inputStyle}
           />
         </label>
@@ -236,6 +239,7 @@ export function TrustlineManager() {
           onClick={handleInspectTrustline}
           style={secondaryButtonStyle}
           disabled={isChecking}
+          aria-label={isChecking ? 'Inspecting trustline, please wait' : 'Inspect trustline status'}
         >
           {isChecking ? 'Inspecting…' : 'Inspect trustline'}
         </button>
@@ -244,6 +248,11 @@ export function TrustlineManager() {
           onClick={handlePrepareTrustline}
           style={primaryButtonStyle}
           disabled={isPreparing}
+          aria-label={
+            isPreparing
+              ? 'Preparing trustline transaction, please wait'
+              : 'Prepare trustline transaction'
+          }
         >
           {isPreparing ? 'Preparing…' : 'Prepare trustline'}
         </button>

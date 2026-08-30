@@ -1,7 +1,7 @@
 import { Suspense, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei'
-import * as THREE from 'three'
+import type * as THREE from 'three'
 
 interface ShipPreviewProps {
   shipModel?: string
@@ -86,8 +86,11 @@ export function ShipPreview({
 
         <div style={canvasContainerStyle}>
           {showComparison && (
-            <div style={comparisonToggleStyle}>
+            <div style={comparisonToggleStyle} role="group" aria-label="Ship preview comparison">
               <button
+                type="button"
+                aria-label="Show ship before upgrade"
+                aria-pressed={activeView === 'before'}
                 onClick={() => setActiveView('before')}
                 style={{
                   ...toggleButtonStyle,
@@ -97,6 +100,9 @@ export function ShipPreview({
                 Before
               </button>
               <button
+                type="button"
+                aria-label="Show ship after upgrade"
+                aria-pressed={activeView === 'after'}
                 onClick={() => setActiveView('after')}
                 style={{
                   ...toggleButtonStyle,

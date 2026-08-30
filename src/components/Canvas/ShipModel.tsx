@@ -1,9 +1,8 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
-import type { Group, Object3D } from 'three'
-import { LOD } from '@react-three/drei'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { Mesh, type Group, type Object3D } from 'three'
 import type { ShipClass } from '@/types/game'
 
 interface ShipModelProps {
@@ -20,6 +19,25 @@ const SHIP_MODEL_PATHS: Record<ShipClass, string> = {
   freighter: '/models/ships/freighter.gltf',
   warship: '/models/ships/warship.gltf',
   explorer: '/models/ships/explorer.gltf',
+}
+
+// Single shared loader instance - GLTFLoader is stateless between load() calls.
+const gltfLoader = new GLTFLoader()
+
+// Cache in-flight/completed loads by model path so multiple ShipModel
+// instances of the same class (see NebulaScene) don't each issue their own
+// network request for the same .gltf file.
+const gltfCache = new Map<string, Promise<GLTF>>()
+
+function loadShipModel(path: string): Promise<GLTF> {
+  const cached = gltfCache.get(path)
+  if (cached) return cached
+
+  const promise = new Promise<GLTF>((resolve, reject) => {
+    gltfLoader.load(path, resolve, undefined, reject)
+  })
+  gltfCache.set(path, promise)
+  return promise
 }
 
 // Fallback geometry for when models aren't available
@@ -43,7 +61,11 @@ function FallbackShip({ shipClass }: { shipClass: ShipClass }) {
     <group ref={meshRef}>
       <mesh>
         <coneGeometry args={[0.3, 1.2, 8]} />
-        <meshStandardMaterial color={colors[shipClass]} emissive={colors[shipClass]} emissiveIntensity={0.3} />
+        <meshStandardMaterial
+          color={colors[shipClass]}
+          emissive={colors[shipClass]}
+          emissiveIntensity={0.3}
+        />
       </mesh>
       <mesh position={[0, 0.4, 0]}>
         <sphereGeometry args={[0.15, 16, 16]} />
@@ -53,32 +75,30 @@ function FallbackShip({ shipClass }: { shipClass: ShipClass }) {
   )
 }
 
-function LoadedShip({ 
-  model, 
-  autoRotate = true, 
+function LoadedShip({
+  model,
+  scale = 1,
+  autoRotate = true,
   rotationSpeed = 0.5,
-  scale = 1 
-}: { 
+}: {
   model: GLTF
+  scale?: number
   autoRotate?: boolean
   rotationSpeed?: number
-  scale?: number
 }) {
   const groupRef = useRef<Group>(null)
-  const [clonedScene, setClonedScene] = useState<Object3D | null>(null)
 
-  useEffect(() => {
-    if (model.scene) {
-      const cloned = model.scene.clone()
-      cloned.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true
-          child.receiveShadow = true
-        }
-      })
-      setClonedScene(cloned)
-    }
-  }, [model])
+  const clonedScene = useMemo(() => {
+    if (!model.scene) return null
+    const cloned = model.scene.clone()
+    cloned.traverse((child: Object3D) => {
+      if (child instanceof Mesh) {
+        child.castShadow = true
+        child.receiveShadow = true
+      }
+    })
+    return cloned
+  }, [model.scene])
 
   useFrame((_, delta) => {
     if (groupRef.current && autoRotate) {
@@ -95,6 +115,11 @@ function LoadedShip({
   )
 }
 
+/**
+ * Renders a ship's GLTF model, with an automatic procedural fallback while
+ * loading or if the asset for `shipClass` is unavailable (see
+ * public/models/ships/README.md for the expected filenames).
+ */
 export function ShipModel({
   shipClass,
   position = [0, 0, 0],
@@ -106,38 +131,31 @@ export function ShipModel({
   const [gltf, setGltf] = useState<GLTF | null>(null)
   const [error, setError] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
+  const modelPath = useMemo(() => SHIP_MODEL_PATHS[shipClass], [shipClass])
 
   useEffect(() => {
-    setLoading(true)
-    setError(false)
+    let cancelled = false
 
-    const loader = new GLTFLoader()
-    const modelPath = SHIP_MODEL_PATHS[shipClass]
-
-    loader.load(
-      modelPath,
-      (loadedGltf) => {
+    loadShipModel(modelPath)
+      .then((loadedGltf) => {
+        if (cancelled) return
         setGltf(loadedGltf)
+        setError(false)
         setLoading(false)
-      },
-      undefined,
-      (err) => {
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
         console.warn(`Failed to load ship model for ${shipClass}:`, err)
         setError(true)
         setLoading(false)
-      }
-    )
-  }, [shipClass])
+      })
 
-  if (loading) {
-    return (
-      <group position={position}>
-        <FallbackShip shipClass={shipClass} />
-      </group>
-    )
-  }
+    return () => {
+      cancelled = true
+    }
+  }, [shipClass, modelPath])
 
-  if (error || !gltf) {
+  if (loading || error || !gltf) {
     return (
       <group position={position}>
         <FallbackShip shipClass={shipClass} />
@@ -149,24 +167,24 @@ export function ShipModel({
     // Skip LOD in performance mode
     return (
       <group position={position}>
-        <LoadedShip model={gltf} autoRotate={autoRotate} rotationSpeed={rotationSpeed} scale={scale} />
+        <LoadedShip
+          model={gltf}
+          autoRotate={autoRotate}
+          rotationSpeed={rotationSpeed}
+          scale={scale}
+        />
       </group>
     )
   }
 
   return (
     <group position={position}>
-      <LOD>
-        <LOD.Mesh distance={[0, 5]}>
-          <LoadedShip model={gltf} autoRotate={autoRotate} rotationSpeed={rotationSpeed} scale={scale} />
-        </LOD.Mesh>
-        <LOD.Mesh distance={[5, 15]}>
-          <LoadedShip model={gltf} autoRotate={autoRotate} rotationSpeed={rotationSpeed} scale={scale * 0.8} />
-        </LOD.Mesh>
-        <LOD.Mesh distance={[15, 50]}>
-          <FallbackShip shipClass={shipClass} />
-        </LOD.Mesh>
-      </LOD>
+      <LoadedShip
+        model={gltf}
+        autoRotate={autoRotate}
+        rotationSpeed={rotationSpeed}
+        scale={scale}
+      />
     </group>
   )
 }

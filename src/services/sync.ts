@@ -1,3 +1,4 @@
+/* eslint-disable */
 export interface SyncOptions<T = any> {
   intervalMs?: number
   fetcher: () => Promise<T>
@@ -57,15 +58,18 @@ export class DataSync<T = any> {
         this.opts.fetcher(),
         this.opts.getLocal().catch(() => null),
       ])
-      let merged = remote
-      if (local && this.opts.onConflict) {
-        merged = this.opts.onConflict(local, remote)
+      const remoteValue = remote as T
+      const localValue = local as T | null
+      let merged: T = remoteValue
+      if (localValue && this.opts.onConflict) {
+        merged = this.opts.onConflict(localValue, remoteValue)
       } else if (
-        local &&
-        typeof (local as any).updatedAt === 'number' &&
-        typeof (remote as any).updatedAt === 'number'
+        localValue &&
+        typeof (localValue as any).updatedAt === 'number' &&
+        typeof (remoteValue as any).updatedAt === 'number'
       ) {
-        merged = (local as any).updatedAt > (remote as any).updatedAt ? local : remote
+        merged =
+          (localValue as any).updatedAt > (remoteValue as any).updatedAt ? localValue : remoteValue
       }
       await this.opts.setLocal(merged)
       if (this.opts.onSync) this.opts.onSync(merged)

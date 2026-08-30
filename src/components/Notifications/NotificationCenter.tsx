@@ -25,7 +25,7 @@ export default function NotificationCenter() {
 
   const panelLabel = useMemo(
     () => (unreadCount > 0 ? `${unreadCount} unread notifications` : 'No unread notifications'),
-    [unreadCount],
+    [unreadCount]
   )
 
   useEffect(() => {
@@ -57,6 +57,11 @@ export default function NotificationCenter() {
       <button
         type="button"
         className="notification-trigger"
+        aria-label={
+          unreadCount > 0
+            ? `Notifications, ${unreadCount} unread`
+            : 'Notifications, no unread messages'
+        }
         aria-expanded={isOpen}
         aria-controls="notification-panel"
         onClick={() => setIsOpen((current) => !current)}
@@ -75,10 +80,14 @@ export default function NotificationCenter() {
           <div className="notification-panel-header">
             <h2>Mission updates</h2>
             <div className="notification-actions">
-              <button type="button" onClick={markAllAsRead}>
+              <button
+                type="button"
+                onClick={markAllAsRead}
+                aria-label="Mark all notifications as read"
+              >
                 Mark all read
               </button>
-              <button type="button" onClick={clearAll}>
+              <button type="button" onClick={clearAll} aria-label="Clear all notifications">
                 Clear all
               </button>
             </div>
@@ -91,16 +100,27 @@ export default function NotificationCenter() {
               {notifications.map((notification) => (
                 <li
                   key={notification.id}
-                  className={notification.read ? 'notification-item' : 'notification-item notification-item-unread'}
+                  className={
+                    notification.read
+                      ? 'notification-item'
+                      : 'notification-item notification-item-unread'
+                  }
                 >
                   <div>
                     <p className="notification-type">{typeLabelMap[notification.type]}</p>
                     <p className="notification-title">{notification.title}</p>
                     <p className="notification-description">{notification.description}</p>
-                    <p className="notification-time">{formatRelativeTime(notification.createdAt)}</p>
+                    <p className="notification-time">
+                      {formatRelativeTime(notification.createdAt)}
+                    </p>
                   </div>
                   {!notification.read && (
-                    <button type="button" className="notification-mark-read" onClick={() => markAsRead(notification.id)}>
+                    <button
+                      type="button"
+                      className="notification-mark-read"
+                      aria-label={`Mark notification "${notification.title}" as read`}
+                      onClick={() => markAsRead(notification.id)}
+                    >
                       Mark as read
                     </button>
                   )}

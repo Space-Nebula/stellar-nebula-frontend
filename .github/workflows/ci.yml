@@ -41,6 +41,26 @@ jobs:
       - name: Type check
         run: npx tsc -b --noEmit
 
+  dependency-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -95,6 +115,53 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Size Limit — budgets per chunk
+        uses: andresz1/size-limit-action@v1.8.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_step: install
+
+      - name: Bundle Analysis — track over time & fail on +10%
+        run: node scripts/bundle-analysis.mjs
+        # Fails the job if any chunk grows >10% vs baseline
+
+      - name: Upload bundle visualization
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: |
+            stats.html
+            stats.json
+            bundle-report.json
+            bundle-report.md
+            .bundle-baseline.json
+          if-no-files-found: warn
+
+      - name: Comment bundle report on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '📦 **Bundle Analysis**\n\n';
+            try {
+              const report = fs.readFileSync('bundle-report.md', 'utf8');
+              body += report.slice(0, 60000);
+              body += '\n\n*Visualization: `stats.html` in bundle-analysis artifact*';
+            } catch (e) {
+              body += 'No bundle report generated.';
+            }
+            // Only comment if report exists
+            if (body.length > 50) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }
+
       - name: Upload build artifact
         if: always()
         uses: actions/upload-pages-artifact@v3
@@ -103,7 +170,7 @@ jobs:
 
   deploy-preview:
     if: github.event_name == 'pull_request'
-    needs: [lint-and-typecheck, test, build]
+    needs: [lint-and-typecheck, dependency-scan, test, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

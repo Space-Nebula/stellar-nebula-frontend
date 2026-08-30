@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react'
-import { useResourceStore, type ResourceInventory, type ResourceType } from '../../store'
+import {
+  RESOURCE_TYPES,
+  useResourceStore,
+  type ResourceInventory,
+  type ResourceType,
+} from '../../store'
 
 type InventoryFilter = 'all' | 'stocked' | 'low' | 'empty'
 type InventorySort = 'amount-desc' | 'amount-asc' | 'name'
@@ -36,6 +41,30 @@ const RESOURCE_META: Record<ResourceType, ResourceMeta> = {
     description: 'Rare dust used for advanced calibration and experimental systems.',
     accent: 'linear-gradient(135deg, rgba(192, 132, 252, 0.95), rgba(139, 92, 246, 0.55))',
   },
+  nebulite: {
+    label: 'Nebulite',
+    shortLabel: 'NB',
+    description: 'Crystallized nebula yield collected from active scan points.',
+    accent: 'linear-gradient(135deg, rgba(103, 232, 249, 0.95), rgba(14, 165, 233, 0.55))',
+  },
+  stellarium: {
+    label: 'Stellarium',
+    shortLabel: 'ST',
+    description: 'Volatile stellar residue used in high-output modules.',
+    accent: 'linear-gradient(135deg, rgba(252, 211, 77, 0.95), rgba(245, 158, 11, 0.55))',
+  },
+  voidcrystal: {
+    label: 'Voidcrystal',
+    shortLabel: 'VC',
+    description: 'Dense anomaly crystal recovered during precision scans.',
+    accent: 'linear-gradient(135deg, rgba(244, 114, 182, 0.95), rgba(219, 39, 119, 0.55))',
+  },
+  darkMatter: {
+    label: 'Dark Matter',
+    shortLabel: 'DM',
+    description: 'Rare trace matter found only in unstable deep-space pockets.',
+    accent: 'linear-gradient(135deg, rgba(167, 139, 250, 0.95), rgba(79, 70, 229, 0.55))',
+  },
 }
 
 const FILTERS: Array<{ label: string; value: InventoryFilter }> = [
@@ -57,9 +86,14 @@ interface InventoryProps {
   title?: string
 }
 
-export function Inventory({ inventory: inventoryProp, compact = false, title = 'Resource Inventory' }: InventoryProps) {
+export function Inventory({
+  inventory: inventoryProp,
+  compact = false,
+  title = 'Resource Inventory',
+}: InventoryProps) {
   const storeInventory = useResourceStore((state) => state.inventory)
   const optimisticTransactions = useResourceStore((state) => state.optimisticTransactions)
+  const lastHarvest = useResourceStore((state) => state.lastHarvest)
   const inventory = inventoryProp ?? storeInventory
   const [filter, setFilter] = useState<InventoryFilter>('all')
   const [sortBy, setSortBy] = useState<InventorySort>('amount-desc')
@@ -80,7 +114,9 @@ export function Inventory({ inventory: inventoryProp, compact = false, title = '
   )
 
   const rows = useMemo(() => {
-    const entries = Object.entries(inventory) as Array<[ResourceType, number]>
+    const entries = RESOURCE_TYPES.map(
+      (resource) => [resource, inventory[resource] ?? 0] as [ResourceType, number]
+    )
 
     const filtered = entries.filter(([, amount]) => {
       switch (filter) {
@@ -109,10 +145,7 @@ export function Inventory({ inventory: inventoryProp, compact = false, title = '
     return filtered
   }, [filter, inventory, sortBy])
 
-  const totalUnits = useMemo(
-    () => rows.reduce((sum, [, amount]) => sum + amount, 0),
-    [rows]
-  )
+  const totalUnits = useMemo(() => rows.reduce((sum, [, amount]) => sum + amount, 0), [rows])
 
   return (
     <section className={`inventory-panel ${compact ? 'inventory-panel-compact' : ''}`}>
@@ -133,6 +166,8 @@ export function Inventory({ inventory: inventoryProp, compact = false, title = '
             <button
               key={item.value}
               type="button"
+              aria-label={`Filter resources by ${item.label}`}
+              aria-pressed={filter === item.value}
               className={filter === item.value ? 'segmented-button is-active' : 'segmented-button'}
               onClick={() => setFilter(item.value)}
             >
@@ -143,7 +178,11 @@ export function Inventory({ inventory: inventoryProp, compact = false, title = '
 
         <label className="sort-control">
           <span>Sort</span>
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as InventorySort)}>
+          <select
+            aria-label="Sort resources"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as InventorySort)}
+          >
             {SORTS.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
@@ -152,6 +191,15 @@ export function Inventory({ inventory: inventoryProp, compact = false, title = '
           </select>
         </label>
       </div>
+
+      {lastHarvest && !compact && (
+        <div className="harvest-banner" role="status">
+          <span>Latest harvest</span>
+          <strong>
+            +{lastHarvest.amount} {RESOURCE_META[lastHarvest.resourceType].label}
+          </strong>
+        </div>
+      )}
 
       <div className="inventory-grid">
         {rows.map(([resource, amount]) => {

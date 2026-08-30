@@ -1,8 +1,10 @@
 import { useRef, useState, useCallback } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import type { Mesh } from 'three'
-import type { ResourceType } from '@/types/game'
-import * as THREE from 'three'
+import { DoubleSide } from 'three'
+import type { ResourceType, RarityTier } from '@/types/game'
+import { getRarityColor, getRarityLabel } from '@/utils/rarity'
 
 interface ScanPointData {
   id: string
@@ -11,12 +13,14 @@ interface ScanPointData {
   resourceAmount: number
   color: string
   size: number
+  rarity?: RarityTier
 }
 
 interface InteractiveScanPointProps {
   data: ScanPointData
   onScan?: (pointId: string, resourceType: ResourceType, amount: number) => void
   cooldown?: number
+  remainingSeconds?: number
   isScanning?: boolean
 }
 
@@ -27,11 +31,12 @@ const RESOURCE_COLORS: Record<ResourceType, string> = {
   darkMatter: '#a78bfa',
 }
 
-export function InteractiveScanPoint({ 
-  data, 
-  onScan, 
+export function InteractiveScanPoint({
+  data,
+  onScan,
   cooldown = 0,
-  isScanning = false 
+  remainingSeconds = 0,
+  isScanning = false,
 }: InteractiveScanPointProps) {
   const meshRef = useRef<Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -46,13 +51,16 @@ export function InteractiveScanPoint({
     setHovered(false)
   }, [])
 
-  const handleClick = useCallback((event: THREE.Event) => {
-    event.stopPropagation()
-    
-    if (cooldown <= 0 && !isScanning && onScan) {
-      onScan(data.id, data.resourceType, data.resourceAmount)
-    }
-  }, [cooldown, isScanning, onScan, data])
+  const handleClick = useCallback(
+    (event: ThreeEvent<MouseEvent>) => {
+      event.stopPropagation()
+
+      if (cooldown <= 0 && !isScanning && onScan) {
+        onScan(data.id, data.resourceType, data.resourceAmount)
+      }
+    },
+    [cooldown, isScanning, onScan, data]
+  )
 
   // Pulse animation
   useFrame(() => {
@@ -74,8 +82,8 @@ export function InteractiveScanPoint({
 
   const isOnCooldown = cooldown > 0
   const canInteract = !isOnCooldown && !isScanning
-  const currentColor = isOnCooldown ? '#4b5563' : (hovered ? '#ffffff' : data.color)
-  const emissiveIntensity = hovered ? 0.8 : (isOnCooldown ? 0.1 : 0.5)
+  const currentColor = isOnCooldown ? '#4b5563' : hovered ? '#ffffff' : data.color
+  const emissiveIntensity = hovered ? 0.8 : isOnCooldown ? 0.1 : 0.5
 
   return (
     <mesh
@@ -94,17 +102,12 @@ export function InteractiveScanPoint({
         transparent
         opacity={isOnCooldown ? 0.4 : 0.9}
       />
-      
+
       {/* Glow effect when hovered */}
       {hovered && canInteract && (
         <mesh scale={1.5}>
           <sphereGeometry args={[data.size, 16, 16]} />
-          <meshBasicMaterial
-            color={currentColor}
-            transparent
-            opacity={0.2}
-            toneMapped={false}
-          />
+          <meshBasicMaterial color={currentColor} transparent opacity={0.2} toneMapped={false} />
         </mesh>
       )}
 
@@ -112,26 +115,61 @@ export function InteractiveScanPoint({
       {isOnCooldown && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[data.size * 1.2, data.size * 1.4, 32]} />
-          <meshBasicMaterial
-            color="#4b5563"
-            transparent
-            opacity={0.6}
-            side={THREE.DoubleSide}
-          />
+          <meshBasicMaterial color="#4b5563" transparent opacity={0.6} side={DoubleSide} />
         </mesh>
+      )}
+
+      {/* Countdown timer */}
+      {isOnCooldown && remainingSeconds > 0 && (
+        <Html position={[0, data.size * 2.5, 0]} center distanceFactor={8}>
+          <div
+            style={{
+              background: 'rgba(0, 0, 0, 0.75)',
+              color: '#f87171',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: '4px',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              fontFamily: 'monospace',
+            }}
+          >
+            {remainingSeconds}s
+          </div>
+        </Html>
       )}
 
       {/* Scanning indicator */}
       {isScanning && (
         <mesh scale={1.2}>
           <sphereGeometry args={[data.size, 16, 16]} />
-          <meshBasicMaterial
-            color="#22c55e"
-            transparent
-            opacity={0.5}
-            toneMapped={false}
-          />
+          <meshBasicMaterial color="#22c55e" transparent opacity={0.5} toneMapped={false} />
         </mesh>
+      )}
+
+      {/* Rarity badge */}
+      {data.rarity && canInteract && !isScanning && (
+        <Html position={[0, -data.size * 2.5, 0]} center distanceFactor={8}>
+          <div
+            style={{
+              background: 'rgba(0, 0, 0, 0.75)',
+              color: getRarityColor(data.rarity),
+              fontSize: '9px',
+              fontWeight: 700,
+              padding: '1px 4px',
+              borderRadius: '3px',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}
+          >
+            {getRarityLabel(data.rarity)}
+          </div>
+        </Html>
       )}
     </mesh>
   )
@@ -140,13 +178,17 @@ export function InteractiveScanPoint({
 interface ScanPointsProps {
   onScan?: (pointId: string, resourceType: ResourceType, amount: number) => void
   cooldowns?: Record<string, number>
+  remainingSecondsMap?: Record<string, number>
   scanningPoints?: Set<string>
+  rarityMap?: Record<string, RarityTier>
 }
 
-export function InteractiveScanPoints({ 
-  onScan, 
+export function InteractiveScanPoints({
+  onScan,
   cooldowns = {},
-  scanningPoints = new Set()
+  remainingSecondsMap = {},
+  scanningPoints = new Set(),
+  rarityMap = {},
 }: ScanPointsProps) {
   const scanPointsData: ScanPointData[] = [
     {
@@ -156,6 +198,7 @@ export function InteractiveScanPoints({
       resourceAmount: 50,
       color: RESOURCE_COLORS.nebulite,
       size: 0.06,
+      rarity: rarityMap['scan-1'],
     },
     {
       id: 'scan-2',
@@ -164,6 +207,7 @@ export function InteractiveScanPoints({
       resourceAmount: 30,
       color: RESOURCE_COLORS.stellarium,
       size: 0.05,
+      rarity: rarityMap['scan-2'],
     },
     {
       id: 'scan-3',
@@ -172,6 +216,7 @@ export function InteractiveScanPoints({
       resourceAmount: 40,
       color: RESOURCE_COLORS.voidcrystal,
       size: 0.055,
+      rarity: rarityMap['scan-3'],
     },
     {
       id: 'scan-4',
@@ -180,6 +225,7 @@ export function InteractiveScanPoints({
       resourceAmount: 25,
       color: RESOURCE_COLORS.darkMatter,
       size: 0.045,
+      rarity: rarityMap['scan-4'],
     },
   ]
 
@@ -191,6 +237,7 @@ export function InteractiveScanPoints({
           data={point}
           onScan={onScan}
           cooldown={cooldowns[point.id] || 0}
+          remainingSeconds={remainingSecondsMap[point.id] || 0}
           isScanning={scanningPoints.has(point.id)}
         />
       ))}
