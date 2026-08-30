@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { resourceStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type ResourceType =
   | 'credits'
@@ -516,6 +517,19 @@ export const useResourceStore = create<ResourceStore>()(
           optimisticTransactions: current.optimisticTransactions,
         }
       },
+      migrate: createVersionedMigrate('resourceStore', RESOURCE_STORE_SCHEMA_VERSION, (state) => {
+        const persisted = state as Partial<ResourceState> | undefined
+        return {
+          ...initialResourceState,
+          ...persisted,
+          inventory: normalizeInventory(persisted?.inventory),
+          harvested: normalizeHarvested(persisted?.harvested),
+          harvestLog: normalizeHarvestLog(persisted?.harvestLog),
+          harvestHistory: normalizeHarvestHistory(persisted?.harvestHistory),
+          lastHarvest: persisted?.lastHarvest ?? null,
+          optimisticTransactions: [],
+        }
+      }),
     }
   )
 )

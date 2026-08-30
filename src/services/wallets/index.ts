@@ -13,6 +13,15 @@ export {
 } from './albedo'
 
 export {
+  isWalletConnectAvailable,
+  connectWalletConnect,
+  signTransactionWithWalletConnect,
+  getWalletConnectNetwork,
+  disconnectWalletConnect,
+  loadWalletConnectSession,
+} from './walletconnect'
+
+export {
   validateNetworkMatch,
   getNetworkMismatchMessage,
   supportsNetworkSwitching,

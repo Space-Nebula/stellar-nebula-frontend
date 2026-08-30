@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, devtools, persist } from 'zustand/middleware'
 import { gameStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type GamePhase = 'loading' | 'menu' | 'playing' | 'paused' | 'gameover'
 
@@ -336,6 +337,15 @@ export const useGameStore = create<GameStore>()(
           optimisticOperations: current.optimisticOperations ?? [],
         }
       },
+      migrate: createVersionedMigrate('gameStore', GAME_STORE_SCHEMA_VERSION, (state) => {
+        const persisted = state as Partial<GameState> | undefined
+        return {
+          ...initialGameState,
+          ...persisted,
+          activeOperation: null,
+          optimisticOperations: [],
+        }
+      }),
     }
   )
 )
