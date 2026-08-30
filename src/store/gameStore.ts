@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, devtools, persist } from 'zustand/middleware'
 import { gameStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type GamePhase = 'loading' | 'menu' | 'playing' | 'paused' | 'gameover'
 

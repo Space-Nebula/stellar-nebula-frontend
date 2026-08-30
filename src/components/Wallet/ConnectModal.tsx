@@ -25,6 +25,12 @@ const WALLET_OPTIONS: WalletOption[] = [
     description: 'Web-based wallet — no extension required',
     icon: '🌐',
   },
+  {
+    type: 'walletconnect',
+    name: 'WalletConnect',
+    description: 'Connect mobile wallets via QR code',
+    icon: '📱',
+  },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -35,7 +41,7 @@ interface ConnectModalProps {
 }
 
 export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
-  const { connect, isLoading, error, isFreighterInstalled, isAlbedoAvailable, clearError } =
+  const { connect, isLoading, error, isFreighterInstalled, isAlbedoAvailable, isWalletConnectAvailable, clearError } =
     useWallet()
 
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -91,9 +97,10 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
     (type: WalletType): boolean => {
       if (type === 'freighter') return isFreighterInstalled
       if (type === 'albedo') return isAlbedoAvailable
+      if (type === 'walletconnect') return isWalletConnectAvailable
       return false
     },
-    [isFreighterInstalled, isAlbedoAvailable]
+    [isFreighterInstalled, isAlbedoAvailable, isWalletConnectAvailable]
   )
 
   if (!isOpen) return null

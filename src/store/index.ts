@@ -110,3 +110,12 @@ export type {
   StorePerformanceConfig,
   StorePerformanceMetrics,
 } from './storePerformanceMonitor'
+
+export {
+  getAppVersion,
+  setAppVersion,
+  getMigrationLog,
+  clearMigrationData,
+  createVersionedMigrate,
+  type MigrationLogEntry,
+} from './stateMigration'

@@ -72,6 +72,35 @@ export function handleWalletConnectionError(error: unknown, walletType: WalletTy
     }
   }
 
+  if (walletType === 'walletconnect') {
+    if (lowerMessage.includes('project') && lowerMessage.includes('id')) {
+      return {
+        code: 'WALLETCONNECT_PROJECT_ID_MISSING',
+        message: 'WalletConnect project ID is not configured',
+        helpText: 'Set VITE_WALLETCONNECT_PROJECT_ID in your environment variables.',
+        isRetryable: false,
+      }
+    }
+
+    if (lowerMessage.includes('pairing') || lowerMessage.includes('session')) {
+      return {
+        code: 'WALLETCONNECT_PAIRING_FAILED',
+        message: 'Failed to establish WalletConnect session',
+        helpText: 'Ensure your mobile wallet supports WalletConnect v2 and try again.',
+        isRetryable: true,
+      }
+    }
+
+    if (lowerMessage.includes('user') && lowerMessage.includes('reject')) {
+      return {
+        code: 'USER_REJECTED',
+        message: 'You rejected the WalletConnect connection request',
+        helpText: 'Approve the connection in your mobile wallet to continue',
+        isRetryable: true,
+      }
+    }
+  }
+
   if (lowerMessage.includes('public key') || lowerMessage.includes('pubkey')) {
     return {
       code: 'INVALID_KEY',
