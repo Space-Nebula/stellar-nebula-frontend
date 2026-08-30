@@ -119,6 +119,13 @@ export function startContractEventListener(options: ContractEventListenerOptions
   let stopped = false
   let latestLedger = 0
   let pollingHandle: ReturnType<typeof setInterval> | null = null
+  // Horizon's SSE connection drops periodically; reconnect with exponential
+  // backoff so the stream heals on its own instead of silently going dead.
+  const reconnectBaseDelayMs = 1000
+  const reconnectMaxDelayMs = 30_000
+  let reconnectAttempt = 0
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let closeStream: (() => void) | null = null
 
   const fetchEvents = async () => {
     if (stopped) return
@@ -168,47 +175,81 @@ export function startContractEventListener(options: ContractEventListenerOptions
     }
   }
 
-  const stream = (
-    horizon as unknown as {
-      ledgers: () => {
-        stream: (handlers: {
-          onmessage: (ledger: Record<string, unknown>) => void
-          onerror: (error: unknown) => void
-        }) => { close?: () => void }
-      }
-    }
-  )
-    .ledgers()
-    .stream({
-      onmessage: (ledger) => {
-        const nextLedger =
-          typeof ledger.sequence === 'number'
-            ? ledger.sequence
-            : typeof ledger.sequence === 'string'
-              ? Number(ledger.sequence)
-              : typeof ledger.ledger_seq === 'number'
-                ? ledger.ledger_seq
-                : 0
+  const openStream = () => {
+    if (stopped) return
 
-        latestLedger = Math.max(latestLedger, nextLedger)
-        void fetchEvents()
-      },
-      onerror: (error) => {
-        const wrapped = error instanceof Error ? error : new Error('Horizon streaming failed')
-        options.onError?.(wrapped)
-      },
-    })
+    const stream = (
+      horizon as unknown as {
+        ledgers: () => {
+          stream: (handlers: {
+            onmessage: (ledger: Record<string, unknown>) => void
+            onerror: (error: unknown) => void
+          }) => { close?: () => void }
+        }
+      }
+    )
+      .ledgers()
+      .stream({
+        onmessage: (ledger) => {
+          // A successful message means the connection is healthy again.
+          reconnectAttempt = 0
+          const nextLedger =
+            typeof ledger.sequence === 'number'
+              ? ledger.sequence
+              : typeof ledger.sequence === 'string'
+                ? Number(ledger.sequence)
+                : typeof ledger.ledger_seq === 'number'
+                  ? ledger.ledger_seq
+                  : 0
+
+          latestLedger = Math.max(latestLedger, nextLedger)
+          void fetchEvents()
+        },
+        onerror: (error) => {
+          const wrapped = error instanceof Error ? error : new Error('Horizon streaming failed')
+          options.onError?.(wrapped)
+
+          // Stream died (network drop, idle disconnect, or rebalance). Close the
+          // underlying connection and schedule a reconnect with backoff.
+          try {
+            stream.close?.()
+          } catch {
+            // ignore close errors during reconnect
+          }
+          scheduleReconnect()
+        },
+      })
+
+    closeStream = stream.close ?? null
+  }
+
+  const scheduleReconnect = () => {
+    if (stopped || reconnectTimer) return
+
+    const delay = Math.min(
+      reconnectMaxDelayMs,
+      reconnectBaseDelayMs * 2 ** reconnectAttempt
+    )
+    reconnectAttempt += 1
+
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      openStream()
+    }, delay)
+  }
 
   pollingHandle = setInterval(() => {
     void fetchEvents()
   }, 8_000)
 
+  openStream()
   void fetchEvents()
 
   return () => {
     stopped = true
     if (pollingHandle) clearInterval(pollingHandle)
-    stream.close?.()
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+    closeStream?.()
   }
 }
 
