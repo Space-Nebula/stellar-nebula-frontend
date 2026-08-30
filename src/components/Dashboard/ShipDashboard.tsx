@@ -3,6 +3,7 @@ import { Inventory } from '../Resources/Inventory'
 import { AchievementList } from '../Achievements/AchievementList'
 import { SHIP_UPGRADES, UpgradeModal, type ShipUpgradeOption } from '../Ship/UpgradeModal'
 import { TransactionHistory } from '../History/TransactionHistory'
+import { ConfirmModal, TransactionPreview } from '../Transaction'
 import { useShipUpgrade } from '../../hooks/contracts/useShipUpgrade'
 import { useWallet } from '../../contexts/WalletContext'
 import { trackEvent } from '../../services/analytics'
@@ -120,6 +121,13 @@ function ShipDashboard() {
   } = useResourceStore()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState<string | null>(null)
+  // Contract-path pre-sign review: the upgrade is built + simulated first so
+  // the player can verify the fee, resource cost, and expected outcome before
+  // the wallet signs anything.
+  const [pendingContractUpgrade, setPendingContractUpgrade] = useState<ShipUpgradeOption | null>(
+    null
+  )
+  const [isPreparingUpgrade, setIsPreparingUpgrade] = useState(false)
   const recordUpgradeCompleted = useAchievementStore((state) => state.recordUpgradeCompleted)
   const completeTutorialObjective = useTutorialStore((state) => state.completeObjective)
   const seededShips = useRef(false)
@@ -188,7 +196,6 @@ function ShipDashboard() {
     const changes = Object.fromEntries(
       Object.entries(upgrade.cost).map(([resource, amount]) => [resource, -(amount ?? 0)])
     ) as Partial<Record<ResourceType, number>>
-    const transactionId = applyOptimisticUpdate(`Upgrade: ${upgrade.name}`, changes)
     trackEvent('upgrade_started', {
       upgradeId: upgrade.id,
       shipModel: activeShip.model,
@@ -207,32 +214,27 @@ function ShipDashboard() {
     const useContractPath = walletState.isConnected && Boolean(upgradeContract.shipNFT)
 
     if (useContractPath) {
-      setUpgradeMessage(`${upgrade.name} is submitting its transaction on-chain…`)
-      const txHash = await upgradeContract.executeUpgrade()
-
-      if (txHash) {
-        upsertShip(upgradedShip)
-        confirmOptimisticUpdate(transactionId)
-        trackEvent('upgrade_confirmed', {
-          upgradeId: upgrade.id,
-          cargoDelta: upgrade.cargoDelta ?? 0,
-          crewDelta: upgrade.crewDelta ?? 0,
-          txHash,
-        })
-        setUpgradeMessage(`${upgrade.name} confirmed on-chain (${txHash.slice(0, 8)}).`)
-        setIsUpgradeOpen(false)
-      } else {
-        upsertShip(previousShip)
-        rollbackOptimisticUpdate(transactionId, upgradeContract.error ?? 'Contract upgrade failed')
-        trackEvent('upgrade_failed', {
-          upgradeId: upgrade.id,
-          reason: 'contract_error',
-        })
-        setUpgradeMessage(`${upgrade.name} failed and resource changes were rolled back.`)
+      // Phase 1 — build + simulate, surface the preview, and hand it to the
+      // player for review in the confirm modal. Nothing is signed yet and no
+      // optimistic update is applied: the actual submission does that.
+      setIsPreparingUpgrade(true)
+      try {
+        await upgradeContract.buildUpgradeTransaction()
+        setPendingContractUpgrade(upgrade)
+      } catch {
+        setUpgradeMessage(
+          `${upgrade.name} could not be simulated: ${
+            upgradeContract.error ?? 'unknown error'
+          }.`
+        )
+        return
+      } finally {
+        setIsPreparingUpgrade(false)
       }
       return
     }
 
+    const transactionId = applyOptimisticUpdate(`Upgrade: ${upgrade.name}`, changes)
     upsertShip(upgradedShip)
 
     setUpgradeMessage(`${upgrade.name} is pending transaction confirmation.`)
@@ -259,6 +261,53 @@ function ShipDashboard() {
         reason: error instanceof Error ? error.name || 'Error' : 'unknown',
       })
       upsertShip(previousShip)
+      setUpgradeMessage(`${upgrade.name} failed and resource changes were rolled back.`)
+    }
+  }
+
+  // Phase 2 — the player reviewed the simulation and confirmed. Now actually
+  // sign, submit, and reconcile the optimistic ship update.
+  const handleConfirmContractUpgrade = async () => {
+    if (!pendingContractUpgrade || !activeShip) return
+
+    const upgrade = pendingContractUpgrade
+    const previousShip = activeShip
+    const changes = Object.fromEntries(
+      Object.entries(upgrade.cost).map(([resource, amount]) => [resource, -(amount ?? 0)])
+    ) as Partial<Record<ResourceType, number>>
+    const transactionId = applyOptimisticUpdate(`Upgrade: ${upgrade.name}`, changes)
+
+    const upgradedShip = {
+      ...activeShip,
+      cargoCapacity: activeShip.cargoCapacity + (upgrade.cargoDelta ?? 0),
+      crewCapacity: activeShip.crewCapacity + (upgrade.crewDelta ?? 0),
+      status: upgrade.statusAfter ?? 'docked',
+      lastKnownSector: upgrade.sectorLabel ?? activeShip.lastKnownSector,
+    }
+
+    setPendingContractUpgrade(null)
+    setUpgradeMessage(`${upgrade.name} is submitting its transaction on-chain…`)
+
+    const txHash = await upgradeContract.executeUpgrade()
+
+    if (txHash) {
+      upsertShip(upgradedShip)
+      confirmOptimisticUpdate(transactionId)
+      trackEvent('upgrade_confirmed', {
+        upgradeId: upgrade.id,
+        cargoDelta: upgrade.cargoDelta ?? 0,
+        crewDelta: upgrade.crewDelta ?? 0,
+        txHash,
+      })
+      setUpgradeMessage(`${upgrade.name} confirmed on-chain (${txHash.slice(0, 8)}).`)
+      setIsUpgradeOpen(false)
+    } else {
+      upsertShip(previousShip)
+      rollbackOptimisticUpdate(transactionId, upgradeContract.error ?? 'Contract upgrade failed')
+      trackEvent('upgrade_failed', {
+        upgradeId: upgrade.id,
+        reason: 'contract_error',
+      })
       setUpgradeMessage(`${upgrade.name} failed and resource changes were rolled back.`)
     }
   }
@@ -398,6 +447,62 @@ function ShipDashboard() {
         onClose={() => setIsUpgradeOpen(false)}
         onConfirm={handleApplyUpgrade}
       />
+
+      <ConfirmModal
+        isOpen={Boolean(pendingContractUpgrade)}
+        title={`Confirm ${pendingContractUpgrade?.name ?? 'upgrade'}`}
+        operationType="upgradeShip"
+        estimatedFee={upgradeContract.simulation
+          ? `${(Number(upgradeContract.simulation.minResourceFee) / 10_000_000).toFixed(7)} XLM`
+          : 'Estimating…'}
+        details={[
+          {
+            label: 'Resources consumed',
+            value: pendingContractUpgrade
+              ? Object.entries(pendingContractUpgrade.cost)
+                  .map(([name, amount]) => `${name}: ${amount}`)
+                  .join(', ')
+              : '',
+          },
+          {
+            label: 'Wallet',
+            value: walletState.publicKey
+              ? `${walletState.publicKey.slice(0, 6)}…${walletState.publicKey.slice(-6)}`
+              : 'Disconnected',
+          },
+        ]}
+        isSubmitting={isPreparingUpgrade}
+        confirmLabel="Review and sign"
+        onConfirm={handleConfirmContractUpgrade}
+        onCancel={() => setPendingContractUpgrade(null)}
+      >
+        {pendingContractUpgrade && (
+          <TransactionPreview
+            operationName="upgrade_ship"
+            feeStroops={upgradeContract.simulation?.minResourceFee ?? null}
+            simulation={upgradeContract.simulation}
+            simulationError={upgradeContract.error}
+            costs={
+              pendingContractUpgrade
+                ? Object.entries(pendingContractUpgrade.cost).map(([name, amount]) => ({
+                    label: name,
+                    amount: String(amount),
+                  }))
+                : []
+            }
+            outcomes={
+              upgradeContract.simulation?.value && typeof upgradeContract.simulation.value === 'object'
+                ? Object.entries(
+                    upgradeContract.simulation.value as Record<string, unknown>
+                  ).map(([key, value]) => ({
+                    label: key,
+                    value: typeof value === 'string' ? value : JSON.stringify(value),
+                  }))
+                : []
+            }
+          />
+        )}
+      </ConfirmModal>
 
       <section className="dashboard-history">
         <TransactionHistory

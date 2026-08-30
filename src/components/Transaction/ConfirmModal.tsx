@@ -17,6 +17,7 @@ export interface ConfirmModalProps {
   cancelLabel?: string
   onConfirm: () => void
   onCancel: () => void
+  children?: React.ReactNode
 }
 
 export function ConfirmModal({
@@ -31,6 +32,7 @@ export function ConfirmModal({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  children,
 }: ConfirmModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -87,6 +89,8 @@ export function ConfirmModal({
             </div>
           ))}
         </div>
+
+        {children}
 
         {error && (
           <div role="alert" style={errorBoxStyle}>

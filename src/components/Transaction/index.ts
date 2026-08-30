@@ -1,4 +1,5 @@
 export { ConfirmModal } from './ConfirmModal'
+export { TransactionPreview } from './TransactionPreview'
 export { TrustlineManager } from './TrustlineManager'
 export { ContractEventFeed } from './ContractEventFeed'
 export { GasPriceMonitor } from './GasPriceMonitor'
