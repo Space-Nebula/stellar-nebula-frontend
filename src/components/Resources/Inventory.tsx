@@ -166,6 +166,8 @@ export function Inventory({
             <button
               key={item.value}
               type="button"
+              aria-label={`Filter resources by ${item.label}`}
+              aria-pressed={filter === item.value}
               className={filter === item.value ? 'segmented-button is-active' : 'segmented-button'}
               onClick={() => setFilter(item.value)}
             >
@@ -177,6 +179,7 @@ export function Inventory({
         <label className="sort-control">
           <span>Sort</span>
           <select
+            aria-label="Sort resources"
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value as InventorySort)}
           >

@@ -198,6 +198,8 @@ export function UpgradeModal({
                 <button
                   key={upgrade.id}
                   type="button"
+                  aria-label={`Select upgrade: ${upgrade.name} - ${upgrade.description}`}
+                  aria-pressed={isSelected}
                   className={isSelected ? 'upgrade-choice is-selected' : 'upgrade-choice'}
                   onClick={() => setSelectedUpgradeId(upgrade.id)}
                 >
@@ -284,12 +286,22 @@ export function UpgradeModal({
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <button
+            type="button"
+            className="secondary-button"
+            aria-label="Cancel upgrade and close modal"
+            onClick={onClose}
+          >
             Cancel
           </button>
           <button
             type="button"
             className="primary-button"
+            aria-label={
+              disabled
+                ? `Cannot apply ${selectedUpgrade.name}: resources unavailable`
+                : `Apply upgrade: ${selectedUpgrade.name}`
+            }
             onClick={() => onConfirm(selectedUpgrade)}
             disabled={disabled}
           >

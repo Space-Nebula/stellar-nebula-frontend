@@ -80,6 +80,8 @@ function ShipCard({
     <button
       type="button"
       className={active ? 'ship-card is-active' : 'ship-card'}
+      aria-label={`Select ship ${ship.name}, ${ship.model}, status ${ship.status}${active ? ', currently selected' : ''}`}
+      aria-pressed={active}
       onClick={() => onSelect(ship.id)}
     >
       <div className="ship-card-top">
@@ -122,6 +124,7 @@ function ShipDashboard() {
     activeShipId,
     setShips,
     setActiveShip,
+    upsertShip,
     applyOptimisticShipUpdate,
     confirmOptimisticShipUpdate,
     rollbackOptimisticShipUpdate,
@@ -261,13 +264,12 @@ function ShipDashboard() {
         setPendingContractUpgrade(upgrade)
       } catch {
         setUpgradeMessage(
-          `${upgrade.name} could not be simulated: ${
-            upgradeContract.error ?? 'unknown error'
-          }.`
+          `${upgrade.name} could not be simulated: ${upgradeContract.error ?? 'unknown error'}.`
         )
         return
       } finally {
         setIsPreparingUpgrade(false)
+      }
       setUpgradeMessage(`${upgrade.name} is submitting on-chain…`)
       setIsUpgradeOpen(false)
 
@@ -310,8 +312,8 @@ function ShipDashboard() {
       return
     }
 
-    const transactionId = applyOptimisticUpdate(`Upgrade: ${upgrade.name}`, changes)
-    upsertShip(upgradedShip)
+    void applyOptimisticUpdate(`Upgrade: ${upgrade.name}`, changes)
+    upsertShip(upgradedShip as Ship)
 
     setUpgradeMessage(`${upgrade.name} is pending transaction confirmation.`)
     setUpgradeMessage(`${upgrade.name} is pending confirmation.`)
@@ -409,6 +411,11 @@ function ShipDashboard() {
           <button
             type="button"
             className="primary-button"
+            aria-label={
+              pendingUpgrade
+                ? 'Ship upgrade pending, cannot open upgrade bay'
+                : 'Open ship upgrade bay'
+            }
             onClick={() => setIsUpgradeOpen(true)}
             disabled={Boolean(pendingUpgrade)}
           >
@@ -533,9 +540,11 @@ function ShipDashboard() {
         isOpen={Boolean(pendingContractUpgrade)}
         title={`Confirm ${pendingContractUpgrade?.name ?? 'upgrade'}`}
         operationType="upgradeShip"
-        estimatedFee={upgradeContract.simulation
-          ? `${(Number(upgradeContract.simulation.minResourceFee) / 10_000_000).toFixed(7)} XLM`
-          : 'Estimating…'}
+        estimatedFee={
+          upgradeContract.simulation
+            ? `${(Number(upgradeContract.simulation.minResourceFee) / 10_000_000).toFixed(7)} XLM`
+            : 'Estimating…'
+        }
         details={[
           {
             label: 'Resources consumed',
@@ -572,13 +581,14 @@ function ShipDashboard() {
                 : []
             }
             outcomes={
-              upgradeContract.simulation?.value && typeof upgradeContract.simulation.value === 'object'
-                ? Object.entries(
-                    upgradeContract.simulation.value as Record<string, unknown>
-                  ).map(([key, value]) => ({
-                    label: key,
-                    value: typeof value === 'string' ? value : JSON.stringify(value),
-                  }))
+              upgradeContract.simulation?.value &&
+              typeof upgradeContract.simulation.value === 'object'
+                ? Object.entries(upgradeContract.simulation.value as Record<string, unknown>).map(
+                    ([key, value]) => ({
+                      label: key,
+                      value: typeof value === 'string' ? value : JSON.stringify(value),
+                    })
+                  )
                 : []
             }
           />

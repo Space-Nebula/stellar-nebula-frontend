@@ -155,7 +155,12 @@ export function TransactionHistory({
       )}
 
       <div style={actionsStyle}>
-        <button type="button" onClick={() => void loadPage(undefined, false)} style={buttonStyle}>
+        <button
+          type="button"
+          onClick={() => void loadPage(undefined, false)}
+          style={buttonStyle}
+          aria-label="Retry loading transaction history"
+        >
           Refresh
         </button>
         <button

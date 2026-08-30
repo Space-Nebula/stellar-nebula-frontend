@@ -86,8 +86,11 @@ export function ShipPreview({
 
         <div style={canvasContainerStyle}>
           {showComparison && (
-            <div style={comparisonToggleStyle}>
+            <div style={comparisonToggleStyle} role="group" aria-label="Ship preview comparison">
               <button
+                type="button"
+                aria-label="Show ship before upgrade"
+                aria-pressed={activeView === 'before'}
                 onClick={() => setActiveView('before')}
                 style={{
                   ...toggleButtonStyle,
@@ -97,6 +100,9 @@ export function ShipPreview({
                 Before
               </button>
               <button
+                type="button"
+                aria-label="Show ship after upgrade"
+                aria-pressed={activeView === 'after'}
                 onClick={() => setActiveView('after')}
                 style={{
                   ...toggleButtonStyle,

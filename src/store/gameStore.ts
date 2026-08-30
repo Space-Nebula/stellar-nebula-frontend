@@ -37,6 +37,9 @@ export interface GameState {
   scanCooldowns: ScanCooldown[]
   elapsedSeconds: number
   optimisticOperations: OptimisticGameOperation[]
+  lockedOperations: Record<string, boolean>
+  operationQueue: ActiveOperation[]
+  pendingState: boolean
 }
 
 export interface GameActions {
@@ -92,6 +95,9 @@ export const initialGameState: GameState = {
   scanCooldowns: [],
   elapsedSeconds: 0,
   optimisticOperations: [],
+  lockedOperations: {},
+  operationQueue: [],
+  pendingState: false,
 }
 
 function createOpId(prefix = 'op'): string {
@@ -101,7 +107,9 @@ function createOpId(prefix = 'op'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+const isDev =
+  typeof import.meta !== 'undefined' &&
+  (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== false
 
 export const useGameStore = create<GameStore>()(
   devtools(
@@ -197,155 +205,196 @@ export const useGameStore = create<GameStore>()(
             }
           }
 
-      startOptimisticOperation: (
-        operation,
-        label = `Operation: ${operation.type}`,
-        cooldownMs = DEFAULT_SCAN_COOLDOWN_MS
-      ) => {
-        const id = operation.id || createOpId()
-        const opWithId = { ...operation, id }
+          set({
+            lockedOperations: { ...lockedOperations, [operation.type]: true },
+            activeOperation: operation,
+            pendingState: true,
+          })
+          return { success: true }
+        },
 
-        set((state) => {
-          let updatedCooldowns = state.scanCooldowns
-          if (operation.type === 'scan' && operation.targetId) {
-            const readyAt = new Date(Date.now() + cooldownMs).toISOString()
-            const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === operation.targetId)
-            if (existing === -1) {
-              updatedCooldowns = [...state.scanCooldowns, { nebulaId: operation.targetId, readyAt }]
-            } else {
-              const copy = [...state.scanCooldowns]
-              copy[existing] = { nebulaId: operation.targetId, readyAt }
-              updatedCooldowns = copy
+        completeOperationWithLock: () => {
+          const { activeOperation, lockedOperations } = get()
+          if (!activeOperation) return null
+          const type = activeOperation.type
+          const updated = { ...lockedOperations }
+          delete updated[type]
+          set({
+            activeOperation: null,
+            lockedOperations: updated,
+            pendingState: Object.keys(updated).length > 0,
+          })
+          const queue = get().operationQueue
+          const next = queue.find((op) => op.type === type)
+          if (next) {
+            const remaining = queue.filter((op) => op.id !== next.id)
+            set({ operationQueue: remaining })
+            get().startOperationWithLock(next)
+          }
+          return activeOperation
+        },
+
+        hasOperationConflict: (type) => {
+          const { lockedOperations, activeOperation } = get()
+          return Boolean(
+            lockedOperations[type] || (activeOperation && activeOperation.type === type)
+          )
+        },
+
+        startOptimisticOperation: (
+          operation,
+          label = `Operation: ${operation.type}`,
+          cooldownMs = DEFAULT_SCAN_COOLDOWN_MS
+        ) => {
+          const id = operation.id || createOpId()
+          const opWithId = { ...operation, id }
+
+          set((state) => {
+            let updatedCooldowns = state.scanCooldowns
+            if (operation.type === 'scan' && operation.targetId) {
+              const readyAt = new Date(Date.now() + cooldownMs).toISOString()
+              const existing = state.scanCooldowns.findIndex(
+                (c) => c.nebulaId === operation.targetId
+              )
+              if (existing === -1) {
+                updatedCooldowns = [
+                  ...state.scanCooldowns,
+                  { nebulaId: operation.targetId, readyAt },
+                ]
+              } else {
+                const copy = [...state.scanCooldowns]
+                copy[existing] = { nebulaId: operation.targetId, readyAt }
+                updatedCooldowns = copy
+              }
             }
-          }
 
-          const optimisticOp: OptimisticGameOperation = {
-            id,
-            label,
-            operation: opWithId,
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-          }
+            const optimisticOp: OptimisticGameOperation = {
+              id,
+              label,
+              operation: opWithId,
+              status: 'pending',
+              createdAt: new Date().toISOString(),
+            }
 
-          return {
-            activeOperation: opWithId,
-            scanCooldowns: updatedCooldowns,
-            optimisticOperations: [optimisticOp, ...state.optimisticOperations],
-          }
-        })
+            return {
+              activeOperation: opWithId,
+              scanCooldowns: updatedCooldowns,
+              optimisticOperations: [optimisticOp, ...state.optimisticOperations],
+            }
+          })
 
-        return id
-      },
+          return id
+        },
 
-      confirmOperation: (operationId) =>
-        set((state) => ({
-          activeOperation: state.activeOperation?.id === operationId ? null : state.activeOperation,
-          optimisticOperations: state.optimisticOperations.map((op) =>
-            op.id === operationId
-              ? {
-                  ...op,
-                  status: 'confirmed' as const,
-                  completedAt: new Date().toISOString(),
-                }
-              : op
-          ),
-        })),
-
-      rollbackOperation: (operationId, error, removeCooldownNebulaId) =>
-        set((state) => {
-          let updatedCooldowns = state.scanCooldowns
-          const targetOp = state.optimisticOperations.find((op) => op.id === operationId)
-          const targetNebulaId = removeCooldownNebulaId ?? targetOp?.operation.targetId
-
-          if (targetNebulaId) {
-            updatedCooldowns = state.scanCooldowns.filter((c) => c.nebulaId !== targetNebulaId)
-          }
-
-          return {
+        confirmOperation: (operationId) =>
+          set((state) => ({
             activeOperation:
               state.activeOperation?.id === operationId ? null : state.activeOperation,
-            scanCooldowns: updatedCooldowns,
             optimisticOperations: state.optimisticOperations.map((op) =>
               op.id === operationId
                 ? {
                     ...op,
-                    status: 'failed' as const,
+                    status: 'confirmed' as const,
                     completedAt: new Date().toISOString(),
-                    error,
                   }
                 : op
             ),
+          })),
+
+        rollbackOperation: (operationId, error, removeCooldownNebulaId) =>
+          set((state) => {
+            let updatedCooldowns = state.scanCooldowns
+            const targetOp = state.optimisticOperations.find((op) => op.id === operationId)
+            const targetNebulaId = removeCooldownNebulaId ?? targetOp?.operation.targetId
+
+            if (targetNebulaId) {
+              updatedCooldowns = state.scanCooldowns.filter((c) => c.nebulaId !== targetNebulaId)
+            }
+
+            return {
+              activeOperation:
+                state.activeOperation?.id === operationId ? null : state.activeOperation,
+              scanCooldowns: updatedCooldowns,
+              optimisticOperations: state.optimisticOperations.map((op) =>
+                op.id === operationId
+                  ? {
+                      ...op,
+                      status: 'failed' as const,
+                      completedAt: new Date().toISOString(),
+                      error,
+                    }
+                  : op
+              ),
+            }
+          }),
+
+        isOperationPending: (operationId) => {
+          const { optimisticOperations } = get()
+          if (operationId) {
+            return optimisticOperations.some(
+              (op) => op.id === operationId && op.status === 'pending'
+            )
           }
+          return optimisticOperations.some((op) => op.status === 'pending')
+        },
+
+        addScanCooldown: (nebulaId, cooldownMs = DEFAULT_SCAN_COOLDOWN_MS) =>
+          set((state) => {
+            const readyAt = new Date(Date.now() + cooldownMs).toISOString()
+            const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === nebulaId)
+            if (existing === -1) {
+              return { scanCooldowns: [...state.scanCooldowns, { nebulaId, readyAt }] }
+            }
+            const updated = [...state.scanCooldowns]
+            updated[existing] = { nebulaId, readyAt }
+            return { scanCooldowns: updated }
+          }),
+
+        removeScanCooldown: (nebulaId) =>
+          set((state) => ({
+            scanCooldowns: state.scanCooldowns.filter((c) => c.nebulaId !== nebulaId),
+          })),
+
+        pruneExpiredCooldowns: () =>
+          set((state) => ({
+            scanCooldowns: state.scanCooldowns.filter(
+              (c) => Date.now() < new Date(c.readyAt).getTime()
+            ),
+          })),
+
+        isNebulaOnCooldown: (nebulaId) => {
+          const { scanCooldowns } = get()
+          const entry = scanCooldowns.find((c) => c.nebulaId === nebulaId)
+          if (!entry) return false
+          return Date.now() < new Date(entry.readyAt).getTime()
+        },
+
+        tickElapsed: (deltaSec) =>
+          set((state) => ({ elapsedSeconds: state.elapsedSeconds + deltaSec })),
+
+        resetGame: () => set(initialGameState),
+      }),
+      {
+        name: gameStoreStorageKey,
+        storage: createJSONStorage(() => localStorage),
+        version: GAME_STORE_SCHEMA_VERSION,
+        partialize: ({ phase, currentNebulaId, scanCooldowns, elapsedSeconds }) => ({
+          phase,
+          currentNebulaId,
+          scanCooldowns,
+          elapsedSeconds,
         }),
-
-      isOperationPending: (operationId) => {
-        const { optimisticOperations } = get()
-        if (operationId) {
-          return optimisticOperations.some((op) => op.id === operationId && op.status === 'pending')
-        }
-        return optimisticOperations.some((op) => op.status === 'pending')
-      },
-
-      addScanCooldown: (nebulaId, cooldownMs = DEFAULT_SCAN_COOLDOWN_MS) =>
-        set((state) => {
-          const readyAt = new Date(Date.now() + cooldownMs).toISOString()
-          const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === nebulaId)
-          if (existing === -1) {
-            return { scanCooldowns: [...state.scanCooldowns, { nebulaId, readyAt }] }
+        merge: (persisted, current) => {
+          const persistedState = persisted as Partial<GameState> | undefined
+          return {
+            ...current,
+            ...persistedState,
+            activeOperation: null,
+            optimisticOperations: current.optimisticOperations ?? [],
           }
-
-      removeScanCooldown: (nebulaId) =>
-        set((state) => ({
-          scanCooldowns: state.scanCooldowns.filter((c) => c.nebulaId !== nebulaId),
-        })),
-
-      pruneExpiredCooldowns: () =>
-        set((state) => ({
-          scanCooldowns: state.scanCooldowns.filter(
-            (c) => Date.now() < new Date(c.readyAt).getTime()
-          ),
-        })),
-
-      isNebulaOnCooldown: (nebulaId) => {
-        const { scanCooldowns } = get()
-        const entry = scanCooldowns.find((c) => c.nebulaId === nebulaId)
-        if (!entry) return false
-        return Date.now() < new Date(entry.readyAt).getTime()
-      },
-
-      tickElapsed: (deltaSec) =>
-        set((state) => ({ elapsedSeconds: state.elapsedSeconds + deltaSec })),
-
-      resetGame: () => set(initialGameState),
-    }),
-    {
-      name: gameStoreStorageKey,
-      storage: createJSONStorage(() => localStorage),
-      version: GAME_STORE_SCHEMA_VERSION,
-      partialize: ({ phase, currentNebulaId, scanCooldowns, elapsedSeconds }) => ({
-        phase,
-        currentNebulaId,
-        scanCooldowns,
-        elapsedSeconds,
-      }),
-      merge: (persisted, current) => {
-        const persistedState = persisted as Partial<GameState> | undefined
-        return {
-          ...current,
-          ...persistedState,
-          activeOperation: null,
-          optimisticOperations: current.optimisticOperations ?? [],
-        }
-      },
-      migrate: createVersionedMigrate('gameStore', GAME_STORE_SCHEMA_VERSION, (state) => {
-        const persisted = state as Partial<GameState> | undefined
-        return {
-          ...initialGameState,
-          ...persisted,
-          activeOperation: null,
-          optimisticOperations: [],
-        }
-      }),
-    }
+        },
+      }
+    ),
+    { enabled: isDev }
   )
 )

@@ -102,7 +102,12 @@ export function Leaderboard() {
     return (
       <div className="leaderboard-empty leaderboard-error" role="alert">
         <p>{error}</p>
-        <button type="button" className="secondary-button" onClick={() => void loadLeaderboard()}>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => void loadLeaderboard()}
+          aria-label="Retry loading leaderboard"
+        >
           Retry
         </button>
       </div>
@@ -110,7 +115,7 @@ export function Leaderboard() {
   }
 
   return (
-    <section className="leaderboard-panel">
+    <section className="leaderboard-panel" aria-label="Galactic leaderboard">
       <div className="leaderboard-header">
         <div>
           <p className="eyebrow">Competition</p>
@@ -144,7 +149,7 @@ export function Leaderboard() {
       <p className="leaderboard-algorithm">{leaderboard?.rankingAlgorithm}</p>
 
       <div className="leaderboard-table-wrap">
-        <table className="leaderboard-table">
+        <table className="leaderboard-table" aria-label="Leaderboard rankings">
           <thead>
             <tr>
               <th>Rank</th>
@@ -194,6 +199,7 @@ export function Leaderboard() {
           <button
             type="button"
             className="secondary-button"
+            aria-label="Go to previous leaderboard page"
             onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             disabled={currentPage === 1}
           >
@@ -202,6 +208,7 @@ export function Leaderboard() {
           <button
             type="button"
             className="secondary-button"
+            aria-label="Go to next leaderboard page"
             onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
             disabled={currentPage >= totalPages}
           >

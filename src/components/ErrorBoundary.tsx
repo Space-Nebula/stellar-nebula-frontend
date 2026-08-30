@@ -109,6 +109,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <button
               type="button"
               onClick={this.handleReset}
+              aria-label="Try again to recover from error"
               style={{
                 padding: '8px 24px',
                 borderRadius: 8,
@@ -124,6 +125,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <button
               type="button"
               onClick={() => window.location.reload()}
+              aria-label="Reload application to recover from error"
               style={{
                 padding: '8px 24px',
                 borderRadius: 8,
