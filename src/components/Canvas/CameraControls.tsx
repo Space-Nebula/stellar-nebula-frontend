@@ -89,6 +89,7 @@ export function CameraControls({
     const canvas = gl.domElement
     canvasRef.current = canvas
     canvas.setAttribute('tabindex', '0')
+    canvas.style.touchAction = 'none'
     canvas.addEventListener('keydown', handleKeyDown)
     canvas.addEventListener('keyup', handleKeyUp)
     return () => {
