@@ -104,3 +104,9 @@ export {
   type GameEvent,
   type GameEventType,
 } from './achievementStore'
+
+export { createPerformanceMonitor } from './storePerformanceMonitor'
+export type {
+  StorePerformanceConfig,
+  StorePerformanceMetrics,
+} from './storePerformanceMonitor'
