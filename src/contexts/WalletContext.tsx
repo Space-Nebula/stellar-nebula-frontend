@@ -25,6 +25,7 @@ import {
 } from '@/services/monitoring'
 import { trackEvent } from '@/services/analytics'
 import { purgeApplicationState } from '@/utils/stateCleanup'
+import { setSessionPassphrase, saveEncryptedCopy } from '@/utils/storage'
 import { useSessionTimeout } from '@/hooks/useSessionTimeout'
 import { SessionTimeoutWarning } from '@/components/Wallet/SessionTimeoutWarning'
 
@@ -84,6 +85,8 @@ function loadPersistedWallet(): PersistedWallet | null {
 function persistWallet(wallet: PersistedWallet): void {
   try {
     localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(wallet))
+    // Also save an encrypted copy for the live session when available.
+    void saveEncryptedCopy('stellar-nebula:enc:', 'wallet', wallet)
   } catch {
     // Ignore quota / private-browsing errors
   }
@@ -277,6 +280,21 @@ export function WalletProvider({ children }: WalletProviderProps) {
         setWalletState(newState)
         persistWallet({ publicKey, walletType: type, network })
 
+        // Derive a per-session passphrase (in-memory only) and enable encrypted copies
+        try {
+          const rand = crypto.getRandomValues(new Uint8Array(32))
+          const pass = Array.from(rand).map((b) => b.toString(16).padStart(2, '0')).join('')
+          setSessionPassphrase(pass)
+          // Save encrypted backup (best-effort)
+          void saveEncryptedCopy('stellar-nebula:enc:', 'wallet', {
+            publicKey,
+            walletType: type,
+            network,
+          })
+        } catch {
+          // ignore session encryption failures
+        }
+
         setMonitoringUser(publicKey, undefined, `${type}-user`)
 
         log.info('Wallet connected successfully', { walletType: type, network })
@@ -324,6 +342,13 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
     clearMonitoringUser()
     addMonitoringBreadcrumb('Wallet disconnected', 'wallet')
+
+    // Clear any in-memory session encryption key
+    try {
+      setSessionPassphrase(null)
+    } catch {
+      // ignore
+    }
 
     trackEvent('scan_completed', {
       action: 'wallet_disconnect',
