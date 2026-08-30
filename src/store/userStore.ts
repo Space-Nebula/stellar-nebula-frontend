@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { userStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export interface UserSession {
   id: string
@@ -57,7 +58,10 @@ export const useUserStore = create<UserStore>()(
       storage: createJSONStorage(() => localStorage),
       version: USER_STORE_SCHEMA_VERSION,
       partialize: ({ session, isAuthenticated }) => ({ session, isAuthenticated }),
-      migrate: (persistedState) => persistedState as UserState,
+      migrate: createVersionedMigrate('userStore', USER_STORE_SCHEMA_VERSION, (state) => ({
+        ...initialUserState,
+        ...(state as Partial<UserState>),
+      })),
     }
   )
 )
