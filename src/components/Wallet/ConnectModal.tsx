@@ -133,6 +133,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
                 <button
                   type="button"
                   disabled={isLoading || !available}
+                  aria-label={`Connect with ${opt.name} wallet${!available ? ' (not installed)' : ''}`}
                   onClick={() => handleConnect(opt.type)}
                   aria-disabled={!available}
                   style={{

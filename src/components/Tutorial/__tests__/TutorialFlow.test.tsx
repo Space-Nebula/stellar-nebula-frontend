@@ -37,7 +37,7 @@ describe('TutorialFlow', () => {
       startedAt: null,
     })
     renderTutorial()
-    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    fireEvent.click(screen.getByRole('button', { name: /back|previous/i }))
     expect(useTutorialStore.getState().currentStep).toBe(0)
   })
 

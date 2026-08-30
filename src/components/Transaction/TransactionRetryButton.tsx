@@ -31,7 +31,9 @@ export function TransactionRetryButton<TPayload>({
     <div style={panelStyle} role="alert">
       <div style={headerRowStyle}>
         <p style={titleStyle}>{failure.label} failed to submit</p>
-        <span style={badgeStyle}>{exhausted ? 'Max retries reached' : `Attempt ${attempt}/${maxAttempts}`}</span>
+        <span style={badgeStyle}>
+          {exhausted ? 'Max retries reached' : `Attempt ${attempt}/${maxAttempts}`}
+        </span>
       </div>
 
       <p style={errorStyle}>{failure.error}</p>
@@ -43,7 +45,13 @@ export function TransactionRetryButton<TPayload>({
 
       <div style={buttonRowStyle}>
         {onCancel && (
-          <button type="button" style={secondaryStyle} onClick={onCancel} disabled={isRetrying}>
+          <button
+            type="button"
+            style={secondaryStyle}
+            onClick={onCancel}
+            disabled={isRetrying}
+            aria-label="Cancel transaction"
+          >
             Dismiss
           </button>
         )}

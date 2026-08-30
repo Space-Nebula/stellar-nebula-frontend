@@ -71,7 +71,7 @@ describe('ThemeToggle — accessibility', () => {
       </ThemeProvider>
     )
 
-    const btn = screen.getByRole('button', { name: /toggle dark\/light mode/i })
+    const btn = screen.getByRole('button', { name: /switch to (light|dark) mode/i })
     expect(btn).toBeInTheDocument()
   })
 
@@ -86,7 +86,7 @@ describe('ThemeToggle — accessibility', () => {
       </ThemeProvider>
     )
 
-    const btn = screen.getByRole('button', { name: /toggle dark\/light mode/i })
+    const btn = screen.getByRole('button', { name: /switch to (light|dark) mode/i })
     btn.focus()
     expect(document.activeElement).toBe(btn)
 
@@ -112,9 +112,7 @@ describe('ThemeToggle — accessibility', () => {
       const label = svg.getAttribute('aria-label')
       const role = svg.getAttribute('role')
       // SVG is decorative (hidden) or has a label/role — either is fine
-      expect(
-        hidden === 'true' || label || role === 'img'
-      ).toBeTruthy()
+      expect(hidden === 'true' || label || role === 'img').toBeTruthy()
     }
   })
 })
@@ -188,8 +186,8 @@ describe('ErrorBoundary — accessibility', () => {
     expect(document.activeElement).toBe(tryAgainBtn)
 
     await user.keyboard('{Enter}')
-    // After reset, the boundary should try to render children again
-    expect(tryAgainBtn).toBeInTheDocument()
+    // After reset, the boundary should try to render children again — fallback reappears (new element)
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
 
   it('custom fallback has no WCAG violations', async () => {
@@ -262,7 +260,7 @@ describe('All buttons — keyboard accessibility', () => {
     )
 
     // ThemeToggle button should be focusable
-    const themeBtn = screen.getByRole('button', { name: /toggle dark\/light mode/i })
+    const themeBtn = screen.getByRole('button', { name: /switch to (light|dark) mode/i })
     themeBtn.focus()
     expect(document.activeElement).toBe(themeBtn)
 

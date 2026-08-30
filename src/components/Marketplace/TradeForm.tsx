@@ -31,12 +31,18 @@ export const TradeForm: React.FC<TradeFormProps> = ({
     <div className="bg-space-900 border border-space-800 rounded-xl p-4">
       <div className="flex gap-2 mb-6">
         <button
+          type="button"
+          aria-label={`Buy ${baseAsset.code} with ${quoteAsset.code}`}
+          aria-pressed={type === 'buy'}
           onClick={() => setType('buy')}
           className={`flex-1 py-2 rounded font-bold transition-colors ${type === 'buy' ? 'bg-green-600 text-white' : 'bg-space-800 text-space-100 hover:bg-space-700'}`}
         >
           Buy {baseAsset.code}
         </button>
         <button
+          type="button"
+          aria-label={`Sell ${baseAsset.code} for ${quoteAsset.code}`}
+          aria-pressed={type === 'sell'}
           onClick={() => setType('sell')}
           className={`flex-1 py-2 rounded font-bold transition-colors ${type === 'sell' ? 'bg-red-600 text-white' : 'bg-space-800 text-space-100 hover:bg-space-700'}`}
         >
@@ -46,10 +52,14 @@ export const TradeForm: React.FC<TradeFormProps> = ({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm text-space-100 mb-1">Price ({quoteAsset.code})</label>
+          <label htmlFor="trade-price-input" className="block text-sm text-space-100 mb-1">
+            Price ({quoteAsset.code})
+          </label>
           <div className="relative">
             <input
+              id="trade-price-input"
               type="number"
+              aria-label={`Price in ${quoteAsset.code}`}
               step="0.0001"
               min="0"
               value={price}
@@ -61,10 +71,14 @@ export const TradeForm: React.FC<TradeFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm text-space-100 mb-1">Amount ({baseAsset.code})</label>
+          <label htmlFor="trade-amount-input" className="block text-sm text-space-100 mb-1">
+            Amount ({baseAsset.code})
+          </label>
           <div className="relative flex items-center">
             <input
+              id="trade-amount-input"
               type="number"
+              aria-label={`Amount of ${baseAsset.code}`}
               step="0.01"
               min="0"
               value={amount}
@@ -74,6 +88,7 @@ export const TradeForm: React.FC<TradeFormProps> = ({
             />
             <button
               type="button"
+              aria-label={`Set amount to maximum 100 ${baseAsset.code}`}
               className="absolute right-2 text-xs text-cosmic-cyan hover:text-white"
               onClick={() => setAmount('100')} // Mock max amount
             >
@@ -92,6 +107,11 @@ export const TradeForm: React.FC<TradeFormProps> = ({
 
           <button
             type="submit"
+            aria-label={
+              type === 'buy'
+                ? `Place buy order for ${baseAsset.code}`
+                : `Place sell order for ${baseAsset.code}`
+            }
             className={`w-full py-3 rounded font-bold text-white transition-colors ${type === 'buy' ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'}`}
           >
             {type === 'buy' ? 'Place Buy Order' : 'Place Sell Order'}

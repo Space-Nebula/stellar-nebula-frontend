@@ -102,6 +102,7 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
+            aria-label={`Cancel ${operationType} transaction`}
             style={secondaryButtonStyle}
             disabled={isSubmitting}
           >
@@ -109,6 +110,7 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
+            aria-label={`Confirm ${operationType} transaction`}
             onClick={onConfirm}
             style={primaryButtonStyle}
             disabled={isSubmitting}

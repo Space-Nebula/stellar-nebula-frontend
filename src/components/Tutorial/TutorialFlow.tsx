@@ -119,10 +119,18 @@ function TutorialFlow({ onClose }: TutorialFlowProps) {
         <div className="tutorial-card">
           <p className="tutorial-completed-msg">Tutorial completed! Want to replay it?</p>
           <div className="tutorial-actions">
-            <button onClick={handleReplay} className="tutorial-btn tutorial-btn--primary">
+            <button
+              onClick={handleReplay}
+              className="tutorial-btn tutorial-btn--primary"
+              aria-label="Replay tutorial from beginning"
+            >
               Replay Tutorial
             </button>
-            <button onClick={onClose} className="tutorial-btn tutorial-btn--ghost">
+            <button
+              onClick={onClose}
+              className="tutorial-btn tutorial-btn--ghost"
+              aria-label="Close tutorial"
+            >
               Close
             </button>
           </div>
@@ -139,6 +147,10 @@ function TutorialFlow({ onClose }: TutorialFlowProps) {
         <div className="tutorial-card">
           <div
             className="tutorial-progress"
+            role="progressbar"
+            aria-valuenow={currentStep + 1}
+            aria-valuemin={1}
+            aria-valuemax={STEPS.length}
             aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
           >
             {STEPS.map((_, i) => (
@@ -165,11 +177,19 @@ function TutorialFlow({ onClose }: TutorialFlowProps) {
 
           <div className="tutorial-actions">
             {!isFirst && (
-              <button onClick={handleBack} className="tutorial-btn tutorial-btn--ghost">
+              <button
+                onClick={handleBack}
+                className="tutorial-btn tutorial-btn--ghost"
+                aria-label="Go to previous tutorial step"
+              >
                 Back
               </button>
             )}
-            <button onClick={handleNext} className="tutorial-btn tutorial-btn--primary">
+            <button
+              onClick={handleNext}
+              className="tutorial-btn tutorial-btn--primary"
+              aria-label={isLast ? 'Complete tutorial and get started' : 'Go to next tutorial step'}
+            >
               {isLast ? 'Get Started' : 'Next'}
             </button>
           </div>

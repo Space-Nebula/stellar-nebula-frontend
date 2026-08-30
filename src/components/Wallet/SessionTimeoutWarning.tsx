@@ -58,10 +58,20 @@ export function SessionTimeoutWarning({
         </div>
 
         <div style={buttonGroupStyle}>
-          <button type="button" onClick={onExtend} style={extendButtonStyle}>
+          <button
+            type="button"
+            onClick={onExtend}
+            style={extendButtonStyle}
+            aria-label="Stay connected and extend session"
+          >
             Stay Connected
           </button>
-          <button type="button" onClick={onDisconnect} style={disconnectButtonStyle}>
+          <button
+            type="button"
+            onClick={onDisconnect}
+            style={disconnectButtonStyle}
+            aria-label="Disconnect wallet now"
+          >
             Disconnect Now
           </button>
         </div>

@@ -249,22 +249,34 @@ function SettingsPanel({ onClose }: SettingsPanelProps) {
             Save data
           </h3>
           <div className="settings-data-actions">
-            <button type="button" className="settings-button" onClick={handleExportSave}>
+            <button
+              type="button"
+              className="settings-button"
+              onClick={handleExportSave}
+              aria-label="Export save file"
+            >
               Export save
             </button>
             <button
               type="button"
               className="settings-button"
+              aria-label="Import save file"
               onClick={() => saveFileInputRef.current?.click()}
             >
               Import save
             </button>
-            <button type="button" className="settings-button" onClick={handleExportSettings}>
+            <button
+              type="button"
+              className="settings-button"
+              onClick={handleExportSettings}
+              aria-label="Export settings file"
+            >
               Export settings
             </button>
             <button
               type="button"
               className="settings-button"
+              aria-label="Import settings file"
               onClick={() => settingsFileInputRef.current?.click()}
             >
               Import settings
@@ -272,6 +284,7 @@ function SettingsPanel({ onClose }: SettingsPanelProps) {
             <button
               type="button"
               className="settings-button settings-button--danger"
+              aria-label="Start new game and clear all data"
               onClick={handleNewGame}
             >
               New game (clear data)
@@ -282,6 +295,7 @@ function SettingsPanel({ onClose }: SettingsPanelProps) {
             ref={saveFileInputRef}
             type="file"
             accept="application/json"
+            aria-label="Import save file input"
             className="settings-file-input"
             onChange={(e) => {
               const file = e.target.files?.[0]
@@ -293,6 +307,7 @@ function SettingsPanel({ onClose }: SettingsPanelProps) {
             ref={settingsFileInputRef}
             type="file"
             accept="application/json"
+            aria-label="Import settings file input"
             className="settings-file-input"
             onChange={(e) => {
               const file = e.target.files?.[0]

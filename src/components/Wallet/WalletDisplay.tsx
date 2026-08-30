@@ -62,7 +62,12 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
   // Show reconnect error
   if (reconnectError && !walletState.isConnected) {
     return (
-      <button type="button" onClick={onOpenConnectModal} style={connectButtonStyle}>
+      <button
+        type="button"
+        onClick={onOpenConnectModal}
+        style={connectButtonStyle}
+        aria-label="Connect wallet"
+      >
         Connect Wallet
       </button>
     )
@@ -70,7 +75,12 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
 
   if (!walletState.isConnected || !walletState.publicKey) {
     return (
-      <button type="button" onClick={onOpenConnectModal} style={connectButtonStyle}>
+      <button
+        type="button"
+        onClick={onOpenConnectModal}
+        style={connectButtonStyle}
+        aria-label="Connect wallet"
+      >
         Connect Wallet
       </button>
     )

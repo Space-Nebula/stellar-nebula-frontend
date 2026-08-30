@@ -40,7 +40,12 @@ function Navigation() {
               {item.label}
             </NavLink>
           ))}
-          <button type="button" className="help-link" onClick={() => setIsHelpOpen(true)}>
+          <button
+            type="button"
+            className="help-link"
+            aria-label="Open help center"
+            onClick={() => setIsHelpOpen(true)}
+          >
             Help
           </button>
         </nav>

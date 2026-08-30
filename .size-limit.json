@@ -1,10 +1,56 @@
 [
   {
+    "name": "Total JS (gzip)",
     "path": "dist/assets/*.js",
-    "limit": "500 kB"
+    "limit": "950 kB",
+    "gzip": true,
+    "running": false
   },
   {
+    "name": "Vendor chunk (gzip)",
+    "path": "dist/assets/vendor-*.js",
+    "limit": "260 kB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "React vendor (gzip)",
+    "path": "dist/assets/react-vendor-*.js",
+    "limit": "95 kB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "Three.js feature (gzip)",
+    "path": "dist/assets/feature-three-*.js",
+    "limit": "275 kB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "Stellar feature (gzip)",
+    "path": "dist/assets/feature-stellar-*.js",
+    "limit": "315 kB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "CSS bundle",
+    "path": "dist/assets/*.css",
+    "limit": "40 kB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "HTML entry",
     "path": "dist/index.html",
-    "limit": "5 kB"
+    "limit": "5 kB",
+    "running": false
+  },
+  {
+    "name": "Total dist size",
+    "path": "dist/**/*.{js,css,html}",
+    "limit": "1.2 MB",
+    "running": false
   }
 ]

@@ -294,16 +294,36 @@ export function ShareButton({
 
       {showMenu && (
         <div style={menuStyle}>
-          <button type="button" onClick={shareToX} style={menuItemStyle}>
+          <button
+            type="button"
+            onClick={shareToX}
+            style={menuItemStyle}
+            aria-label="Share to X (Twitter)"
+          >
             Share on X
           </button>
-          <button type="button" onClick={openDiscord} style={menuItemStyle}>
+          <button
+            type="button"
+            onClick={openDiscord}
+            style={menuItemStyle}
+            aria-label="Share to Discord"
+          >
             Open Discord
           </button>
-          <button type="button" onClick={copyImageToClipboard} style={menuItemStyle}>
+          <button
+            type="button"
+            onClick={copyImageToClipboard}
+            style={menuItemStyle}
+            aria-label="Copy image to clipboard"
+          >
             Copy image
           </button>
-          <button type="button" onClick={downloadImage} style={menuItemStyle}>
+          <button
+            type="button"
+            onClick={downloadImage}
+            style={menuItemStyle}
+            aria-label="Download share image"
+          >
             Download image
           </button>
         </div>

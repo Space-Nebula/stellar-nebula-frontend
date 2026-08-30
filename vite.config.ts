@@ -7,7 +7,14 @@ import { visualizer } from 'rollup-plugin-visualizer'
 export default defineConfig({
   plugins: [
     react(),
-    visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true }),
+    visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true, template: 'treemap' }),
+    visualizer({
+      filename: 'stats.json',
+      gzipSize: true,
+      brotliSize: true,
+      template: 'raw-data',
+      sourcemap: true,
+    } as any),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'icon-*.png', 'icon-*.webp', '**/*.webp'],

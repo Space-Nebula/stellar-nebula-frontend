@@ -57,7 +57,7 @@ describe('ShipDashboard Optimistic Updates and Rollbacks', () => {
   it('optimistically updates ship and inventory immediately upon applying upgrade', async () => {
     renderShipDashboard()
 
-    const openBayBtn = screen.getByRole('button', { name: /open upgrade bay/i })
+    const openBayBtn = screen.getByRole('button', { name: /open.*upgrade bay/i })
     await userEvent.click(openBayBtn)
 
     // Select Deep Scan Array upgrade

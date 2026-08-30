@@ -7,7 +7,8 @@ import {
   type Transaction,
 } from '@stellar/stellar-sdk'
 import type { StellarNetworkConfig } from '@config/stellar'
-import { env, getActiveStellarConfig } from '@config/stellar'
+import { getActiveStellarConfig } from '@config/stellar'
+import { env } from '@config/env'
 import type { ResourceAssetBalance } from '@services/assets/resources'
 import type { ShipNFTRecord } from '@services/nft/shipNFT'
 import { simulateContractTransaction } from '@utils/stellar/simulate'
