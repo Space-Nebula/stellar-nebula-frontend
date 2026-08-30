@@ -15,3 +15,8 @@ export type {
 } from './useTransactionRetry'
 export { useFrameRateMonitor } from './useFrameRateMonitor'
 export { useRenderResourceTracker } from './useRenderResourceTracker'
+export { useTransactionHistory } from './useTransactionHistory'
+export type {
+  UseTransactionHistoryOptions,
+  UseTransactionHistoryReturn,
+} from './useTransactionHistory'

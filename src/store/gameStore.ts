@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { createJSONStorage, devtools, persist } from 'zustand/middleware'
+import { gameStoreStorageKey } from './storageKeys'
 
 export type GamePhase = 'loading' | 'menu' | 'playing' | 'paused' | 'gameover'
 
@@ -16,12 +17,25 @@ export interface ActiveOperation {
   startedAt: string // ISO-8601
 }
 
+export type OptimisticOperationStatus = 'pending' | 'confirmed' | 'failed'
+
+export interface OptimisticGameOperation {
+  id: string
+  label: string
+  operation: ActiveOperation
+  status: OptimisticOperationStatus
+  createdAt: string
+  completedAt?: string
+  error?: string
+}
+
 export interface GameState {
   phase: GamePhase
   currentNebulaId: string | null
   activeOperation: ActiveOperation | null
   scanCooldowns: ScanCooldown[]
   elapsedSeconds: number
+  optimisticOperations: OptimisticGameOperation[]
 }
 
 export interface GameActions {
@@ -30,8 +44,30 @@ export interface GameActions {
   exitNebula: () => void
   startOperation: (operation: ActiveOperation) => void
   completeOperation: () => void
+  /** Attempt to lock an operation type to prevent race conditions. */
+  acquireLock: (type: string) => boolean
+  /** Release an operation lock and process next queued operation if available. */
+  releaseLock: (type: string) => void
+  /** Queue an operation if type is locked or execute immediately if available. */
+  queueOperation: (operation: ActiveOperation) => { queued: boolean; position: number }
+  /** Start operation with strict atomic locking and conflict handling. */
+  startOperationWithLock: (operation: ActiveOperation) => { success: boolean; reason?: string }
+  /** Complete current active operation and process queued operations. */
+  completeOperationWithLock: () => ActiveOperation | null
+  /** Check if operation type has active lock / conflict. */
+  hasOperationConflict: (type: string) => boolean
+  startOptimisticOperation: (
+    operation: ActiveOperation,
+    label?: string,
+    cooldownMs?: number
+  ) => string
+  confirmOperation: (operationId: string) => void
+  rollbackOperation: (operationId: string, error?: string, removeCooldownNebulaId?: string) => void
+  isOperationPending: (operationId?: string) => boolean
   /** Record a scan cooldown for nebulaId lasting cooldownMs (default 60 s). */
   addScanCooldown: (nebulaId: string, cooldownMs?: number) => void
+  /** Remove a scan cooldown for a specific nebulaId (e.g. on rollback). */
+  removeScanCooldown: (nebulaId: string) => void
   /** Remove expired cooldowns from the list. */
   pruneExpiredCooldowns: () => void
   isNebulaOnCooldown: (nebulaId: string) => boolean
@@ -41,9 +77,12 @@ export interface GameActions {
 
 export type GameStore = GameState & GameActions
 
-export const gameStoreStorageKey = 'stellar-nebula:game-store'
+export { gameStoreStorageKey }
 
 const DEFAULT_SCAN_COOLDOWN_MS = 60_000
+
+/** Bump whenever the shape of the persisted GameState slice changes. */
+export const GAME_STORE_SCHEMA_VERSION = 2
 
 export const initialGameState: GameState = {
   phase: 'loading',
@@ -51,30 +90,200 @@ export const initialGameState: GameState = {
   activeOperation: null,
   scanCooldowns: [],
   elapsedSeconds: 0,
+  optimisticOperations: [],
 }
 
+function createOpId(prefix = 'op'): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+
 export const useGameStore = create<GameStore>()(
-  persist(
-    (set, get) => ({
-      ...initialGameState,
+  devtools(
+    persist(
+      (set, get) => ({
+        ...initialGameState,
 
-      setPhase: (phase) => set({ phase }),
+        setPhase: (phase) => set({ phase }),
 
-      enterNebula: (nebulaId) =>
+        enterNebula: (nebulaId) =>
+          set((state) => ({
+            currentNebulaId: nebulaId,
+            phase: state.phase === 'menu' ? 'playing' : state.phase,
+          })),
+
+        exitNebula: () =>
+          set({
+            currentNebulaId: null,
+            activeOperation: null,
+            lockedOperations: {},
+            operationQueue: [],
+            pendingState: false,
+          }),
+
+        startOperation: (operation) => {
+          const result = get().startOperationWithLock(operation)
+          if (!result.success) {
+            get().queueOperation(operation)
+          }
+        },
+
+        completeOperation: () => {
+          get().completeOperationWithLock()
+        },
+
+        acquireLock: (type) => {
+          const { lockedOperations } = get()
+          if (lockedOperations[type]) return false
+          set({
+            lockedOperations: { ...lockedOperations, [type]: true },
+            pendingState: true,
+          })
+          return true
+        },
+
+        releaseLock: (type) => {
+          const { lockedOperations, operationQueue } = get()
+          const updatedLocks = { ...lockedOperations }
+          delete updatedLocks[type]
+
+          const anyRemainingLocks = Object.keys(updatedLocks).length > 0
+          set({
+            lockedOperations: updatedLocks,
+            pendingState: anyRemainingLocks,
+          })
+
+          // Check if queue has a pending operation for this type
+          const nextIndex = operationQueue.findIndex((op) => op.type === type)
+          if (nextIndex !== -1) {
+            const nextOp = operationQueue[nextIndex]
+            const remainingQueue = [...operationQueue]
+            remainingQueue.splice(nextIndex, 1)
+            set({ operationQueue: remainingQueue })
+            get().startOperationWithLock(nextOp)
+          }
+        },
+
+        queueOperation: (operation) => {
+          const { operationQueue, lockedOperations } = get()
+          if (!lockedOperations[operation.type]) {
+            const success = get().acquireLock(operation.type)
+            if (success) {
+              set({ activeOperation: operation })
+              return { queued: false, position: 0 }
+            }
+          }
+
+          const updatedQueue = [...operationQueue, operation]
+          set({ operationQueue: updatedQueue })
+          return { queued: true, position: updatedQueue.length }
+        },
+
+        startOperationWithLock: (operation) => {
+          const { lockedOperations, activeOperation } = get()
+
+          if (
+            lockedOperations[operation.type] ||
+            (activeOperation && activeOperation.type === operation.type)
+          ) {
+            return {
+              success: false,
+              reason: `Conflict: Operation of type "${operation.type}" is already in progress`,
+            }
+          }
+
+      startOptimisticOperation: (
+        operation,
+        label = `Operation: ${operation.type}`,
+        cooldownMs = DEFAULT_SCAN_COOLDOWN_MS
+      ) => {
+        const id = operation.id || createOpId()
+        const opWithId = { ...operation, id }
+
+        set((state) => {
+          let updatedCooldowns = state.scanCooldowns
+          if (operation.type === 'scan' && operation.targetId) {
+            const readyAt = new Date(Date.now() + cooldownMs).toISOString()
+            const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === operation.targetId)
+            if (existing === -1) {
+              updatedCooldowns = [...state.scanCooldowns, { nebulaId: operation.targetId, readyAt }]
+            } else {
+              const copy = [...state.scanCooldowns]
+              copy[existing] = { nebulaId: operation.targetId, readyAt }
+              updatedCooldowns = copy
+            }
+          }
+
+          const optimisticOp: OptimisticGameOperation = {
+            id,
+            label,
+            operation: opWithId,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          }
+
+          return {
+            activeOperation: opWithId,
+            scanCooldowns: updatedCooldowns,
+            optimisticOperations: [optimisticOp, ...state.optimisticOperations],
+          }
+        })
+
+        return id
+      },
+
+      confirmOperation: (operationId) =>
         set((state) => ({
-          currentNebulaId: nebulaId,
-          phase: state.phase === 'menu' ? 'playing' : state.phase,
+          activeOperation: state.activeOperation?.id === operationId ? null : state.activeOperation,
+          optimisticOperations: state.optimisticOperations.map((op) =>
+            op.id === operationId
+              ? {
+                  ...op,
+                  status: 'confirmed' as const,
+                  completedAt: new Date().toISOString(),
+                }
+              : op
+          ),
         })),
 
-      exitNebula: () =>
-        set({
-          currentNebulaId: null,
-          activeOperation: null,
+      rollbackOperation: (operationId, error, removeCooldownNebulaId) =>
+        set((state) => {
+          let updatedCooldowns = state.scanCooldowns
+          const targetOp = state.optimisticOperations.find((op) => op.id === operationId)
+          const targetNebulaId = removeCooldownNebulaId ?? targetOp?.operation.targetId
+
+          if (targetNebulaId) {
+            updatedCooldowns = state.scanCooldowns.filter((c) => c.nebulaId !== targetNebulaId)
+          }
+
+          return {
+            activeOperation:
+              state.activeOperation?.id === operationId ? null : state.activeOperation,
+            scanCooldowns: updatedCooldowns,
+            optimisticOperations: state.optimisticOperations.map((op) =>
+              op.id === operationId
+                ? {
+                    ...op,
+                    status: 'failed' as const,
+                    completedAt: new Date().toISOString(),
+                    error,
+                  }
+                : op
+            ),
+          }
         }),
 
-      startOperation: (operation) => set({ activeOperation: operation }),
-
-      completeOperation: () => set({ activeOperation: null }),
+      isOperationPending: (operationId) => {
+        const { optimisticOperations } = get()
+        if (operationId) {
+          return optimisticOperations.some((op) => op.id === operationId && op.status === 'pending')
+        }
+        return optimisticOperations.some((op) => op.status === 'pending')
+      },
 
       addScanCooldown: (nebulaId, cooldownMs = DEFAULT_SCAN_COOLDOWN_MS) =>
         set((state) => {
@@ -83,10 +292,11 @@ export const useGameStore = create<GameStore>()(
           if (existing === -1) {
             return { scanCooldowns: [...state.scanCooldowns, { nebulaId, readyAt }] }
           }
-          const updated = [...state.scanCooldowns]
-          updated[existing] = { nebulaId, readyAt }
-          return { scanCooldowns: updated }
-        }),
+
+      removeScanCooldown: (nebulaId) =>
+        set((state) => ({
+          scanCooldowns: state.scanCooldowns.filter((c) => c.nebulaId !== nebulaId),
+        })),
 
       pruneExpiredCooldowns: () =>
         set((state) => ({
@@ -110,12 +320,22 @@ export const useGameStore = create<GameStore>()(
     {
       name: gameStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
+      version: GAME_STORE_SCHEMA_VERSION,
       partialize: ({ phase, currentNebulaId, scanCooldowns, elapsedSeconds }) => ({
         phase,
         currentNebulaId,
         scanCooldowns,
         elapsedSeconds,
       }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<GameState> | undefined
+        return {
+          ...current,
+          ...persistedState,
+          activeOperation: null,
+          optimisticOperations: current.optimisticOperations ?? [],
+        }
+      },
     }
   )
 )

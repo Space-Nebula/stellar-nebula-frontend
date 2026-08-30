@@ -25,6 +25,7 @@ import {
 } from '@/services/monitoring'
 import { trackEvent } from '@/services/analytics'
 import { purgeApplicationState } from '@/utils/stateCleanup'
+import { setSessionPassphrase, saveEncryptedCopy } from '@/utils/storage'
 import { useSessionTimeout } from '@/hooks/useSessionTimeout'
 import { SessionTimeoutWarning } from '@/components/Wallet/SessionTimeoutWarning'
 
@@ -84,6 +85,8 @@ function loadPersistedWallet(): PersistedWallet | null {
 function persistWallet(wallet: PersistedWallet): void {
   try {
     localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(wallet))
+    // Also save an encrypted copy for the live session when available.
+    void saveEncryptedCopy('stellar-nebula:enc:', 'wallet', wallet)
   } catch {
     // Ignore quota / private-browsing errors
   }
@@ -220,92 +223,112 @@ export function WalletProvider({ children }: WalletProviderProps) {
     autoReconnect()
   }, [])
 
-  const connect = useCallback(async (type: WalletType) => {
-    log.info('Wallet connection initiated', { walletType: type })
-    setIsLoading(true)
-    setError(null)
-    setNetworkMismatchWarning(null)
+  const connect = useCallback(
+    async (type: WalletType) => {
+      log.info('Wallet connection initiated', { walletType: type })
+      setIsLoading(true)
+      setError(null)
+      setNetworkMismatchWarning(null)
 
-    addMonitoringBreadcrumb('Wallet connection started', 'wallet', { walletType: type })
+      addMonitoringBreadcrumb('Wallet connection started', 'wallet', { walletType: type })
 
-    try {
-      let publicKey: string
-      let network: StellarNetwork
+      try {
+        let publicKey: string
+        let network: StellarNetwork
 
-      if (type === 'freighter') {
-        const installed = await isFreighterInstalled()
-        if (!installed) {
-          const walletError = handleWalletConnectionError(
-            new Error('Freighter is not installed'),
-            type
-          )
-          throw new Error(formatWalletError(walletError))
+        if (type === 'freighter') {
+          const installed = await isFreighterInstalled()
+          if (!installed) {
+            const walletError = handleWalletConnectionError(
+              new Error('Freighter is not installed'),
+              type
+            )
+            throw new Error(formatWalletError(walletError))
+          }
+          publicKey = await connectFreighter()
+          network = await getFreighterNetwork()
+        } else if (type === 'albedo') {
+          if (!isAlbedoAvailable()) {
+            const walletError = handleWalletConnectionError(
+              new Error('Albedo is not available'),
+              type
+            )
+            throw new Error(formatWalletError(walletError))
+          }
+          publicKey = await connectAlbedo()
+          network = await getAlbedoNetwork()
+        } else {
+          throw new Error(`Wallet type "${type}" is not supported.`)
         }
-        publicKey = await connectFreighter()
-        network = await getFreighterNetwork()
-      } else if (type === 'albedo') {
-        if (!isAlbedoAvailable()) {
-          const walletError = handleWalletConnectionError(
-            new Error('Albedo is not available'),
-            type
-          )
-          throw new Error(formatWalletError(walletError))
-        }
-        publicKey = await connectAlbedo()
-        network = await getAlbedoNetwork()
-      } else {
-        throw new Error(`Wallet type "${type}" is not supported.`)
-      }
 
-      // Check for network mismatch
-      const mismatch = validateNetworkMatch(network, appConfig)
-      if (mismatch) {
-        const warningMessage = getNetworkMismatchMessage(mismatch)
-        setNetworkMismatchWarning(warningMessage)
-        log.warn('Network mismatch detected after wallet connection', mismatch)
-        addMonitoringBreadcrumb('Network mismatch warning shown', 'wallet', {
-          walletNetwork: mismatch.walletNetwork,
-          appNetwork: mismatch.appNetwork,
+        // Check for network mismatch
+        const mismatch = validateNetworkMatch(network, appConfig)
+        if (mismatch) {
+          const warningMessage = getNetworkMismatchMessage(mismatch)
+          setNetworkMismatchWarning(warningMessage)
+          log.warn('Network mismatch detected after wallet connection', {
+            walletNetwork: mismatch.walletNetwork,
+            appNetwork: mismatch.appNetwork,
+          })
+          addMonitoringBreadcrumb('Network mismatch warning shown', 'wallet', {
+            walletNetwork: mismatch.walletNetwork,
+            appNetwork: mismatch.appNetwork,
+          })
+        }
+
+        const newState: WalletState = { isConnected: true, publicKey, walletType: type, network }
+        setWalletState(newState)
+        persistWallet({ publicKey, walletType: type, network })
+
+        // Derive a per-session passphrase (in-memory only) and enable encrypted copies
+        try {
+          const rand = crypto.getRandomValues(new Uint8Array(32))
+          const pass = Array.from(rand).map((b) => b.toString(16).padStart(2, '0')).join('')
+          setSessionPassphrase(pass)
+          // Save encrypted backup (best-effort)
+          void saveEncryptedCopy('stellar-nebula:enc:', 'wallet', {
+            publicKey,
+            walletType: type,
+            network,
+          })
+        } catch {
+          // ignore session encryption failures
+        }
+
+        setMonitoringUser(publicKey, undefined, `${type}-user`)
+
+        log.info('Wallet connected successfully', { walletType: type, network })
+
+        addMonitoringBreadcrumb('Wallet connected', 'wallet', {
+          walletType: type,
+          network,
         })
+
+        trackEvent('scan_started', {
+          action: 'wallet_connect',
+          walletType: type,
+          network,
+        })
+      } catch (err) {
+        const walletError = handleWalletConnectionError(err, type)
+        const message = formatWalletError(walletError)
+        log.error('Wallet connection failed', err instanceof Error ? err : new Error(String(err)), {
+          walletType: type,
+          errorCode: walletError.code,
+        })
+        setError(message)
+
+        trackEvent('error_reported', {
+          action: 'wallet_connect_failed',
+          walletType: type,
+          error: message,
+        })
+      } finally {
+        setIsLoading(false)
       }
-
-      const newState: WalletState = { isConnected: true, publicKey, walletType: type, network }
-      setWalletState(newState)
-      persistWallet({ publicKey, walletType: type, network })
-
-      log.info('Wallet connected successfully', { walletType: type, network })
-
-      // Set user context in monitoring
-      setMonitoringUser(publicKey, undefined, `${type}-user`)
-
-      addMonitoringBreadcrumb('Wallet connected', 'wallet', {
-        walletType: type,
-        network,
-      })
-
-      trackEvent('scan_started', {
-        action: 'wallet_connect',
-        walletType: type,
-        network,
-      })
-    } catch (err) {
-      const walletError = handleWalletConnectionError(err, type)
-      const message = formatWalletError(walletError)
-      log.error('Wallet connection failed', err instanceof Error ? err : new Error(String(err)), {
-        walletType: type,
-        errorCode: walletError.code,
-      })
-      setError(message)
-
-      trackEvent('error_reported', {
-        action: 'wallet_connect_failed',
-        walletType: type,
-        error: message,
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [appConfig])
+    },
+    [appConfig]
+  )
 
   const disconnect = useCallback(() => {
     log.info('Wallet disconnected', { walletType: walletState.walletType })
@@ -317,7 +340,15 @@ export function WalletProvider({ children }: WalletProviderProps) {
     // Comprehensive purge of state, stores, and cached session storage
     purgeApplicationState()
 
+    clearMonitoringUser()
     addMonitoringBreadcrumb('Wallet disconnected', 'wallet')
+
+    // Clear any in-memory session encryption key
+    try {
+      setSessionPassphrase(null)
+    } catch {
+      // ignore
+    }
 
     trackEvent('scan_completed', {
       action: 'wallet_disconnect',
@@ -331,29 +362,35 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
   const switchWallet = useCallback(
     async (type: WalletType) => {
-      if (walletState.isConnected) {
-        clearPersistedWallet()
-        setWalletState(INITIAL_WALLET_STATE)
-      }
+      disconnect()
       await connect(type)
     },
-    [walletState.isConnected, connect]
+    [connect, disconnect]
   )
 
   const signTransaction = useCallback(
     async (xdr: XDR): Promise<XDR | null> => {
-      if (!walletState.isConnected || !walletState.network || !walletState.walletType) {
-        setError('Wallet is not connected')
-        log.warn('Transaction signing attempted without connected wallet')
+      if (
+        !walletState.isConnected ||
+        !walletState.publicKey ||
+        !walletState.walletType ||
+        !walletState.network
+      ) {
+        const message = 'No wallet connected. Please connect a wallet to sign transactions.'
+        setError(message)
+        log.warn('Transaction signing attempted with no wallet connected')
         return null
       }
 
-      // Prevent signing if there's a network mismatch
+      // Pre-signing network validation
       const mismatch = validateNetworkMatch(walletState.network, appConfig)
       if (mismatch) {
-        const message = getNetworkMismatchMessage(mismatch)
-        setError(message)
-        log.warn('Transaction signing blocked due to network mismatch', mismatch)
+        const warningMessage = getNetworkMismatchMessage(mismatch)
+        setError(warningMessage)
+        log.warn('Transaction signing blocked due to network mismatch', {
+          walletNetwork: mismatch.walletNetwork,
+          appNetwork: mismatch.appNetwork,
+        })
         return null
       }
 

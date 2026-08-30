@@ -8,9 +8,14 @@ test.describe('Ship upgrade flow', () => {
 
   test('shows wallet connect prompt when not connected', async ({ page }) => {
     await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle')
     const connectBtn = page.getByRole('button', { name: /connect wallet/i })
     const dashboardContent = page.getByText(/ship/i)
+    
+    await Promise.race([
+      connectBtn.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {}),
+      dashboardContent.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
+    ])
+    
     const hasConnectBtn = await connectBtn.isVisible()
     const hasDashboardContent = await dashboardContent.isVisible()
     expect(hasConnectBtn || hasDashboardContent).toBe(true)

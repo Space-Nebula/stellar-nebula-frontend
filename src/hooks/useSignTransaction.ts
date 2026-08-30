@@ -2,7 +2,12 @@
 import { useCallback, useState } from 'react'
 import { TransactionBuilder, rpc, type Transaction } from '@stellar/stellar-sdk'
 import { env } from '@config/env'
+import { getStellarNetworkConfig, type StellarNetworkConfig } from '@config/stellar'
 import { useWallet } from '@contexts/WalletContext'
+import { simulateContractTransaction } from '@utils/stellar/simulate'
+import { estimateTransactionFee, buildCostPreview } from '@utils/stellar/feeEstimation'
+import type { TransactionCostPreview } from '@utils/stellar/feeEstimation'
+import type { ParsedSimulationResult, ContractNativeValue } from '@utils/stellar/responseParser'
 import type { XDR } from '@/types'
 import type { StellarNetwork } from '@/types'
 import {
@@ -34,6 +39,8 @@ interface UseSignTransactionReturn {
   isLoading: boolean
   error: string | null
   result: TransactionSubmissionResult | null
+  simulation: ParsedSimulationResult<ContractNativeValue> | null
+  costPreview: TransactionCostPreview | null
   reset: () => void
 }
 
@@ -75,10 +82,16 @@ export function useSignTransaction(): UseSignTransactionReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<TransactionSubmissionResult | null>(null)
+  const [simulation, setSimulation] = useState<ParsedSimulationResult<ContractNativeValue> | null>(
+    null
+  )
+  const [costPreview, setCostPreview] = useState<TransactionCostPreview | null>(null)
 
   const reset = useCallback(() => {
     setError(null)
     setResult(null)
+    setSimulation(null)
+    setCostPreview(null)
   }, [])
 
   const signAndSubmit = useCallback(
@@ -100,6 +113,8 @@ export function useSignTransaction(): UseSignTransactionReturn {
       setIsLoading(true)
       setError(null)
       setResult(null)
+      setSimulation(null)
+      setCostPreview(null)
 
       const networkPassphrase =
         options?.networkPassphrase ??
@@ -109,6 +124,37 @@ export function useSignTransaction(): UseSignTransactionReturn {
       try {
         const buildOutput = await buildTransaction()
         const unsignedXdr = typeof buildOutput === 'string' ? buildOutput : buildOutput.toXDR()
+
+        let operationCount = 1
+        try {
+          operationCount = (
+            TransactionBuilder.fromXDR(unsignedXdr, networkPassphrase) as Transaction
+          ).operations.length
+        } catch {
+          // Fall back to a single-operation estimate if the unsigned XDR can't be parsed.
+        }
+
+        const previewConfig: StellarNetworkConfig = {
+          ...getStellarNetworkConfig(walletState.network ?? 'testnet'),
+          rpcUrl: options?.rpcUrl ?? env.STELLAR_RPC_URL,
+          networkPassphrase,
+        }
+
+        // Dry-run the transaction and estimate its cost before asking the
+        // wallet to sign, so failures and fees are surfaced up front.
+        const [simulationResult, networkFee] = await Promise.all([
+          simulateContractTransaction(unsignedXdr, { config: previewConfig }),
+          estimateTransactionFee({ operationCount }),
+        ])
+
+        setSimulation(simulationResult)
+        setCostPreview(buildCostPreview(networkFee, simulationResult.minResourceFee))
+
+        if (simulationResult.status === 'error') {
+          throw new Error(
+            simulationResult.error ?? 'Transaction simulation failed. Submission aborted.'
+          )
+        }
 
         const signedXdr = await signTransaction(unsignedXdr)
         if (!signedXdr) {
@@ -195,6 +241,8 @@ export function useSignTransaction(): UseSignTransactionReturn {
     isLoading,
     error,
     result,
+    simulation,
+    costPreview,
     reset,
   }
 }

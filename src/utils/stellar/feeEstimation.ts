@@ -106,6 +106,43 @@ export function formatFeeInXlm(stroops: number): string {
   return `${stroopsToXlm(stroops)} XLM`
 }
 
+export interface TransactionCostPreview {
+  networkFeeStroops: number
+  networkFeeXlm: string
+  resourceFeeStroops: number
+  resourceFeeXlm: string
+  totalStroops: number
+  totalXlm: string
+  networkCondition: FeeEstimateResult['networkCondition']
+}
+
+/**
+ * Combine a network fee estimate with an optional Soroban resource fee
+ * (typically a simulation's `minResourceFee`) into a single cost preview
+ * that shows the estimated fee, gas cost, and total XLM required before
+ * the user signs a transaction.
+ */
+export function buildCostPreview(
+  networkFee: FeeEstimateResult,
+  resourceFeeStroops?: string | number | null
+): TransactionCostPreview {
+  const resourceStroops =
+    resourceFeeStroops !== null && resourceFeeStroops !== undefined
+      ? Math.max(0, Number(resourceFeeStroops) || 0)
+      : 0
+  const totalStroops = networkFee.stroops + resourceStroops
+
+  return {
+    networkFeeStroops: networkFee.stroops,
+    networkFeeXlm: formatFeeInXlm(networkFee.stroops),
+    resourceFeeStroops: resourceStroops,
+    resourceFeeXlm: formatFeeInXlm(resourceStroops),
+    totalStroops,
+    totalXlm: formatFeeInXlm(totalStroops),
+    networkCondition: networkFee.networkCondition,
+  }
+}
+
 /**
  * Keep the exported namespace predictable for call sites that want the SDK
  * fallback minimum fee.

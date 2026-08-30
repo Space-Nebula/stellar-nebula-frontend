@@ -88,7 +88,9 @@ export function useSessionTimeout({
   }, [])
 
   const isWarningOpenInternalRef = useRef(isWarningOpenInternal)
-  isWarningOpenInternalRef.current = isWarningOpenInternal
+  useEffect(() => {
+    isWarningOpenInternalRef.current = isWarningOpenInternal
+  }, [isWarningOpenInternal])
 
   useEffect(() => {
     if (!enabled) {

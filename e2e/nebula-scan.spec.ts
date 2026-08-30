@@ -15,9 +15,15 @@ test.describe('Nebula scan page', () => {
 
   test('shows connect prompt for unauthenticated scan', async ({ page }) => {
     await page.goto('/nebula')
-    await page.waitForLoadState('networkidle')
+    // Wait for either the connect prompt or scan button to appear
     const connectPrompt = page.getByRole('button', { name: /connect wallet/i })
     const scanButton = page.getByRole('button', { name: /scan nebula/i })
+    
+    await Promise.race([
+      connectPrompt.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {}),
+      scanButton.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
+    ])
+    
     const hasConnectPrompt = await connectPrompt.isVisible()
     const hasScanButton = await scanButton.isVisible()
     expect(hasConnectPrompt || hasScanButton).toBe(true)

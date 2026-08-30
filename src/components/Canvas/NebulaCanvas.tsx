@@ -6,11 +6,12 @@ import { CameraControls } from './CameraControls'
 import { FpsCounter } from './FpsCounter'
 import { BloomEffect } from '../Effects'
 import { useGraphicsStore } from '@/store'
+import { useAdaptivePerformanceMode } from '@/hooks/useAdaptivePerformanceMode'
 import type { ResourceType } from '@/types/game'
 
 interface NebulaCanvasProps {
   showFps?: boolean
-  onScanComplete?: (resourceType: ResourceType, amount: number) => void
+  onScanComplete?: (resourceType: ResourceType, amount: number, pointId: string) => void
 }
 
 export function NebulaCanvas({ showFps = false, onScanComplete }: NebulaCanvasProps) {
@@ -18,6 +19,7 @@ export function NebulaCanvas({ showFps = false, onScanComplete }: NebulaCanvasPr
   const bloomIntensity = useGraphicsStore((state) => state.bloomIntensity)
   const performanceMode = useGraphicsStore((state) => state.performanceMode)
   const starfieldDensity = useGraphicsStore((state) => state.starfieldDensity)
+  useAdaptivePerformanceMode()
   const deviceHints = useMemo(() => {
     if (typeof window === 'undefined') {
       return {

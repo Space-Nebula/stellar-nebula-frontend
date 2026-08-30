@@ -84,7 +84,14 @@ function ShipCard({
     >
       <div className="ship-card-top">
         <div>
-          <p className="ship-name">{ship.name}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            <p className="ship-name">{ship.name}</p>
+            {ship.isPending && (
+              <span className="pending-badge" title="State change pending confirmation">
+                Pending
+              </span>
+            )}
+          </div>
           <span className="ship-model">{ship.model}</span>
         </div>
         <span className={`status-pill status-${ship.status}`}>{ship.status}</span>
@@ -110,7 +117,16 @@ function ShipCard({
 
 function ShipDashboard() {
   const { walletState } = useWallet()
-  const { ships, activeShipId, setShips, setActiveShip, upsertShip } = useShipStore()
+  const {
+    ships,
+    activeShipId,
+    setShips,
+    setActiveShip,
+    applyOptimisticShipUpdate,
+    confirmOptimisticShipUpdate,
+    rollbackOptimisticShipUpdate,
+    optimisticTransactions: shipOptimisticTransactions,
+  } = useShipStore()
   const {
     inventory,
     optimisticTransactions,
@@ -182,17 +198,25 @@ function ShipDashboard() {
     [inventory]
   )
 
-  const pendingUpgrade = optimisticTransactions.find(
-    (transaction) => transaction.status === 'pending' && transaction.label.startsWith('Upgrade:')
-  )
-  const latestUpgradeResult = optimisticTransactions.find(
-    (transaction) => transaction.label.startsWith('Upgrade:') && transaction.status !== 'pending'
-  )
+  const pendingUpgrade =
+    optimisticTransactions.find(
+      (transaction) => transaction.status === 'pending' && transaction.label.startsWith('Upgrade:')
+    ) ??
+    shipOptimisticTransactions.find(
+      (transaction) => transaction.status === 'pending' && transaction.label.startsWith('Upgrade:')
+    )
+
+  const latestUpgradeResult =
+    optimisticTransactions.find(
+      (transaction) => transaction.label.startsWith('Upgrade:') && transaction.status !== 'pending'
+    ) ??
+    shipOptimisticTransactions.find(
+      (transaction) => transaction.label.startsWith('Upgrade:') && transaction.status !== 'pending'
+    )
 
   const handleApplyUpgrade = async (upgrade: ShipUpgradeOption) => {
     if (!activeShip || !hasResources(inventory, upgrade.cost)) return
 
-    const previousShip = activeShip
     const changes = Object.fromEntries(
       Object.entries(upgrade.cost).map(([resource, amount]) => [resource, -(amount ?? 0)])
     ) as Partial<Record<ResourceType, number>>
@@ -203,13 +227,27 @@ function ShipDashboard() {
       mineralsCost: upgrade.cost.minerals ?? 0,
     })
 
-    const upgradedShip = {
-      ...activeShip,
+    const upgradedShip: Partial<Ship> = {
       cargoCapacity: activeShip.cargoCapacity + (upgrade.cargoDelta ?? 0),
       crewCapacity: activeShip.crewCapacity + (upgrade.crewDelta ?? 0),
       status: upgrade.statusAfter ?? 'docked',
       lastKnownSector: upgrade.sectorLabel ?? activeShip.lastKnownSector,
     }
+
+    // 1. Immediately apply optimistic updates to BOTH resource store and ship store
+    const resourceTxId = applyOptimisticUpdate(`Upgrade: ${upgrade.name}`, changes)
+    const shipTxId = applyOptimisticShipUpdate(
+      `Upgrade: ${upgrade.name}`,
+      activeShip.id,
+      upgradedShip
+    )
+
+    trackEvent('upgrade_started', {
+      upgradeId: upgrade.id,
+      shipModel: activeShip.model,
+      creditsCost: upgrade.cost.credits ?? 0,
+      mineralsCost: upgrade.cost.minerals ?? 0,
+    })
 
     const useContractPath = walletState.isConnected && Boolean(upgradeContract.shipNFT)
 
@@ -230,6 +268,44 @@ function ShipDashboard() {
         return
       } finally {
         setIsPreparingUpgrade(false)
+      setUpgradeMessage(`${upgrade.name} is submitting on-chain…`)
+      setIsUpgradeOpen(false)
+
+      try {
+        const txHash = await upgradeContract.executeUpgrade()
+
+        if (txHash) {
+          confirmOptimisticShipUpdate(shipTxId, undefined, txHash)
+          confirmOptimisticUpdate(resourceTxId, undefined, txHash)
+          void upgradeContract.refresh()
+          recordUpgradeCompleted({ upgradeId: upgrade.id, shipId: activeShip.id })
+          completeTutorialObjective('first-upgrade')
+          trackEvent('upgrade_confirmed', {
+            upgradeId: upgrade.id,
+            cargoDelta: upgrade.cargoDelta ?? 0,
+            crewDelta: upgrade.crewDelta ?? 0,
+            txHash,
+          })
+          setUpgradeMessage(`${upgrade.name} confirmed on-chain (${txHash.slice(0, 8)}).`)
+        } else {
+          const errMsg = upgradeContract.error ?? 'Contract upgrade failed'
+          rollbackOptimisticShipUpdate(shipTxId, errMsg)
+          rollbackOptimisticUpdate(resourceTxId, errMsg)
+          trackEvent('upgrade_failed', {
+            upgradeId: upgrade.id,
+            reason: 'contract_error',
+          })
+          setUpgradeMessage(`${upgrade.name} failed and changes were rolled back.`)
+        }
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : 'Contract upgrade failed'
+        rollbackOptimisticShipUpdate(shipTxId, errMsg)
+        rollbackOptimisticUpdate(resourceTxId, errMsg)
+        trackEvent('upgrade_failed', {
+          upgradeId: upgrade.id,
+          reason: 'contract_exception',
+        })
+        setUpgradeMessage(`${upgrade.name} failed and changes were rolled back.`)
       }
       return
     }
@@ -238,10 +314,13 @@ function ShipDashboard() {
     upsertShip(upgradedShip)
 
     setUpgradeMessage(`${upgrade.name} is pending transaction confirmation.`)
+    setUpgradeMessage(`${upgrade.name} is pending confirmation.`)
+    setIsUpgradeOpen(false)
 
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 700))
-      confirmOptimisticUpdate(transactionId)
+      confirmOptimisticShipUpdate(shipTxId)
+      confirmOptimisticUpdate(resourceTxId)
       recordUpgradeCompleted({ upgradeId: upgrade.id, shipId: activeShip.id })
       completeTutorialObjective('first-upgrade')
       trackEvent('upgrade_confirmed', {
@@ -250,18 +329,20 @@ function ShipDashboard() {
         crewDelta: upgrade.crewDelta ?? 0,
       })
       setUpgradeMessage(`${upgrade.name} confirmed successfully.`)
-      setIsUpgradeOpen(false)
     } catch (error) {
+      rollbackOptimisticShipUpdate(
+        shipTxId,
+        error instanceof Error ? error.message : 'Upgrade failed'
+      )
       rollbackOptimisticUpdate(
-        transactionId,
+        resourceTxId,
         error instanceof Error ? error.message : 'Upgrade failed'
       )
       trackEvent('upgrade_failed', {
         upgradeId: upgrade.id,
         reason: error instanceof Error ? error.name || 'Error' : 'unknown',
       })
-      upsertShip(previousShip)
-      setUpgradeMessage(`${upgrade.name} failed and resource changes were rolled back.`)
+      setUpgradeMessage(`${upgrade.name} failed and changes were rolled back.`)
     }
   }
 
