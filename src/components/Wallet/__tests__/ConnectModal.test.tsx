@@ -10,6 +10,11 @@ vi.mock('@services/wallets', async (importOriginal) => {
   return {
     ...actual,
     isFreighterInstalled: vi.fn().mockResolvedValue(true),
+    isLedgerAvailable: vi.fn().mockResolvedValue(true),
+    connectLedger: vi.fn().mockResolvedValue('GLEDGER123'),
+    signTransactionWithLedger: vi.fn(),
+    disconnectLedger: vi.fn(),
+    getLedgerNetwork: vi.fn((network: string) => network),
     isWalletConnectAvailable: vi.fn().mockReturnValue(false),
     connectWalletConnect: vi.fn(),
     signTransactionWithWalletConnect: vi.fn(),
@@ -46,6 +51,7 @@ describe('ConnectModal', () => {
   it('renders wallet options when open', () => {
     renderModal()
     expect(screen.getByText('Freighter')).toBeInTheDocument()
+    expect(screen.getByText('Ledger')).toBeInTheDocument()
     expect(screen.getByText('Albedo')).toBeInTheDocument()
   })
 
@@ -100,6 +106,20 @@ describe('ConnectModal', () => {
       await userEvent.click(screen.getByText('Albedo').closest('button')!)
     })
     expect(connectAlbedo).toHaveBeenCalled()
+  })
+
+  it('initiates Ledger connection when option is clicked', async () => {
+    const { connectLedger } = await import('@services/wallets')
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Ledger').closest('button')).not.toBeDisabled()
+    })
+
+    await act(async () => {
+      await userEvent.click(screen.getByText('Ledger').closest('button')!)
+    })
+    expect(connectLedger).toHaveBeenCalled()
   })
 
   it('displays an error message on connection failure', async () => {

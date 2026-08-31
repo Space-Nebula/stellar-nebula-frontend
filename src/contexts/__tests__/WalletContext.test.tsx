@@ -10,6 +10,11 @@ vi.mock('@services/wallets', async (importOriginal) => {
   return {
     ...actual,
     isFreighterInstalled: vi.fn().mockResolvedValue(true),
+    isLedgerAvailable: vi.fn().mockResolvedValue(true),
+    connectLedger: vi.fn().mockResolvedValue('GLEDGER123'),
+    signTransactionWithLedger: vi.fn().mockResolvedValue('SIGNED_LEDGER_XDR'),
+    disconnectLedger: vi.fn(),
+    getLedgerNetwork: vi.fn((network: string) => network),
     isWalletConnectAvailable: vi.fn().mockReturnValue(false),
     connectWalletConnect: vi.fn(),
     signTransactionWithWalletConnect: vi.fn(),
@@ -27,8 +32,16 @@ vi.mock('@services/wallets', async (importOriginal) => {
 })
 
 function TestConsumer() {
-  const { walletState, connect, disconnect, isLoading, error, isReconnecting, reconnectError } =
-    useWallet()
+  const {
+    walletState,
+    connect,
+    disconnect,
+    signTransaction,
+    isLoading,
+    error,
+    isReconnecting,
+    reconnectError,
+  } = useWallet()
   return (
     <div>
       <span data-testid="connected">{String(walletState.isConnected)}</span>
@@ -39,6 +52,8 @@ function TestConsumer() {
       <span data-testid="reconnectError">{reconnectError ?? 'none'}</span>
       <button onClick={() => connect('freighter')}>Connect Freighter</button>
       <button onClick={() => connect('albedo')}>Connect Albedo</button>
+      <button onClick={() => connect('ledger')}>Connect Ledger</button>
+      <button onClick={() => signTransaction('RAW_XDR')}>Sign Transaction</button>
       <button onClick={disconnect}>Disconnect</button>
     </div>
   )
@@ -80,6 +95,43 @@ describe('WalletProvider', () => {
     })
     expect(screen.getByTestId('connected').textContent).toBe('true')
     expect(screen.getByTestId('pubkey').textContent).toBe('GALBEDO123')
+  })
+
+  it('connects via Ledger and updates state', async () => {
+    renderWithProvider()
+    await act(async () => {
+      await userEvent.click(screen.getByText('Connect Ledger'))
+    })
+    expect(screen.getByTestId('connected').textContent).toBe('true')
+    expect(screen.getByTestId('pubkey').textContent).toBe('GLEDGER123')
+  })
+
+  it('signs transactions via Ledger', async () => {
+    const { signTransactionWithLedger } = await import('@services/wallets')
+    renderWithProvider()
+    await act(async () => {
+      await userEvent.click(screen.getByText('Connect Ledger'))
+    })
+    await act(async () => {
+      await userEvent.click(screen.getByText('Sign Transaction'))
+    })
+    expect(signTransactionWithLedger).toHaveBeenCalledWith(
+      'RAW_XDR',
+      'Test SDF Network ; September 2015',
+      'GLEDGER123'
+    )
+  })
+
+  it('closes Ledger transport on disconnect', async () => {
+    const { disconnectLedger } = await import('@services/wallets')
+    renderWithProvider()
+    await act(async () => {
+      await userEvent.click(screen.getByText('Connect Ledger'))
+    })
+    await act(async () => {
+      await userEvent.click(screen.getByText('Disconnect'))
+    })
+    expect(disconnectLedger).toHaveBeenCalled()
   })
 
   it('disconnects and resets state', async () => {

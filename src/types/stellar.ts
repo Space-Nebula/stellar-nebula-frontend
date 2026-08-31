@@ -61,7 +61,7 @@ export interface StellarTransaction {
 
 // ─── Wallet ──────────────────────────────────────────────────────────────────
 
-export type WalletType = 'freighter' | 'albedo' | 'xbull' | 'walletconnect' | 'manual'
+export type WalletType = 'freighter' | 'albedo' | 'ledger' | 'xbull' | 'walletconnect' | 'manual'
 
 export interface WalletState {
   /** Whether a wallet is currently connected */

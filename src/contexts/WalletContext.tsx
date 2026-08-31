@@ -10,10 +10,14 @@ import {
   isAlbedoAvailable,
   signTransactionWithFreighter,
   signTransactionWithAlbedo,
+  isLedgerAvailable,
+  connectLedger,
+  signTransactionWithLedger,
+  disconnectLedger,
+  getLedgerNetwork,
   isWalletConnectAvailable,
   connectWalletConnect,
   signTransactionWithWalletConnect,
-  getWalletConnectNetwork,
   disconnectWalletConnect,
   loadWalletConnectSession,
   validateNetworkMatch,
@@ -58,6 +62,7 @@ export interface WalletContextValue {
   reconnectError: string | null
   isFreighterInstalled: boolean
   isAlbedoAvailable: boolean
+  isLedgerAvailable: boolean
   isWalletConnectAvailable: boolean
   networkMismatchWarning: string | null
   connect: (type: WalletType) => Promise<void>
@@ -146,6 +151,15 @@ async function validateWalletSession(persisted: PersistedWallet): Promise<Wallet
         walletType: persisted.walletType,
         network: persisted.network,
       }
+    } else if (persisted.walletType === 'ledger') {
+      const available = await isLedgerAvailable()
+      if (!available) return null
+      return {
+        isConnected: true,
+        publicKey: persisted.publicKey,
+        walletType: persisted.walletType,
+        network: persisted.network,
+      }
     }
     return null
   } catch {
@@ -172,6 +186,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [isReconnecting, setIsReconnecting] = useState(false)
   const [reconnectError, setReconnectError] = useState<string | null>(null)
   const [freighterInstalled, setFreighterInstalled] = useState(false)
+  const [ledgerAvailable, setLedgerAvailable] = useState(false)
   const [networkMismatchWarning, setNetworkMismatchWarning] = useState<string | null>(null)
   const albedoAvailable = isAlbedoAvailable()
   const walletConnectAvailable = isWalletConnectAvailable()
@@ -182,6 +197,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
     isFreighterInstalled()
       .then(setFreighterInstalled)
       .catch(() => setFreighterInstalled(false))
+  }, [])
+
+  useEffect(() => {
+    isLedgerAvailable()
+      .then(setLedgerAvailable)
+      .catch(() => setLedgerAvailable(false))
   }, [])
 
   // Auto-reconnect on mount if user was previously connected
@@ -285,6 +306,17 @@ export function WalletProvider({ children }: WalletProviderProps) {
           const result = await connectWalletConnect(wcNetwork)
           publicKey = result.publicKey
           network = wcNetwork
+        } else if (type === 'ledger') {
+          const available = await isLedgerAvailable()
+          if (!available) {
+            const walletError = handleWalletConnectionError(
+              new Error('Ledger WebUSB is not supported'),
+              type
+            )
+            throw new Error(formatWalletError(walletError))
+          }
+          publicKey = await connectLedger()
+          network = getLedgerNetwork(appConfig.network as StellarNetwork)
         } else {
           throw new Error(`Wallet type "${type}" is not supported.`)
         }
@@ -316,7 +348,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
         // Derive a per-session passphrase (in-memory only) and enable encrypted copies
         try {
           const rand = crypto.getRandomValues(new Uint8Array(32))
-          const pass = Array.from(rand).map((b) => b.toString(16).padStart(2, '0')).join('')
+          const pass = Array.from(rand)
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('')
           setSessionPassphrase(pass)
           // Save encrypted backup (best-effort)
           void saveEncryptedCopy('stellar-nebula:enc:', 'wallet', {
@@ -368,6 +402,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
     if (walletState.walletType === 'walletconnect') {
       disconnectWalletConnect()
+    } else if (walletState.walletType === 'ledger') {
+      void disconnectLedger()
     }
 
     setWalletState(INITIAL_WALLET_STATE)
@@ -461,6 +497,17 @@ export function WalletProvider({ children }: WalletProviderProps) {
             throw new Error('WalletConnect session not found. Please reconnect.')
           }
           signedXdr = await signTransactionWithWalletConnect(xdr, walletState.network, wcSession)
+        } else if (walletState.walletType === 'ledger') {
+          const passphraseMap: Record<StellarNetwork, string> = {
+            testnet: 'Test SDF Network ; September 2015',
+            futurenet: 'Test SDF Future Network ; October 2022',
+            mainnet: 'Public Global Stellar Network ; September 2015',
+          }
+          signedXdr = await signTransactionWithLedger(
+            xdr,
+            passphraseMap[walletState.network],
+            walletState.publicKey
+          )
         } else {
           throw new Error(`Signing not supported for wallet type "${walletState.walletType}"`)
         }
@@ -509,6 +556,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       reconnectError,
       isFreighterInstalled: freighterInstalled,
       isAlbedoAvailable: albedoAvailable,
+      isLedgerAvailable: ledgerAvailable,
       isWalletConnectAvailable: walletConnectAvailable,
       networkMismatchWarning,
       connect,
@@ -526,6 +574,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       reconnectError,
       freighterInstalled,
       albedoAvailable,
+      ledgerAvailable,
       walletConnectAvailable,
       networkMismatchWarning,
       connect,

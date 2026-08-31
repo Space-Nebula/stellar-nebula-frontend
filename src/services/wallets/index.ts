@@ -13,6 +13,14 @@ export {
 } from './albedo'
 
 export {
+  isLedgerAvailable,
+  connectLedger,
+  signTransactionWithLedger,
+  disconnectLedger,
+  getLedgerNetwork,
+} from './ledger'
+
+export {
   isWalletConnectAvailable,
   connectWalletConnect,
   signTransactionWithWalletConnect,
