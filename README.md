@@ -148,3 +148,7 @@ Stellar Team: For Soroban and SDKpowering fair on-chain gaming.
 Open-Source Deps: React, Three.js, Stellar SDKhuge thanks to maintainers.
 Inspiration: No Man's Sky procedural vibes, but blockchain-native.
 Funders: Built with community support; eyeing Drips Wave II for polish.
+
+## Recent Changes
+- Ongoing improvements and fixes as part of active development.
+- See commit history and open issues for detailed change tracking.
