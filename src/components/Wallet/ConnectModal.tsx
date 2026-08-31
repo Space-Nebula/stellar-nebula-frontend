@@ -20,6 +20,12 @@ const WALLET_OPTIONS: WalletOption[] = [
     icon: '🚀',
   },
   {
+    type: 'ledger',
+    name: 'Ledger',
+    description: 'Hardware wallet via USB device approval',
+    icon: '🔐',
+  },
+  {
     type: 'albedo',
     name: 'Albedo',
     description: 'Web-based wallet — no extension required',
@@ -41,8 +47,16 @@ interface ConnectModalProps {
 }
 
 export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
-  const { connect, isLoading, error, isFreighterInstalled, isAlbedoAvailable, isWalletConnectAvailable, clearError } =
-    useWallet()
+  const {
+    connect,
+    isLoading,
+    error,
+    isFreighterInstalled,
+    isAlbedoAvailable,
+    isLedgerAvailable,
+    isWalletConnectAvailable,
+    clearError,
+  } = useWallet()
 
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -96,11 +110,12 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
   const isAvailable = useCallback(
     (type: WalletType): boolean => {
       if (type === 'freighter') return isFreighterInstalled
+      if (type === 'ledger') return isLedgerAvailable
       if (type === 'albedo') return isAlbedoAvailable
       if (type === 'walletconnect') return isWalletConnectAvailable
       return false
     },
-    [isFreighterInstalled, isAlbedoAvailable, isWalletConnectAvailable]
+    [isFreighterInstalled, isLedgerAvailable, isAlbedoAvailable, isWalletConnectAvailable]
   )
 
   if (!isOpen) return null

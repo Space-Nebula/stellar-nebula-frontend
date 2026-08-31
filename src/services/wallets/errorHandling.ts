@@ -101,6 +101,35 @@ export function handleWalletConnectionError(error: unknown, walletType: WalletTy
     }
   }
 
+  if (walletType === 'ledger') {
+    if (lowerMessage.includes('webusb') || lowerMessage.includes('not supported')) {
+      return {
+        code: 'LEDGER_WEBUSB_UNSUPPORTED',
+        message: 'Ledger WebUSB is not supported in this browser',
+        helpText: 'Use a WebUSB-compatible browser such as Chrome or Edge.',
+        isRetryable: false,
+      }
+    }
+
+    if (lowerMessage.includes('disconnect')) {
+      return {
+        code: 'LEDGER_DISCONNECTED',
+        message: 'Ledger device disconnected',
+        helpText: 'Reconnect and unlock your Ledger, open the Stellar app, then try again.',
+        isRetryable: true,
+      }
+    }
+
+    if (lowerMessage.includes('reject') || lowerMessage.includes('denied')) {
+      return {
+        code: 'USER_REJECTED',
+        message: 'You rejected the Ledger request',
+        helpText: 'Approve the request on your Ledger device to continue.',
+        isRetryable: true,
+      }
+    }
+  }
+
   if (lowerMessage.includes('public key') || lowerMessage.includes('pubkey')) {
     return {
       code: 'INVALID_KEY',

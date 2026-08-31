@@ -6,6 +6,11 @@ import Header from '../Header'
 
 vi.mock('@services/wallets', () => ({
   isFreighterInstalled: vi.fn().mockResolvedValue(false),
+  isLedgerAvailable: vi.fn().mockResolvedValue(false),
+  connectLedger: vi.fn(),
+  signTransactionWithLedger: vi.fn(),
+  disconnectLedger: vi.fn(),
+  getLedgerNetwork: vi.fn((network: string) => network),
   isWalletConnectAvailable: vi.fn().mockReturnValue(false),
   connectWalletConnect: vi.fn(),
   signTransactionWithWalletConnect: vi.fn(),
