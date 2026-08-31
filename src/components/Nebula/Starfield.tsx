@@ -15,6 +15,11 @@ const STARFIELD_DEPTH = 120
 const PARALLAX_STRENGTH = 0.018
 
 const STAR_COLOR_PALETTE = [
+  new Color('#f8fafc'),
+  new Color('#dbeafe'),
+  new Color('#c4b5fd'),
+  new Color('#bae6fd'),
+]
 
 function createStarfieldGeometry(starCount: number) {
   const geometry = new BufferGeometry()
