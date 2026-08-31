@@ -22,6 +22,7 @@ interface InteractiveScanPointProps {
   cooldown?: number
   remainingSeconds?: number
   isScanning?: boolean
+  isFocused?: boolean
 }
 
 const RESOURCE_COLORS: Record<ResourceType, string> = {
@@ -37,9 +38,11 @@ export function InteractiveScanPoint({
   cooldown = 0,
   remainingSeconds = 0,
   isScanning = false,
+  isFocused = false,
 }: InteractiveScanPointProps) {
   const meshRef = useRef<Mesh>(null)
   const [hovered, setHovered] = useState(false)
+  const isHighlighted = hovered || isFocused
 
   const handlePointerOver = useCallback(() => {
     if (cooldown <= 0 && !isScanning) {
@@ -67,7 +70,7 @@ export function InteractiveScanPoint({
     if (meshRef.current && !isScanning && cooldown <= 0) {
       const time = performance.now() * 0.001
       const pulse = 1 + Math.sin(time * 2) * 0.1
-      const baseScale = hovered ? 1.3 : 1
+      const baseScale = isHighlighted ? 1.3 : 1
       meshRef.current.scale.setScalar(baseScale * pulse)
     }
   })
@@ -82,8 +85,14 @@ export function InteractiveScanPoint({
 
   const isOnCooldown = cooldown > 0
   const canInteract = !isOnCooldown && !isScanning
-  const currentColor = isOnCooldown ? '#4b5563' : hovered ? '#ffffff' : data.color
-  const emissiveIntensity = hovered ? 0.8 : isOnCooldown ? 0.1 : 0.5
+  const currentColor = isOnCooldown
+    ? '#4b5563'
+    : isFocused
+      ? '#32d6a5'
+      : isHighlighted
+        ? '#ffffff'
+        : data.color
+  const emissiveIntensity = isFocused ? 1.0 : isHighlighted ? 0.8 : isOnCooldown ? 0.1 : 0.5
 
   return (
     <mesh
@@ -103,11 +112,30 @@ export function InteractiveScanPoint({
         opacity={isOnCooldown ? 0.4 : 0.9}
       />
 
-      {/* Glow effect when hovered */}
-      {hovered && canInteract && (
-        <mesh scale={1.5}>
+      {/* Glow effect when hovered or keyboard focused */}
+      {isHighlighted && canInteract && (
+        <mesh scale={isFocused ? 1.7 : 1.5}>
           <sphereGeometry args={[data.size, 16, 16]} />
-          <meshBasicMaterial color={currentColor} transparent opacity={0.2} toneMapped={false} />
+          <meshBasicMaterial
+            color={isFocused ? '#32d6a5' : currentColor}
+            transparent
+            opacity={isFocused ? 0.35 : 0.2}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
+
+      {/* Keyboard focus ring - distinct visual indicator for Tab navigation */}
+      {isFocused && canInteract && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[data.size * 1.8, data.size * 2.0, 32]} />
+          <meshBasicMaterial color="#32d6a5" transparent opacity={0.9} side={DoubleSide} />
+        </mesh>
+      )}
+      {isFocused && canInteract && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[data.size * 2.1, data.size * 2.25, 32]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.6} side={DoubleSide} />
         </mesh>
       )}
 
@@ -181,6 +209,7 @@ interface ScanPointsProps {
   remainingSecondsMap?: Record<string, number>
   scanningPoints?: Set<string>
   rarityMap?: Record<string, RarityTier>
+  focusedPointId?: string | null
 }
 
 export function InteractiveScanPoints({
@@ -189,6 +218,7 @@ export function InteractiveScanPoints({
   remainingSecondsMap = {},
   scanningPoints = new Set(),
   rarityMap = {},
+  focusedPointId = null,
 }: ScanPointsProps) {
   const scanPointsData: ScanPointData[] = [
     {
@@ -239,6 +269,7 @@ export function InteractiveScanPoints({
           cooldown={cooldowns[point.id] || 0}
           remainingSeconds={remainingSecondsMap[point.id] || 0}
           isScanning={scanningPoints.has(point.id)}
+          isFocused={focusedPointId === point.id}
         />
       ))}
     </group>

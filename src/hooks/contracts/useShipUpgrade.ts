@@ -18,6 +18,7 @@ import {
 } from '../../services/contracts/shipUpgrade'
 import { fetchShipNFT, type ShipNFTRecord } from '../../services/nft/shipNFT'
 import { retryAsync, isRetryableStellarError } from '@utils/stellar/retry'
+import { haptics } from '@/utils/haptics'
 
 interface UseShipUpgradeResult {
   shipNFT: ShipNFTRecord | null
@@ -121,6 +122,7 @@ export function useShipUpgrade(
   const buildUpgradeTransaction = useCallback(async () => {
     if (!shipId || !resolvedAccountId) {
       setError('A connected account and ship are required.')
+      haptics.error()
       return null
     }
 
@@ -152,12 +154,14 @@ export function useShipUpgrade(
       if (result.simulation.status === 'error') {
         const simulationError = result.simulation.error ?? 'Contract simulation failed.'
         setError(simulationError)
+        haptics.error()
         return null
       }
 
       return result
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to build upgrade transaction')
+      haptics.error()
       return null
     }
   }, [config, resolvedAccountId, resourceSnapshot, shipId, shipNFT])
@@ -166,6 +170,7 @@ export function useShipUpgrade(
   const executeUpgrade = useCallback(async () => {
     if (!walletState.isConnected || !walletState.publicKey) {
       setError('Connect a wallet to submit the upgrade transaction.')
+      haptics.error()
       return null
     }
 
@@ -196,6 +201,7 @@ export function useShipUpgrade(
       }
 
       if (sendStatus === 'SUCCESS') {
+        haptics.upgradeSuccess()
         return typeof (sendResult as { hash?: unknown }).hash === 'string'
           ? (sendResult as { hash: string }).hash
           : null
@@ -220,9 +226,11 @@ export function useShipUpgrade(
           : current
       )
 
+      haptics.upgradeSuccess()
       return finalResult.txHash
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit upgrade transaction')
+      haptics.error()
       return null
     }
   }, [

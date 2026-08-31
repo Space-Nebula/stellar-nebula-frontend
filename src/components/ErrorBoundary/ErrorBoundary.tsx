@@ -1,7 +1,7 @@
 import type { ErrorInfo, ReactNode } from 'react'
 import { Component } from 'react'
-import { trackEvent } from '../services/analytics'
-import { captureError } from '../services/errorTracking'
+import { trackEvent } from '../../services/analytics'
+import { captureError } from '../../services/errorTracking'
 
 const MAX_AUTO_RETRIES = 2
 const TRANSIENT_ERROR_PATTERN = /(network|fetch|timeout|loading|resource|socket|abort)/i

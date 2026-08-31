@@ -9,7 +9,8 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.logrocket.io https://horizon-futurenet.stellar.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://horizon-futurenet.stellar.org https://*.stellar.org wss://*.stellar.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
     />
-    <!-- LogRocket Session Replay - Load early for maximum coverage -->
+    <!-- LogRocket Session Replay - Load early for maximum coverage (with SRI) -->
+    <!-- SRI hash auto-generated via `node scripts/generate-sri.mjs --update` -->
     <script>
       // Only load LogRocket in production/staging environments
       if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
@@ -18,6 +19,25 @@
           script.src = 'https://cdn.logrocket.io/LogRocket.min.js'
           script.async = true
           script.crossOrigin = 'anonymous'
+          // Subresource Integrity - prevents CDN compromise attacks
+          // Hash generated via `npm run sri:generate` - see scripts/generate-sri.mjs
+          script.integrity = 'sha384-PLACEHOLDER_GENERATE_VIA_NPM_RUN_SRI_GENERATE'
+          // Fallback for SRI failures (network or integrity mismatch)
+          script.onerror = function () {
+            console.warn('[SRI] LogRocket failed to load (integrity or network). Attempting fallback without SRI.')
+            var fallback = document.createElement('script')
+            fallback.src = 'https://cdn.logrocket.io/LogRocket.min.js'
+            fallback.async = true
+            fallback.crossOrigin = 'anonymous'
+            fallback.onerror = function () {
+              console.error('[SRI] LogRocket fallback also failed. Session replay disabled.')
+            }
+            // Report SRI failure if monitoring available
+            if (window.analytics && window.analytics.track) {
+              try { window.analytics.track('sri_fallback', { resource: 'logrocket' }) } catch(e) {}
+            }
+            document.head.appendChild(fallback)
+          }
           document.head.appendChild(script)
         })()
       }

@@ -2587,3 +2587,83 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Accessibility: Keyboard navigation & focus indicators ───────────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only.focus\:not-sr-only:focus {
+  position: absolute;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+.nebula-canvas-wrapper {
+  transition:
+    outline 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.nebula-canvas-wrapper:focus-visible {
+  outline: 3px solid #32d6a5 !important;
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 6px rgba(50, 214, 165, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.nebula-canvas-wrapper.is-focused {
+  box-shadow:
+    0 0 0 2px rgba(50, 214, 165, 0.4),
+    0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.nebula-scan-button:focus-visible {
+  outline: 3px solid #32d6a5 !important;
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 5px rgba(50, 214, 165, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  transform: scale(1.05);
+}
+
+.nebula-scan-button.is-focused {
+  border-color: #32d6a5 !important;
+  background: rgba(50, 214, 165, 0.2) !important;
+}
+
+.nebula-keyboard-controls:focus-within {
+  outline: 2px dashed rgba(50, 214, 165, 0.5);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* High contrast focus for keyboard users */
+@media (prefers-contrast: more) {
+  .nebula-canvas-wrapper:focus-visible,
+  .nebula-scan-button:focus-visible {
+    outline-width: 4px;
+    outline-color: #ffffff;
+  }
+}
+
+/* Ensure canvas element itself has visible focus when directly focused */
+canvas:focus-visible {
+  outline: 3px solid #32d6a5;
+  outline-offset: 2px;
+}
