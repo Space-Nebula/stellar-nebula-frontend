@@ -42,6 +42,12 @@ interface NebulaSceneProps {
   starfieldDensity: number
   performanceMode?: boolean
   onScanComplete?: (resourceType: ResourceType, amount: number, pointId: string) => void
+  // Controlled scan state props for keyboard navigation support
+  onScan?: (pointId: string, resourceType: ResourceType, amount: number) => void
+  scanningPoints?: Set<string>
+  rarityMap?: Record<string, RarityTier>
+  remainingSecondsMap?: Record<string, number>
+  focusedPointId?: string | null
 }
 
 function createInitialRng() {
@@ -52,9 +58,14 @@ export function NebulaScene({
   starfieldDensity,
   performanceMode = false,
   onScanComplete,
+  onScan: controlledOnScan,
+  scanningPoints: controlledScanningPoints,
+  rarityMap: controlledRarityMap,
+  remainingSecondsMap: controlledRemainingSecondsMap,
+  focusedPointId = null,
 }: NebulaSceneProps) {
-  const [scanningPoints, setScanningPoints] = useState<Set<string>>(new Set())
-  const [rarityMap, setRarityMap] = useState<Record<string, RarityTier>>({})
+  const [internalScanningPoints, setInternalScanningPoints] = useState<Set<string>>(new Set())
+  const [internalRarityMap, setInternalRarityMap] = useState<Record<string, RarityTier>>({})
   const { getRemainingSeconds, startCooldown, canScan } = useScanCooldown()
   const scanRngRef = useRef(createInitialRng())
 
@@ -69,15 +80,15 @@ export function NebulaScene({
 
   const { geometry: nebulaGeometry } = useProceduralNebula(nebulaConfig)
 
-  const handleScan = useCallback(
+  const internalHandleScan = useCallback(
     (pointId: string, resourceType: ResourceType, amount: number) => {
       if (!canScan(pointId)) return
 
-      setScanningPoints((prev) => new Set([...prev, pointId]))
+      setInternalScanningPoints((prev) => new Set([...prev, pointId]))
       trackEvent('scan_started', { pointId, resourceType, amount })
 
       setTimeout(() => {
-        setScanningPoints((prev) => {
+        setInternalScanningPoints((prev) => {
           const next = new Set(prev)
           next.delete(pointId)
           return next
@@ -86,7 +97,7 @@ export function NebulaScene({
         const reward = rollScanReward(resourceType, scanRngRef.current)
         const finalAmount = rollResourceAmount(amount, reward.rarity)
 
-        setRarityMap((prev) => ({ ...prev, [pointId]: reward.rarity }))
+        setInternalRarityMap((prev) => ({ ...prev, [pointId]: reward.rarity }))
         startCooldown(pointId, SCAN_COOLDOWN_MS)
 
         if (onScanComplete) {
@@ -104,10 +115,16 @@ export function NebulaScene({
     [canScan, startCooldown, onScanComplete]
   )
 
-  const remainingSecondsMap: Record<string, number> = {}
+  const handleScan = controlledOnScan ?? internalHandleScan
+
+  const internalRemainingSecondsMap: Record<string, number> = {}
   for (const id of ['scan-1', 'scan-2', 'scan-3', 'scan-4']) {
-    remainingSecondsMap[id] = getRemainingSeconds(id)
+    internalRemainingSecondsMap[id] = getRemainingSeconds(id)
   }
+
+  const remainingSecondsMap = controlledRemainingSecondsMap ?? internalRemainingSecondsMap
+  const scanningPoints = controlledScanningPoints ?? internalScanningPoints
+  const rarityMap = controlledRarityMap ?? internalRarityMap
 
   return (
     <>
@@ -122,6 +139,7 @@ export function NebulaScene({
         remainingSecondsMap={remainingSecondsMap}
         scanningPoints={scanningPoints}
         rarityMap={rarityMap}
+        focusedPointId={focusedPointId}
       />
       {nebulaGeometry ? (
         <ProceduralNebulaField geometry={nebulaGeometry} performanceMode={performanceMode} />

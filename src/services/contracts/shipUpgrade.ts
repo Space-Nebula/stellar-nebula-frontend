@@ -7,6 +7,7 @@ import {
   type Transaction,
 } from '@stellar/stellar-sdk'
 import type { StellarNetworkConfig } from '@config/stellar'
+import { getActiveStellarConfig } from '@config/stellar'
 import { env } from '@config/env'
 import type { ResourceAssetBalance } from '@services/assets/resources'
 import type { ShipNFTRecord } from '@services/nft/shipNFT'
@@ -205,9 +206,10 @@ export async function buildShipUpgradeTransaction(params: {
   balances: ResourceAssetBalance[]
   config?: StellarNetworkConfig
 }): Promise<ShipUpgradeBuildResult> {
-  const config = params.config
-  const rpcServer = new rpc.Server(config?.rpcUrl ?? env.STELLAR_RPC_URL)
-  const networkPassphrase = config?.networkPassphrase ?? env.STELLAR_PASSPHRASE
+  const config = params.config ?? getActiveStellarConfig()
+  const rpcServer = new rpc.Server(config.rpcUrl)
+  const networkPassphrase = config.networkPassphrase
+  const nebulaContractId = config.nebulaContractId || env.NEBULA_CONTRACT_ID
   const validation = validateUpgradeContractCall(params)
 
   if (!validation.isValid) {
@@ -233,7 +235,7 @@ export async function buildShipUpgradeTransaction(params: {
   })
     .addOperation(
       Operation.invokeContractFunction({
-        contract: env.NEBULA_CONTRACT_ID,
+        contract: nebulaContractId,
         function: 'upgrade_ship',
         args: [xdr.ScVal.scvString(JSON.stringify(payload))],
       })

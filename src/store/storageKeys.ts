@@ -12,6 +12,7 @@ export const userStoreStorageKey = 'stellar-nebula:user-store'
 export const sessionStoreStorageKey = 'stellar-nebula:session-store'
 export const graphicsStoreStorageKey = 'stellar-nebula:graphics-store'
 export const tutorialStoreKey = 'stellar-nebula:tutorial-store'
+export const achievementStoreStorageKey = 'stellar-nebula:achievement-store'
 
 export const ALL_STORAGE_KEYS = [
   gameStoreStorageKey,
@@ -22,4 +23,5 @@ export const ALL_STORAGE_KEYS = [
   sessionStoreStorageKey,
   graphicsStoreStorageKey,
   tutorialStoreKey,
+  achievementStoreStorageKey,
 ] as const

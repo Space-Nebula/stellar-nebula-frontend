@@ -6,6 +6,7 @@ import { ShareButton } from '@components/Social/ShareButton'
 import { HARVEST_META } from '@/services/harvest'
 import { trackEvent } from '@/services/analytics'
 import { showSuccess } from '@/utils/toast'
+import { haptics } from '@/utils/haptics'
 import { useAchievementStore, useResourceStore, type HarvestableResourceType } from '@/store'
 import type { ResourceType } from '@/types/game'
 
@@ -65,6 +66,7 @@ function NebulaView() {
       const label =
         HARVEST_META[resourceType as HarvestableResourceType]?.label ?? formatResource(resourceType)
       showSuccess(`Harvested ${amount} ${label}`)
+      haptics.scanSuccess()
       trackEvent('harvest_completed', { resourceType, amount, pointId: scanId })
     },
     [applyOptimisticHarvest, confirmOptimisticUpdate]
@@ -78,6 +80,15 @@ function NebulaView() {
         <p className="page-copy">
           Review mapped sectors, anomaly density, and navigation conditions for upcoming
           expeditions. Click a glowing anomaly to scan it and harvest its resources.
+          <span className="sr-only">
+            Keyboard: Tab to select scan points, Enter to scan, arrow keys to navigate.
+          </span>
+          <span
+            aria-hidden="true"
+            style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.85 }}
+          >
+            ⌨️ Tip: Tab + Enter to scan • Arrow keys to orbit • Q/E to zoom
+          </span>
         </p>
 
         <div className="home-hero-actions">
@@ -90,7 +101,11 @@ function NebulaView() {
       </div>
 
       <div className="nebula-resource-grid">
-        <section className="panel-card nebula-scan-panel" aria-live="polite">
+        <section
+          id="nebula-scan-results"
+          className="panel-card nebula-scan-panel"
+          aria-live="polite"
+        >
           <div className="section-heading">
             <div>
               <p className="eyebrow">Harvest</p>

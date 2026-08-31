@@ -1,4 +1,7 @@
 export { ConfirmModal } from './ConfirmModal'
+export { TransactionPreview } from './TransactionPreview'
+export { TransactionRetryButton } from './TransactionRetryButton'
+export type { TransactionRetryButtonProps } from './TransactionRetryButton'
 export { TrustlineManager } from './TrustlineManager'
 export { ContractEventFeed } from './ContractEventFeed'
 export { GasPriceMonitor } from './GasPriceMonitor'

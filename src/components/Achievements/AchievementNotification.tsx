@@ -31,7 +31,11 @@ const NotificationItem: React.FC<NotificationProps> = ({ achievement, onDismiss 
         <h4 className="text-white font-bold text-sm">Achievement Unlocked!</h4>
         <p className="text-cosmic-cyan text-sm">{achievement.title}</p>
       </div>
-      <button onClick={() => onDismiss(achievement.id)} className="text-space-100 hover:text-white">
+      <button
+        onClick={() => onDismiss(achievement.id)}
+        className="text-space-100 hover:text-white"
+        aria-label={`Dismiss achievement notification: ${achievement.title || achievement.id}`}
+      >
         ✕
       </button>
     </div>

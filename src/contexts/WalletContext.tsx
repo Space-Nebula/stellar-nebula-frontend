@@ -10,6 +10,12 @@ import {
   isAlbedoAvailable,
   signTransactionWithFreighter,
   signTransactionWithAlbedo,
+  isWalletConnectAvailable,
+  connectWalletConnect,
+  signTransactionWithWalletConnect,
+  getWalletConnectNetwork,
+  disconnectWalletConnect,
+  loadWalletConnectSession,
   validateNetworkMatch,
   getNetworkMismatchMessage,
   handleWalletConnectionError,
@@ -39,6 +45,7 @@ interface PersistedWallet {
   publicKey: string
   walletType: WalletType
   network: StellarNetwork
+  walletConnectSession?: unknown
 }
 
 // ─── Context shape ────────────────────────────────────────────────────────────
@@ -51,6 +58,7 @@ export interface WalletContextValue {
   reconnectError: string | null
   isFreighterInstalled: boolean
   isAlbedoAvailable: boolean
+  isWalletConnectAvailable: boolean
   networkMismatchWarning: string | null
   connect: (type: WalletType) => Promise<void>
   disconnect: () => void
@@ -110,8 +118,6 @@ async function validateWalletSession(persisted: PersistedWallet): Promise<Wallet
       const installed = await isFreighterInstalled()
       if (!installed) return null
 
-      // Attempt to get the public key and network to ensure the wallet is still connected.
-      // If the wallet has been switched or disconnected, do not reuse the persisted session.
       const currentKey = await connectFreighter()
       if (currentKey !== persisted.publicKey) return null
 
@@ -130,10 +136,19 @@ async function validateWalletSession(persisted: PersistedWallet): Promise<Wallet
         walletType: persisted.walletType,
         network: persisted.network,
       }
+    } else if (persisted.walletType === 'walletconnect') {
+      if (!isWalletConnectAvailable()) return null
+      const session = loadWalletConnectSession()
+      if (!session) return null
+      return {
+        isConnected: true,
+        publicKey: persisted.publicKey,
+        walletType: persisted.walletType,
+        network: persisted.network,
+      }
     }
     return null
   } catch {
-    // Session expired, wallet disconnected, or the wallet rejected the validation request.
     return null
   }
 }
@@ -159,6 +174,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [freighterInstalled, setFreighterInstalled] = useState(false)
   const [networkMismatchWarning, setNetworkMismatchWarning] = useState<string | null>(null)
   const albedoAvailable = isAlbedoAvailable()
+  const walletConnectAvailable = isWalletConnectAvailable()
   const appConfig = getActiveStellarConfig()
 
   // Check Freighter availability asynchronously
@@ -257,6 +273,18 @@ export function WalletProvider({ children }: WalletProviderProps) {
           }
           publicKey = await connectAlbedo()
           network = await getAlbedoNetwork()
+        } else if (type === 'walletconnect') {
+          if (!isWalletConnectAvailable()) {
+            const walletError = handleWalletConnectionError(
+              new Error('WalletConnect is not available'),
+              type
+            )
+            throw new Error(formatWalletError(walletError))
+          }
+          const wcNetwork = appConfig.network as StellarNetwork
+          const result = await connectWalletConnect(wcNetwork)
+          publicKey = result.publicKey
+          network = wcNetwork
         } else {
           throw new Error(`Wallet type "${type}" is not supported.`)
         }
@@ -278,7 +306,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
         const newState: WalletState = { isConnected: true, publicKey, walletType: type, network }
         setWalletState(newState)
-        persistWallet({ publicKey, walletType: type, network })
+        persistWallet({
+          publicKey,
+          walletType: type,
+          network,
+          walletConnectSession: type === 'walletconnect' ? loadWalletConnectSession() : undefined,
+        })
 
         // Derive a per-session passphrase (in-memory only) and enable encrypted copies
         try {
@@ -332,6 +365,10 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
   const disconnect = useCallback(() => {
     log.info('Wallet disconnected', { walletType: walletState.walletType })
+
+    if (walletState.walletType === 'walletconnect') {
+      disconnectWalletConnect()
+    }
 
     setWalletState(INITIAL_WALLET_STATE)
     setError(null)
@@ -418,6 +455,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
           )
         } else if (walletState.walletType === 'albedo') {
           signedXdr = await signTransactionWithAlbedo(xdr, walletState.network)
+        } else if (walletState.walletType === 'walletconnect') {
+          const wcSession = loadWalletConnectSession()
+          if (!wcSession) {
+            throw new Error('WalletConnect session not found. Please reconnect.')
+          }
+          signedXdr = await signTransactionWithWalletConnect(xdr, walletState.network, wcSession)
         } else {
           throw new Error(`Signing not supported for wallet type "${walletState.walletType}"`)
         }
@@ -466,6 +509,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       reconnectError,
       isFreighterInstalled: freighterInstalled,
       isAlbedoAvailable: albedoAvailable,
+      isWalletConnectAvailable: walletConnectAvailable,
       networkMismatchWarning,
       connect,
       disconnect,
@@ -482,6 +526,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       reconnectError,
       freighterInstalled,
       albedoAvailable,
+      walletConnectAvailable,
       networkMismatchWarning,
       connect,
       disconnect,

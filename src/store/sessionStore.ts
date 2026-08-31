@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createJSONStorage, devtools, persist } from 'zustand/middleware'
 import { sessionStoreStorageKey } from './storageKeys'
 import { trackEvent } from '@/services/analytics'
+import { createVersionedMigrate } from './stateMigration'
 
 export interface SessionPreferences {
   theme: 'dark' | 'light'
@@ -183,7 +184,10 @@ export const useSessionStore = create<SessionStore>()(
           actions,
           syncStatus,
         }),
-        migrate: (persistedState) => persistedState as SessionState,
+        migrate: createVersionedMigrate('sessionStore', SESSION_STORE_SCHEMA_VERSION, (state) => ({
+        ...initialSessionState,
+        ...(state as Partial<SessionState>),
+      })),
       }
     ),
     { name: 'SessionStore', enabled: isDev }

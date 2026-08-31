@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { NebulaGeometry } from '@/utils/procedural/nebula'
+import { nebulaVertexShader, nebulaFragmentShader } from './shaders'
 
 interface ProceduralNebulaFieldProps {
   geometry: NebulaGeometry
@@ -30,38 +31,8 @@ export function ProceduralNebulaField({
       uniforms: {
         uTime: { value: 0 },
       },
-      vertexShader: `
-        attribute float size;
-        attribute float opacity;
-        varying vec3 vColor;
-        varying float vOpacity;
-        uniform float uTime;
-
-        void main() {
-          vColor = color;
-          vOpacity = opacity;
-
-          vec3 pos = position;
-          float wave = sin(uTime * 0.3 + position.x * 0.05) * 0.5;
-          pos.y += wave;
-
-          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-          gl_PointSize = size * (200.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        varying float vOpacity;
-
-        void main() {
-          float dist = length(gl_PointCoord - vec2(0.5));
-          if (dist > 0.5) discard;
-
-          float alpha = smoothstep(0.5, 0.1, dist) * vOpacity;
-          gl_FragColor = vec4(vColor, alpha);
-        }
-      `,
+      vertexShader: nebulaVertexShader,
+      fragmentShader: nebulaFragmentShader,
       transparent: true,
       depthWrite: false,
       vertexColors: true,

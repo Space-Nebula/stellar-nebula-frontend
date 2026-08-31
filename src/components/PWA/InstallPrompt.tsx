@@ -66,7 +66,7 @@ export function InstallPrompt() {
   if (isInstalled || !showPrompt) return null
 
   return (
-    <div style={overlayStyle}>
+    <div style={overlayStyle} role="dialog" aria-label="Install app prompt" aria-modal="true">
       <div style={promptStyle}>
         <div style={iconContainerStyle}>
           <span style={iconStyle}>📱</span>
@@ -93,10 +93,18 @@ export function InstallPrompt() {
         </div>
 
         <div style={actionsStyle}>
-          <button onClick={handleInstall} style={installButtonStyle}>
+          <button
+            onClick={handleInstall}
+            style={installButtonStyle}
+            aria-label="Install Nebula Nomad app"
+          >
             Install App
           </button>
-          <button onClick={handleDismiss} style={dismissButtonStyle}>
+          <button
+            onClick={handleDismiss}
+            style={dismissButtonStyle}
+            aria-label="Dismiss install prompt, maybe later"
+          >
             Maybe Later
           </button>
         </div>

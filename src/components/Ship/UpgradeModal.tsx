@@ -1,5 +1,6 @@
 /* eslint-disable */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { haptics } from '@/utils/haptics'
 import type { Ship, ShipStatus } from '../../store'
 import { type ResourceInventory, type ResourceType } from '../../store'
 import {
@@ -162,10 +163,29 @@ export function UpgradeModal({
   const canAfford = hasEnoughResources(inventory, selectedUpgrade.cost)
   const disabled = !ship || !canAfford || isPending
 
+  const handleSelectUpgrade = useCallback((upgradeId: UpgradeId) => {
+    setSelectedUpgradeId(upgradeId)
+    haptics.light()
+  }, [])
+
+  const handleConfirm = useCallback(() => {
+    if (disabled) {
+      haptics.error()
+      return
+    }
+    haptics.upgradeStart()
+    onConfirm(selectedUpgrade)
+  }, [disabled, onConfirm, selectedUpgrade])
+
+  const handleClose = useCallback(() => {
+    haptics.light()
+    onClose()
+  }, [onClose])
+
   if (!isOpen) return null
 
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <div className="modal-backdrop" role="presentation" onClick={handleClose}>
       <div
         className="modal-panel"
         role="dialog"
@@ -181,7 +201,7 @@ export function UpgradeModal({
           <button
             type="button"
             className="icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close upgrade modal"
           >
             ×
@@ -198,8 +218,10 @@ export function UpgradeModal({
                 <button
                   key={upgrade.id}
                   type="button"
+                  aria-label={`Select upgrade: ${upgrade.name} - ${upgrade.description}`}
+                  aria-pressed={isSelected}
                   className={isSelected ? 'upgrade-choice is-selected' : 'upgrade-choice'}
-                  onClick={() => setSelectedUpgradeId(upgrade.id)}
+                  onClick={() => handleSelectUpgrade(upgrade.id)}
                 >
                   <strong>{upgrade.name}</strong>
                   <span>{affordable ? 'Available' : 'Insufficient resources'}</span>
@@ -284,13 +306,23 @@ export function UpgradeModal({
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <button
+            type="button"
+            className="secondary-button"
+            aria-label="Cancel upgrade and close modal"
+            onClick={handleClose}
+          >
             Cancel
           </button>
           <button
             type="button"
             className="primary-button"
-            onClick={() => onConfirm(selectedUpgrade)}
+            aria-label={
+              disabled
+                ? `Cannot apply ${selectedUpgrade.name}: resources unavailable`
+                : `Apply upgrade: ${selectedUpgrade.name}`
+            }
+            onClick={handleConfirm}
             disabled={disabled}
           >
             {isPending ? 'Confirming...' : disabled ? 'Resources unavailable' : 'Apply upgrade'}

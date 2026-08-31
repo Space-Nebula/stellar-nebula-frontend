@@ -6,15 +6,18 @@ export const ThemeToggle: React.FC = () => {
 
   return (
     <button
+      type="button"
+      aria-pressed={theme === 'dark'}
       onClick={toggleTheme}
       className="p-2 rounded-full bg-space-800 dark:bg-space-900 text-space-100 border border-space-700 hover:bg-space-700 transition-colors duration-200"
-      aria-label="Toggle Dark/Light Mode"
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >
       {theme === 'dark' ? (
         // Sun icon for light mode toggle
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-5 w-5 text-cosmic-cyan"
+          aria-hidden="true"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -31,6 +34,7 @@ export const ThemeToggle: React.FC = () => {
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-5 w-5 text-cosmic-purple"
+          aria-hidden="true"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

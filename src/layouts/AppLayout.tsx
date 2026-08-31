@@ -4,7 +4,7 @@ import Footer from '../components/Layout/Footer'
 import LoadingScreen from '../components/Loading/LoadingScreen'
 import NotificationBootstrap from '../components/Notifications/NotificationBootstrap'
 import { AchievementNotifier } from '../components/Achievements/AchievementNotifier'
-import { TutorialFlow } from '../components/Tutorial'
+import { TutorialFlow, OnboardingWelcome } from '../components/Tutorial'
 import { useWallet } from '../contexts'
 
 function AppLayout() {
@@ -24,6 +24,8 @@ function AppLayout() {
     <div className="app-shell">
       <NotificationBootstrap />
       <AchievementNotifier />
+      {/* OnboardingWelcome is shown once to brand-new users before the step tour */}
+      <OnboardingWelcome />
       <TutorialFlow />
       <Navigation />
       <main className="app-main">

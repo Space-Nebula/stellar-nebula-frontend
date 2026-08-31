@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { tutorialStoreKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type TutorialObjective = 'connect-wallet' | 'first-scan' | 'first-upgrade'
 
@@ -65,10 +66,17 @@ export const useTutorialStore = create<TutorialStore>()(
       name: tutorialStoreKey,
       storage: createJSONStorage(() => localStorage),
       version: TUTORIAL_STORE_SCHEMA_VERSION,
-      migrate: (persistedState) => ({
-        ...initialTutorialState,
-        ...(persistedState as Partial<TutorialState>),
+      partialize: ({ completed, currentStep, dismissed, startedAt, completedObjectives }) => ({
+        completed,
+        currentStep,
+        dismissed,
+        startedAt,
+        completedObjectives,
       }),
+      migrate: createVersionedMigrate('tutorialStore', TUTORIAL_STORE_SCHEMA_VERSION, (state) => ({
+        ...initialTutorialState,
+        ...(state as Partial<TutorialState>),
+      })),
     }
   )
 )

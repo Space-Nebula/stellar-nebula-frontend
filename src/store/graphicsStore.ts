@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { graphicsStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type ZoomLevel = 'overview' | 'exploration' | 'detail'
 
@@ -72,10 +73,10 @@ export const useGraphicsStore = create<GraphicsStore>()(
         starfieldDensity,
         autoRotateEnabled,
       }),
-      migrate: (persistedState) => ({
+      migrate: createVersionedMigrate('graphicsStore', GRAPHICS_STORE_SCHEMA_VERSION, (state) => ({
         ...initialGraphicsState,
-        ...(persistedState as Partial<GraphicsState>),
-      }),
+        ...(state as Partial<GraphicsState>),
+      })),
     }
   )
 )

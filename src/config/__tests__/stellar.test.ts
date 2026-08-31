@@ -38,13 +38,23 @@ describe('stellar config', () => {
         STELLAR_RPC_URL: 'https://rpc.example.test',
         STELLAR_HORIZON_URL: 'https://horizon.example.test',
         STELLAR_PASSPHRASE: 'Example Passphrase',
+        NEBULA_CONTRACT_ID: 'CNEBULA',
+        TOKEN_CONTRACT_ID: 'CTOKEN',
       })
     ).toEqual({
       network: 'testnet',
       rpcUrl: 'https://rpc.example.test',
       horizonUrl: 'https://horizon.example.test',
       networkPassphrase: 'Example Passphrase',
+      nebulaContractId: 'CNEBULA',
+      tokenContractId: 'CTOKEN',
     })
+  })
+
+  it('keeps per-network default contract IDs when none are overridden', () => {
+    const config = getActiveStellarConfig({ STELLAR_NETWORK: 'testnet' })
+    expect(typeof config.nebulaContractId).toBe('string')
+    expect(typeof config.tokenContractId).toBe('string')
   })
 
   it('creates Stellar SDK clients from config', () => {

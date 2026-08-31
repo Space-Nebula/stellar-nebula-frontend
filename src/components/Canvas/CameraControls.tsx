@@ -89,9 +89,30 @@ export function CameraControls({
     const canvas = gl.domElement
     canvasRef.current = canvas
     canvas.setAttribute('tabindex', '0')
+    canvas.setAttribute('role', 'application')
+    canvas.setAttribute(
+      'aria-label',
+      'Nebula 3D view - use arrow keys or W A S D to orbit, Q E to zoom, R to reset, Space to toggle auto-rotate'
+    )
+    canvas.setAttribute('aria-roledescription', '3D canvas')
+    canvas.style.touchAction = 'none'
+    // Ensure visible focus indicator for keyboard users (WCAG 2.4.7)
+    canvas.style.outlineOffset = '2px'
+    const handleFocus = () => {
+      canvas.style.outline = '3px solid #32d6a5'
+      canvas.style.boxShadow = '0 0 0 6px rgba(50, 214, 165, 0.2)'
+    }
+    const handleBlur = () => {
+      canvas.style.outline = 'none'
+      canvas.style.boxShadow = 'none'
+    }
+    canvas.addEventListener('focus', handleFocus)
+    canvas.addEventListener('blur', handleBlur)
     canvas.addEventListener('keydown', handleKeyDown)
     canvas.addEventListener('keyup', handleKeyUp)
     return () => {
+      canvas.removeEventListener('focus', handleFocus)
+      canvas.removeEventListener('blur', handleBlur)
       canvas.removeEventListener('keydown', handleKeyDown)
       canvas.removeEventListener('keyup', handleKeyUp)
     }

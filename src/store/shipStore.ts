@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { shipStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type ShipStatus = 'docked' | 'in-flight' | 'maintenance'
 
@@ -339,6 +340,17 @@ export const useShipStore = create<ShipStore>()(
           optimisticTransactions: current.optimisticTransactions ?? [],
         }
       },
+      migrate: createVersionedMigrate('shipStore', SHIP_STORE_SCHEMA_VERSION, (state) => {
+        const persisted = state as Partial<ShipState> | undefined
+        return {
+          ...initialShipState,
+          ...persisted,
+          ships: Array.isArray(persisted?.ships)
+            ? persisted!.ships.map((s) => ({ ...s, isPending: false }))
+            : [],
+          optimisticTransactions: [],
+        }
+      }),
     }
   )
 )

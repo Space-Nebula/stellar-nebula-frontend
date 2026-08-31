@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { Achievement } from '@/components/Achievements/types'
 import type { ResourceInventory, ResourceType } from './resourceStore'
+import { achievementStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type GameEventType =
   | 'scan_completed'
@@ -55,7 +57,10 @@ export interface AchievementActions {
 
 export type AchievementStore = AchievementState & AchievementActions
 
-export const achievementStoreStorageKey = 'stellar-nebula:achievement-store'
+export { achievementStoreStorageKey }
+
+/** Bump whenever the shape of the persisted AchievementState slice changes. */
+export const ACHIEVEMENT_STORE_SCHEMA_VERSION = 1
 
 const emptyResourceTotals: ResourceInventory = {
   credits: 0,
@@ -345,6 +350,7 @@ export const useAchievementStore = create<AchievementStore>()(
     {
       name: achievementStoreStorageKey,
       storage: createJSONStorage(() => localStorage),
+      version: ACHIEVEMENT_STORE_SCHEMA_VERSION,
       partialize: ({ stats, unlockedAtById, eventLog }) => ({
         stats,
         unlockedAtById,
@@ -362,6 +368,21 @@ export const useAchievementStore = create<AchievementStore>()(
           pendingNotifications: [],
         }
       },
+      migrate: createVersionedMigrate(
+        'achievementStore',
+        ACHIEVEMENT_STORE_SCHEMA_VERSION,
+        (state) => {
+          const persisted = state as Partial<AchievementState> | undefined
+          return {
+            ...initialAchievementState,
+            ...persisted,
+            stats: normalizeStats(persisted?.stats),
+            unlockedAtById: persisted?.unlockedAtById ?? {},
+            eventLog: persisted?.eventLog ?? [],
+            pendingNotifications: [],
+          }
+        }
+      ),
     }
   )
 )

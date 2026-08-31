@@ -104,3 +104,18 @@ export {
   type GameEvent,
   type GameEventType,
 } from './achievementStore'
+
+export { createPerformanceMonitor } from './storePerformanceMonitor'
+export type {
+  StorePerformanceConfig,
+  StorePerformanceMetrics,
+} from './storePerformanceMonitor'
+
+export {
+  getAppVersion,
+  setAppVersion,
+  getMigrationLog,
+  clearMigrationData,
+  createVersionedMigrate,
+  type MigrationLogEntry,
+} from './stateMigration'

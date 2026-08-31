@@ -7,6 +7,12 @@ import { WalletDisplay } from '../WalletDisplay'
 // Must be a plain string literal — vi.mock is hoisted and cannot close over variables
 vi.mock('@services/wallets', () => ({
   isFreighterInstalled: vi.fn().mockResolvedValue(true),
+  isWalletConnectAvailable: vi.fn().mockReturnValue(false),
+  connectWalletConnect: vi.fn(),
+  signTransactionWithWalletConnect: vi.fn(),
+  getWalletConnectNetwork: vi.fn(),
+  disconnectWalletConnect: vi.fn(),
+  loadWalletConnectSession: vi.fn().mockReturnValue(null),
   connectFreighter: vi
     .fn()
     .mockResolvedValue('GABCDE1234567890KLMNOPQRSTUVWXYZ1234567890ABCDE123456'),

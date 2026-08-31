@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { useEffect, useRef, useCallback } from 'react'
+import type { RefObject } from 'react'
 
 export interface TouchGestureCallbacks {
   onPinchZoom?: (scaleDelta: number) => void
@@ -31,19 +32,9 @@ function midpoint(a: TouchPoint, b: TouchPoint): TouchPoint {
 /**
  * Hook that attaches touch gesture handlers (pinch zoom, swipe rotate,
  * two-finger pan, tap) to a target DOM element.
- *
- * @param targetRef - Ref to the HTML element to attach listeners to
- * @param callbacks - Gesture callback functions
- *
- * @example
- * const ref = useRef<HTMLDivElement>(null)
- * useTouchGestures(ref, {
- *   onPinchZoom: (scale) => setZoom((z) => z * scale),
- *   onTap: (x, y) => console.log('tap', x, y),
- * })
  */
 export function useTouchGestures(
-  targetRef: React.RefObject<HTMLElement>,
+  targetRef: RefObject<HTMLElement>,
   callbacks: TouchGestureCallbacks
 ) {
   const prevTouchesRef = useRef<TouchPoint[]>([])
@@ -62,6 +53,10 @@ export function useTouchGestures(
       const points = getTouchPoints(e.touches)
       prevTouchesRef.current = points
 
+      if (points.length > 0) {
+        e.preventDefault()
+      }
+
       if (points.length === 1) {
         tapStartRef.current = { x: points[0].x, y: points[0].y, time: Date.now() }
       } else {
@@ -79,6 +74,10 @@ export function useTouchGestures(
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
       const points = getTouchPoints(e.touches)
+
+      if (points.length > 0) {
+        e.preventDefault()
+      }
 
       if (points.length === 1 && prevTouchesRef.current.length === 1) {
         const prev = prevTouchesRef.current[0]
@@ -151,9 +150,10 @@ export function useTouchGestures(
     const el = targetRef.current
     if (!el) return
 
-    el.addEventListener('touchstart', handleTouchStart, { passive: true })
-    el.addEventListener('touchmove', handleTouchMove, { passive: true })
-    el.addEventListener('touchend', handleTouchEnd, { passive: true })
+    el.style.touchAction = 'none'
+    el.addEventListener('touchstart', handleTouchStart, { passive: false })
+    el.addEventListener('touchmove', handleTouchMove, { passive: false })
+    el.addEventListener('touchend', handleTouchEnd, { passive: false })
 
     return () => {
       el.removeEventListener('touchstart', handleTouchStart)

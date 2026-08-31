@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { settingsStoreKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type GraphicsQuality = 'low' | 'medium' | 'high'
 export type StellarNetwork = 'futurenet' | 'testnet' | 'mainnet'
@@ -50,10 +51,23 @@ export const useSettingsStore = create<SettingsStore>()(
       name: settingsStoreKey,
       storage: createJSONStorage(() => localStorage),
       version: SETTINGS_STORE_SCHEMA_VERSION,
-      migrate: (persistedState) => ({
-        ...initialSettingsState,
-        ...(persistedState as Partial<SettingsState>),
+      partialize: ({
+        graphicsQuality,
+        soundEnabled,
+        notificationsEnabled,
+        analyticsEnabled,
+        network,
+      }) => ({
+        graphicsQuality,
+        soundEnabled,
+        notificationsEnabled,
+        analyticsEnabled,
+        network,
       }),
+      migrate: createVersionedMigrate('settingsStore', SETTINGS_STORE_SCHEMA_VERSION, (state) => ({
+        ...initialSettingsState,
+        ...(state as Partial<SettingsState>),
+      })),
     }
   )
 )

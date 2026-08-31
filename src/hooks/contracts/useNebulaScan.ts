@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { SorobanContractClient, ContractError } from '@services/contracts'
+import { haptics } from '@/utils/haptics'
 import { getActiveStellarConfig } from '@/config/stellar'
 import type { ScanNebulaParams, ScanNebulaResult } from '@services/contracts'
 import type { XDR } from '@/types'
@@ -62,6 +63,7 @@ export function useNebulaScan({
 
         const scanResult = await client.submitScanTransaction(signedXdr)
         setResult(scanResult)
+        haptics.scanSuccess()
         return scanResult
       } catch (err) {
         const message =
@@ -71,6 +73,7 @@ export function useNebulaScan({
               ? err.message
               : 'Scan failed due to an unknown error'
         setError(message)
+        haptics.error()
         return null
       } finally {
         setIsLoading(false)

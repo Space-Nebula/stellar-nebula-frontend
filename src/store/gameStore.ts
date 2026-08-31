@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, devtools, persist } from 'zustand/middleware'
 import { gameStoreStorageKey } from './storageKeys'
+import { createVersionedMigrate } from './stateMigration'
 
 export type GamePhase = 'loading' | 'menu' | 'playing' | 'paused' | 'gameover'
 
@@ -106,7 +107,9 @@ function createOpId(prefix = 'op'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-const isDev = import.meta.env?.DEV ?? false
+const isDev =
+  typeof import.meta !== 'undefined' &&
+  (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== false
 
 export const useGameStore = create<GameStore>()(
   devtools(
@@ -202,29 +205,33 @@ export const useGameStore = create<GameStore>()(
             }
           }
 
-          const acquired = get().acquireLock(operation.type)
-          if (!acquired) {
-            return {
-              success: false,
-              reason: `Lock acquisition failed for operation type "${operation.type}"`,
-            }
-          }
-
-          set({ activeOperation: operation, pendingState: true })
+          set({
+            lockedOperations: { ...lockedOperations, [operation.type]: true },
+            activeOperation: operation,
+            pendingState: true,
+          })
           return { success: true }
         },
 
         completeOperationWithLock: () => {
-          const { activeOperation } = get()
+          const { activeOperation, lockedOperations } = get()
           if (!activeOperation) return null
-
-          const completed = activeOperation
-          const opType = activeOperation.type
-
-          set({ activeOperation: null })
-          get().releaseLock(opType)
-
-          return completed
+          const type = activeOperation.type
+          const updated = { ...lockedOperations }
+          delete updated[type]
+          set({
+            activeOperation: null,
+            lockedOperations: updated,
+            pendingState: Object.keys(updated).length > 0,
+          })
+          const queue = get().operationQueue
+          const next = queue.find((op) => op.type === type)
+          if (next) {
+            const remaining = queue.filter((op) => op.id !== next.id)
+            set({ operationQueue: remaining })
+            get().startOperationWithLock(next)
+          }
+          return activeOperation
         },
 
         hasOperationConflict: (type) => {
@@ -384,13 +391,10 @@ export const useGameStore = create<GameStore>()(
             ...persistedState,
             activeOperation: null,
             optimisticOperations: current.optimisticOperations ?? [],
-            lockedOperations: {},
-            operationQueue: [],
-            pendingState: false,
           }
         },
       }
     ),
-    { name: 'GameStore', enabled: isDev }
+    { enabled: isDev }
   )
 )

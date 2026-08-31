@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Vector3 } from 'three'
 import type { Points, ShaderMaterial } from 'three'
+import { starfieldVertexShader, starfieldFragmentShader } from './shaders'
 
 interface StarfieldProps {
   density: number
@@ -19,63 +20,6 @@ const STAR_COLOR_PALETTE = [
   new Color('#c4b5fd'),
   new Color('#bae6fd'),
 ]
-
-const vertexShader = /* glsl */ `
-  precision highp float;
-
-  attribute float aSize;
-  attribute float aPhase;
-  attribute float aTwinkleSpeed;
-  attribute float aOpacity;
-  attribute float aParallax;
-  attribute vec3 aColor;
-
-  uniform float uTime;
-  uniform float uParallaxStrength;
-  uniform vec3 uCameraPosition;
-
-  varying vec3 vColor;
-  varying float vTwinkle;
-  varying float vOpacity;
-
-  void main() {
-    vec3 parallaxOffset = uCameraPosition * aParallax * uParallaxStrength;
-    vec3 transformedPosition = position + parallaxOffset;
-    vec4 mvPosition = modelViewMatrix * vec4(transformedPosition, 1.0);
-
-    float twinkle = 0.72 + (sin(uTime * aTwinkleSpeed + aPhase) * 0.28);
-    float perspectiveScale = 180.0 / max(0.5, -mvPosition.z);
-
-    vColor = aColor;
-    vTwinkle = twinkle;
-    vOpacity = aOpacity;
-    gl_PointSize = clamp(aSize * perspectiveScale, 0.5, 3.2);
-    gl_Position = projectionMatrix * mvPosition;
-  }
-`
-
-const fragmentShader = /* glsl */ `
-  precision highp float;
-
-  varying vec3 vColor;
-  varying float vTwinkle;
-  varying float vOpacity;
-
-  void main() {
-    vec2 uv = gl_PointCoord - vec2(0.5);
-    float dist = length(uv);
-    float core = smoothstep(0.24, 0.0, dist);
-    float halo = smoothstep(0.5, 0.12, dist);
-    float alpha = (core * 0.9 + halo * 0.35) * vOpacity * 0.8;
-
-    if (alpha <= 0.001) {
-      discard;
-    }
-
-    vec3 color = vColor * (0.7 + vTwinkle * 0.3);
-    gl_FragColor = vec4(color, alpha);
-  }
-`
 
 function createStarfieldGeometry(starCount: number) {
   const geometry = new BufferGeometry()
@@ -164,8 +108,8 @@ export function Starfield({ density, performanceMode = false }: StarfieldProps) 
         transparent
         depthWrite={false}
         depthTest={false}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
+        vertexShader={starfieldVertexShader}
+        fragmentShader={starfieldFragmentShader}
         blending={AdditiveBlending}
         uniforms={uniforms}
       />
