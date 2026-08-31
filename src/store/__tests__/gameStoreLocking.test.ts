@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useGameStore, ActiveOperation } from '../gameStore'
+import { useGameStore, type ActiveOperation } from '../gameStore'
 
 describe('useGameStore operation locking and queuing', () => {
   beforeEach(() => {

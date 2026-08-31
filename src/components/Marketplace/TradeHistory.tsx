@@ -1,5 +1,6 @@
 import React from 'react'
 import type { Trade } from './types'
+import { EmptyMarketplace } from '../UI/EmptyStates'
 
 interface TradeHistoryProps {
   trades: Trade[]
@@ -19,6 +20,7 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ trades }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
+        {trades.length === 0 && <EmptyMarketplace compact />}
         {trades.map((trade) => {
           const isBuy = trade.type === 'buy'
           const time = new Date(trade.timestamp).toLocaleTimeString([], {

@@ -1,34 +1,80 @@
-import React, { useState } from 'react'
+import React, { useMemo } from 'react'
 import type { Asset } from './types'
+import { useFormValidation } from '../../hooks/useFormValidation'
+import {
+  isNumber,
+  max,
+  maxDecimals,
+  positive,
+  required,
+  validateValues,
+} from '../../utils/validation'
 
 interface TradeFormProps {
   baseAsset: Asset
   quoteAsset: Asset
   currentPrice: number
+  /** Maximum amount the trader can spend/sell, used for the MAX shortcut and bounds. */
+  maxAmount?: number
   onSubmit: (type: 'buy' | 'sell', price: number, amount: number) => void
+}
+
+interface TradeFormValues {
+  price: string
+  amount: string
+  [key: string]: string
 }
 
 export const TradeForm: React.FC<TradeFormProps> = ({
   baseAsset,
   quoteAsset,
   currentPrice,
+  maxAmount = 100,
   onSubmit,
 }) => {
-  const [type, setType] = useState<'buy' | 'sell'>('buy')
-  const [price, setPrice] = useState<string>(currentPrice.toString())
-  const [amount, setAmount] = useState<string>('')
+  const [type, setType] = React.useState<'buy' | 'sell'>('buy')
 
-  const total = (parseFloat(price || '0') * parseFloat(amount || '0')).toFixed(4)
+  const schema = useMemo(
+    () => ({
+      price: [
+        required('Enter a price'),
+        isNumber('Price must be a number'),
+        positive('Price must be greater than zero'),
+        maxDecimals(7, 'Price supports up to 7 decimal places'),
+      ],
+      amount: [
+        required('Enter an amount'),
+        isNumber('Amount must be a number'),
+        positive('Amount must be greater than zero'),
+        maxDecimals(7, 'Amount supports up to 7 decimal places'),
+        max(maxAmount, `Amount cannot exceed your balance of ${maxAmount} ${baseAsset.code}`),
+      ],
+    }),
+    [baseAsset.code, maxAmount]
+  )
+
+  const { values, errors, touched, handleChange, handleBlur, setValue, validateAll, reset } =
+    useFormValidation<TradeFormValues>({ price: currentPrice.toString(), amount: '' }, schema)
+
+  const total = (parseFloat(values.price || '0') * parseFloat(values.amount || '0')).toFixed(4)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!price || !amount) return
-    onSubmit(type, parseFloat(price), parseFloat(amount))
-    setAmount('')
+    if (!validateAll()) {
+      const found = validateValues(values, schema)
+      const firstInvalid = found.price ? 'trade-price' : found.amount ? 'trade-amount' : null
+      if (firstInvalid) document.getElementById(firstInvalid)?.focus()
+      return
+    }
+    onSubmit(type, parseFloat(values.price), parseFloat(values.amount))
+    reset({ price: values.price, amount: '' })
   }
 
+  const priceError = touched.price ? errors.price : undefined
+  const amountError = touched.amount ? errors.amount : undefined
+
   return (
-    <div className="bg-space-900 border border-space-800 rounded-xl p-4">
+    <div className="trade-form bg-space-900 border border-space-800 rounded-xl p-4">
       <div className="flex gap-2 mb-6">
         <button
           type="button"
@@ -50,7 +96,7 @@ export const TradeForm: React.FC<TradeFormProps> = ({
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
           <label htmlFor="trade-price-input" className="block text-sm text-space-100 mb-1">
             Price ({quoteAsset.code})
@@ -62,12 +108,24 @@ export const TradeForm: React.FC<TradeFormProps> = ({
               aria-label={`Price in ${quoteAsset.code}`}
               step="0.0001"
               min="0"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-full bg-space-950 border border-space-700 rounded p-2 text-white focus:border-cosmic-cyan outline-none"
-              required
+              inputMode="decimal"
+              value={values.price}
+              onChange={handleChange('price')}
+              onBlur={handleBlur('price')}
+              aria-invalid={priceError ? 'true' : 'false'}
+              aria-describedby={priceError ? 'trade-price-error' : undefined}
+              className={`w-full bg-space-950 border rounded p-2 text-white outline-none ${
+                priceError
+                  ? 'border-rose-500 focus:border-rose-400'
+                  : 'border-space-700 focus:border-cosmic-cyan'
+              }`}
             />
           </div>
+          {priceError && (
+            <p id="trade-price-error" role="alert" className="mt-1 text-xs text-rose-400">
+              {priceError}
+            </p>
+          )}
         </div>
 
         <div>
@@ -81,20 +139,32 @@ export const TradeForm: React.FC<TradeFormProps> = ({
               aria-label={`Amount of ${baseAsset.code}`}
               step="0.01"
               min="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full bg-space-950 border border-space-700 rounded p-2 text-white focus:border-cosmic-cyan outline-none"
-              required
+              inputMode="decimal"
+              value={values.amount}
+              onChange={handleChange('amount')}
+              onBlur={handleBlur('amount')}
+              aria-invalid={amountError ? 'true' : 'false'}
+              aria-describedby={amountError ? 'trade-amount-error' : undefined}
+              className={`w-full bg-space-950 border rounded p-2 text-white outline-none ${
+                amountError
+                  ? 'border-rose-500 focus:border-rose-400'
+                  : 'border-space-700 focus:border-cosmic-cyan'
+              }`}
             />
             <button
               type="button"
               aria-label={`Set amount to maximum 100 ${baseAsset.code}`}
               className="absolute right-2 text-xs text-cosmic-cyan hover:text-white"
-              onClick={() => setAmount('100')} // Mock max amount
+              onClick={() => setValue('amount', String(maxAmount))}
             >
               MAX
             </button>
           </div>
+          {amountError && (
+            <p id="trade-amount-error" role="alert" className="mt-1 text-xs text-rose-400">
+              {amountError}
+            </p>
+          )}
         </div>
 
         <div className="pt-2 border-t border-space-800">

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { AchievementCard } from './AchievementCard'
 import { buildAchievements, useAchievementStore } from '@/store'
 import { ShareButton } from '@/components/Social/ShareButton'
+import { EmptyAchievements } from '@/components/UI/EmptyStates'
 
 export const AchievementList: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all')
@@ -88,9 +89,14 @@ export const AchievementList: React.FC = () => {
         ))}
       </div>
 
-      {sortedAchievements.length === 0 && (
-        <div className="text-center py-12 text-space-100">No achievements match your filters.</div>
-      )}
+      {sortedAchievements.length === 0 &&
+        (filter === 'unlocked' ? (
+          <EmptyAchievements />
+        ) : (
+          <div className="text-center py-12 text-space-100">
+            No achievements match your filters.
+          </div>
+        ))}
     </div>
   )
 }

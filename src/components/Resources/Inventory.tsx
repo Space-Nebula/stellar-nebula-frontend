@@ -5,6 +5,7 @@ import {
   type ResourceInventory,
   type ResourceType,
 } from '../../store'
+import { EmptyInventory } from '../UI/EmptyStates'
 
 type InventoryFilter = 'all' | 'stocked' | 'low' | 'empty'
 type InventorySort = 'amount-desc' | 'amount-asc' | 'name'
@@ -146,6 +147,10 @@ export function Inventory({
   }, [filter, inventory, sortBy])
 
   const totalUnits = useMemo(() => rows.reduce((sum, [, amount]) => sum + amount, 0), [rows])
+  const grandTotal = useMemo(
+    () => RESOURCE_TYPES.reduce((sum, resource) => sum + (inventory[resource] ?? 0), 0),
+    [inventory]
+  )
 
   return (
     <section className={`inventory-panel ${compact ? 'inventory-panel-compact' : ''}`}>
@@ -201,38 +206,42 @@ export function Inventory({
         </div>
       )}
 
-      <div className="inventory-grid">
-        {rows.map(([resource, amount]) => {
-          const meta = RESOURCE_META[resource]
-          const severity = amount === 0 ? 'empty' : amount < 100 ? 'low' : 'ready'
-          const pendingDelta = pendingChanges[resource] ?? 0
+      {grandTotal === 0 ? (
+        <EmptyInventory compact />
+      ) : (
+        <div className="inventory-grid">
+          {rows.map(([resource, amount]) => {
+            const meta = RESOURCE_META[resource]
+            const severity = amount === 0 ? 'empty' : amount < 100 ? 'low' : 'ready'
+            const pendingDelta = pendingChanges[resource] ?? 0
 
-          return (
-            <article
-              key={resource}
-              className={`resource-card resource-card-${severity} ${pendingDelta ? 'resource-card-pending' : ''}`}
-              title={`${meta.label}: ${meta.description}`}
-            >
-              <div className="resource-badge" style={{ background: meta.accent }}>
-                {meta.shortLabel}
-              </div>
-              <div className="resource-body">
-                <div className="resource-title-row">
-                  <h3>{meta.label}</h3>
-                  <span className="resource-amount">{amount}</span>
+            return (
+              <article
+                key={resource}
+                className={`resource-card resource-card-${severity} ${pendingDelta ? 'resource-card-pending' : ''}`}
+                title={`${meta.label}: ${meta.description}`}
+              >
+                <div className="resource-badge" style={{ background: meta.accent }}>
+                  {meta.shortLabel}
                 </div>
-                {pendingDelta !== 0 && (
-                  <p className="resource-pending" aria-live="polite">
-                    Pending {pendingDelta > 0 ? '+' : ''}
-                    {pendingDelta}
-                  </p>
-                )}
-                <p>{meta.description}</p>
-              </div>
-            </article>
-          )
-        })}
-      </div>
+                <div className="resource-body">
+                  <div className="resource-title-row">
+                    <h3>{meta.label}</h3>
+                    <span className="resource-amount">{amount}</span>
+                  </div>
+                  {pendingDelta !== 0 && (
+                    <p className="resource-pending" aria-live="polite">
+                      Pending {pendingDelta > 0 ? '+' : ''}
+                      {pendingDelta}
+                    </p>
+                  )}
+                  <p>{meta.description}</p>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
     </section>
   )
 }

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createHorizonServer } from '@config/stellar'
 import type { StellarNetworkConfig } from '@config/stellar'
-import { toast } from 'react-hot-toast'
+import { showSuccess } from '../toast'
 
 export interface FormattedBalance {
   assetCode: string
@@ -146,7 +146,7 @@ export function useAccountBalances(
         // Show toast notification for balance change
         const xlmBalance = formatted.find((b) => b.isNative)
         if (xlmBalance) {
-          toast.success(`Balance updated: ${parseFloat(xlmBalance.balance).toFixed(2)} XLM`, {
+          showSuccess(`Balance updated: ${parseFloat(xlmBalance.balance).toFixed(2)} XLM`, {
             duration: 3000,
             icon: '💰',
           })

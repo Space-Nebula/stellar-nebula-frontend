@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { StellarNetworkConfig } from '@config/stellar'
 import { getTransactionHistory, type PaginatedTransactions } from '@services/history/transactions'
 import type { StellarTransaction } from '@/types'
+import { EmptyTransactions } from '@/components/UI/EmptyStates'
 
 interface TransactionHistoryProps {
   accountId: string | null | undefined
@@ -145,7 +146,7 @@ export function TransactionHistory({
       {error && <p style={errorStyle}>{error}</p>}
 
       {transactions.length === 0 && !isLoading ? (
-        <p style={emptyStyle}>No relevant transactions found for this account yet.</p>
+        <EmptyTransactions compact />
       ) : (
         <div style={listStyle}>
           {transactions.map((tx) => (

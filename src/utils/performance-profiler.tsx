@@ -3,12 +3,14 @@
  *
  * Issue #260: Add React Profiler monitoring
  */
+/* eslint-disable react-refresh/only-export-components -- utility module: profiler helpers ship alongside the wrapper component */
 
-import { Profiler, ProfilerOnRenderCallback } from 'react'
+import { Profiler } from 'react'
+import type { ProfilerOnRenderCallback } from 'react'
 
 export interface ProfilerData {
   id: string
-  phase: 'mount' | 'update'
+  phase: 'mount' | 'update' | 'nested-update'
   actualDuration: number
   baseDuration: number
   startTime: number

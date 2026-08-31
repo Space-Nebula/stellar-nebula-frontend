@@ -23,6 +23,22 @@ const EVENT_TYPES: ContractEventType[] = [
   'Unknown',
 ]
 
+const EVENT_TYPES: ContractEventType[] = [
+  'ScanCompleted',
+  'ShipUpgraded',
+  'ResourceMinted',
+  'Unknown',
+]
+
+const ERROR_CATEGORIES: ContractErrorCategory[] = [
+  'auth',
+  'insufficient',
+  'network',
+  'contract',
+  'validation',
+  'unknown',
+]
+
 export interface ContractEventRecordOverrides {
   id?: string
   type?: ContractEventType

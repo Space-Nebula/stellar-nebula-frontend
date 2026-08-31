@@ -1,5 +1,7 @@
 export { useLocalStorage } from './useLocalStorage'
 export { useDebounce } from './useDebounce'
+export { useFormValidation } from './useFormValidation'
+export type { UseFormValidationOptions, UseFormValidationReturn } from './useFormValidation'
 export { useFreighterWallet } from './useFreighterWallet'
 export { useShipUpgrade } from './contracts/useShipUpgrade'
 export { useTouchGestures } from './useTouchGestures'
