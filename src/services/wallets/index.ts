@@ -20,6 +20,8 @@ export {
   getLedgerNetwork,
 } from './ledger'
 
+export { isXBullInstalled, connectXBull, signTransactionWithXBull, getXBullNetwork } from './xbull'
+
 export {
   isWalletConnectAvailable,
   connectWalletConnect,

@@ -101,6 +101,26 @@ export function handleWalletConnectionError(error: unknown, walletType: WalletTy
     }
   }
 
+  if (walletType === 'xbull') {
+    if (lowerMessage.includes('xbull') && lowerMessage.includes('not')) {
+      return {
+        code: 'XBULL_NOT_INSTALLED',
+        message: 'xBull wallet is not installed',
+        helpText: 'Install the xBull extension from https://xbull.app',
+        isRetryable: false,
+      }
+    }
+
+    if (lowerMessage.includes('user') && lowerMessage.includes('reject')) {
+      return {
+        code: 'USER_REJECTED',
+        message: 'You rejected the wallet connection request',
+        helpText: 'Approve the connection in the xBull extension popup to continue',
+        isRetryable: true,
+      }
+    }
+  }
+
   if (walletType === 'ledger') {
     if (lowerMessage.includes('webusb') || lowerMessage.includes('not supported')) {
       return {
