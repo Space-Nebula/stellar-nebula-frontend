@@ -59,8 +59,7 @@ interface UpdateRecord {
   durationMs: number
 }
 
-const isProd =
-  typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+const isProd = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
 
 /**
  * Create a performance monitor for a Zustand store.
@@ -112,18 +111,14 @@ export function createPerformanceMonitor(config: StorePerformanceConfig) {
 
     if (metrics.updateCount === 0) return
 
-    addMonitoringBreadcrumb(
-      `Store performance: ${storeName}`,
-      'store-performance',
-      {
-        store: storeName,
-        updates: metrics.updateCount,
-        avgDurationMs: Math.round(metrics.avgUpdateDurationMs * 100) / 100,
-        maxDurationMs: Math.round(metrics.maxUpdateDurationMs * 100) / 100,
-        slowUpdates: metrics.slowUpdateCount,
-        updatesPerSec: Math.round(metrics.updatesPerSecond * 100) / 100,
-      }
-    )
+    addMonitoringBreadcrumb(`Store performance: ${storeName}`, 'store-performance', {
+      store: storeName,
+      updates: metrics.updateCount,
+      avgDurationMs: Math.round(metrics.avgUpdateDurationMs * 100) / 100,
+      maxDurationMs: Math.round(metrics.maxUpdateDurationMs * 100) / 100,
+      slowUpdates: metrics.slowUpdateCount,
+      updatesPerSec: Math.round(metrics.updatesPerSecond * 100) / 100,
+    })
 
     // Reset slow count after flush
     slowUpdateCount = 0
@@ -139,13 +134,12 @@ export function createPerformanceMonitor(config: StorePerformanceConfig) {
    * )
    * ```
    */
-  function middleware<T>(
-    creator: Parameters<typeof import('zustand').create>[0]
-  ): typeof creator {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function middleware(creator: (set: any, get: any, api: any) => any): typeof creator {
     if (!enabled) return creator
 
-    return (set, get, api) => {
-      const wrappedSet: typeof set = (...args) => {
+    return (set: any, get: any, api: any) => {
+      const wrappedSet: typeof set = (...args: any[]) => {
         const start = performance.now()
         set(...args)
         const duration = performance.now() - start
@@ -163,10 +157,10 @@ export function createPerformanceMonitor(config: StorePerformanceConfig) {
 
         if (duration > slowUpdateThresholdMs) {
           slowUpdateCount++
-          log.warn(
-            `Slow store update in ${storeName}: ${duration.toFixed(2)}ms`,
-            { duration, threshold: slowUpdateThresholdMs }
-          )
+          log.warn(`Slow store update in ${storeName}: ${duration.toFixed(2)}ms`, {
+            duration,
+            threshold: slowUpdateThresholdMs,
+          })
         }
       }
 

@@ -23,13 +23,6 @@ const EVENT_TYPES: ContractEventType[] = [
   'Unknown',
 ]
 
-const EVENT_TYPES: ContractEventType[] = [
-  'ScanCompleted',
-  'ShipUpgraded',
-  'ResourceMinted',
-  'Unknown',
-]
-
 const ERROR_CATEGORIES: ContractErrorCategory[] = [
   'auth',
   'insufficient',
@@ -77,18 +70,8 @@ export function buildContractEventRecordList(
   overrides: ContractEventRecordOverrides = {}
 ): ContractEventRecord[] {
   return Array.from({ length: count }, () => buildContractEventRecord(overrides))
-}
+} // ─── ContractErrorInfo ──────────────────────────────────────────────────────
 
-// ─── ContractErrorInfo ──────────────────────────────────────────────────────
-
-const ERROR_CATEGORIES: ContractErrorCategory[] = [
-  'auth',
-  'insufficient',
-  'network',
-  'contract',
-  'validation',
-  'unknown',
-]
 const ERROR_SEVERITIES: ContractErrorInfo['severity'][] = ['error', 'warning', 'info']
 
 export interface ContractErrorInfoOverrides {

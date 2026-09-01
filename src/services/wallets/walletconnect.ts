@@ -8,7 +8,7 @@ export interface WalletConnectPairing {
 
 const WC_STORAGE_KEY = 'stellar-nebula:walletconnect'
 
-let signClient: unknown = null
+let signClient: any = null
 
 async function getSignClient() {
   if (signClient) return signClient
@@ -60,7 +60,7 @@ export async function connectWalletConnect(
 
   const session = await approval()
   const accounts = Object.values(session.namespaces)
-    .flatMap((namespace: { accounts?: string[] }) => namespace.accounts ?? [])
+    .flatMap((namespace: unknown) => (namespace as { accounts?: string[] }).accounts ?? [])
     .map((account: string) => account.split(':')[2])
     .filter(Boolean)
 
@@ -94,7 +94,7 @@ export function signTransactionWithWalletConnect(
         },
       })
 
-      resolve(result.signedXDR ?? result)
+      resolve((result.signedXDR ?? result) as string)
     } catch (error) {
       reject(error)
     }

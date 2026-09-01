@@ -13,7 +13,7 @@ describe('useTransactionRetry', () => {
         maxAttempts: 3,
         baseDelayMs: 1000,
         getTransactionId: () => 'tx-abc123',
-        submit: mockSubmit,
+        submit: mockSubmit as unknown as (payload: unknown, attempt: number) => Promise<unknown>,
       })
     )
   }
@@ -22,7 +22,7 @@ describe('useTransactionRetry', () => {
     const submit = vi.fn()
     const { result } = makeHook(submit)
 
-    act(() => result.current.recordFailure({ id: 'x' }, new Error('Network timeout'), 'Upgrade engine'))
+    act(() => result.current.recordFailure('x', new Error('Network timeout'), 'Upgrade engine'))
 
     expect(result.current.lastFailure).toMatchObject({
       transactionId: 'tx-abc123',
@@ -40,7 +40,7 @@ describe('useTransactionRetry', () => {
       .mockResolvedValueOnce('tx-hash')
 
     const { result } = makeHook(submit)
-    act(() => result.current.recordFailure({ id: 'x' }, new Error('Network timeout')))
+    act(() => result.current.recordFailure('x', new Error('Network timeout')))
 
     let succeeded = false
     act(() => {
@@ -62,7 +62,7 @@ describe('useTransactionRetry', () => {
     const submit = vi.fn().mockRejectedValue(new Error('User rejected signing'))
 
     const { result } = makeHook(submit)
-    act(() => result.current.recordFailure({ id: 'x' }, new Error('User rejected signing')))
+    act(() => result.current.recordFailure('x', new Error('User rejected signing')))
 
     let succeeded = true
     act(() => {
@@ -83,7 +83,7 @@ describe('useTransactionRetry', () => {
     const submit = vi.fn().mockRejectedValue(new Error('503 Service Temporarily Unavailable'))
 
     const { result } = makeHook(submit)
-    act(() => result.current.recordFailure({ id: 'x' }, new Error('503 Service Temporarily Unavailable')))
+    act(() => result.current.recordFailure('x', new Error('503 Service Temporarily Unavailable')))
 
     let succeeded = true
     act(() => {
@@ -104,7 +104,7 @@ describe('useTransactionRetry', () => {
   it('clear() resets the preserved failure', () => {
     const submit = vi.fn()
     const { result } = makeHook(submit)
-    act(() => result.current.recordFailure({ id: 'x' }, new Error('boom')))
+    act(() => result.current.recordFailure('x', new Error('boom')))
     expect(result.current.lastFailure).not.toBeNull()
 
     act(() => result.current.clear())

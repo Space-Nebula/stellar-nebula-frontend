@@ -147,7 +147,7 @@ export function useSignTransaction(): UseSignTransactionReturn {
           estimateTransactionFee({ operationCount }),
         ])
 
-        setSimulation(simulationResult)
+        setSimulation(simulationResult as ParsedSimulationResult<ContractNativeValue>)
         setCostPreview(buildCostPreview(networkFee, simulationResult.minResourceFee))
 
         if (simulationResult.status === 'error') {
