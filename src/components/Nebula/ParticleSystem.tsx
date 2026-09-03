@@ -1,12 +1,9 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color } from 'three'
 import type { Points, ShaderMaterial } from 'three'
-import {
-  particleVertexShader,
-  particleFragmentShader,
-  particlePerfFragmentShader,
-} from './shaders'
+import { particleVertexShader, particleFragmentShader, particlePerfFragmentShader } from './shaders'
+import { useThreeJsLod } from '@/utils/threejs/lod'
 
 // ─── Device detection ────────────────────────────────────────────────────────
 
@@ -159,16 +156,21 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
   const pointsRef = useRef<Points>(null)
   const materialRef = useRef<ShaderMaterial>(null)
   const { isMobile, prefersReducedMotion } = useDeviceHints()
+  const lodParticleCount = useThreeJsLod({
+    lowDetailDistance: 20,
+    mediumDetailDistance: 10,
+    highDetailDistance: 5,
+    maxParticles: MAX_PARTICLE_COUNT * 0.8,
+    minParticles: MIN_PARTICLE_COUNT,
+  })
 
-  const particleCount = useMemo(() => {
-    const effectivePerformance = performanceMode || isMobile || prefersReducedMotion
-    const densityFactor = Math.min(1.2, Math.max(0.3, density))
-    let count = MAX_PARTICLE_COUNT * densityFactor
-    if (effectivePerformance) {
-      count *= performanceMode ? 0.35 : 0.5
-    }
-    return Math.round(Math.max(MIN_PARTICLE_COUNT, count))
-  }, [density, performanceMode, isMobile, prefersReducedMotion])
+  const effectiveDensity = Math.min(1.2, Math.max(0.3, density))
+  const baseCount = MAX_PARTICLE_COUNT * effectiveDensity
+  const performanceFactor = performanceMode ? 0.35 : 0.5
+  const particleCount = Math.max(
+    MIN_PARTICLE_COUNT,
+    Math.round(lodParticleCount * performanceFactor)
+  )
 
   const geometry = useMemo(
     () => createNebulaGeometry(particleCount, performanceMode || isMobile),
