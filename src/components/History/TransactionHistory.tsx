@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { StellarNetworkConfig } from '@config/stellar'
 import { getTransactionHistory, type PaginatedTransactions } from '@services/history/transactions'
 import type { StellarTransaction } from '@/types'
 import { EmptyTransactions } from '@/components/UI/EmptyStates'
+import { computeRowWindow, mergeTransactionPages } from './transactionWindow'
 
 interface TransactionHistoryProps {
   accountId: string | null | undefined
@@ -81,7 +82,20 @@ export function TransactionHistory({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Only the rows near the viewport are mounted. `scrollTop` is tracked in state
+  // rather than read on scroll so the window recomputes; a ref would update the
+  // DOM without re-rendering it, which is the bug this replaces.
+  const [scrollTop, setScrollTop] = useState(0)
+  const [viewportHeight, setViewportHeight] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   const canLoadMore = useMemo(() => Boolean(nextHref), [nextHref])
+
+  // The rows to mount, given the current scroll position and how much is visible.
+  const window = useMemo(
+    () => computeRowWindow({ scrollTop, viewportHeight, count: transactions.length }),
+    [scrollTop, transactions.length, viewportHeight]
+  )
 
   const loadPage = useCallback(
     async (cursor?: string, append = false) => {
@@ -101,12 +115,9 @@ export function TransactionHistory({
           { limit: pageSize, order: 'desc', cursor },
           config
         )
-        setTransactions((current) => {
-          const next = append ? [...current, ...page.transactions] : page.transactions
-          return next.sort(
-            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          )
-        })
+        setTransactions((current) =>
+          mergeTransactionPages(append ? current : [], page.transactions)
+        )
         setNextHref(page.nextCursor)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load transaction history')
@@ -148,11 +159,26 @@ export function TransactionHistory({
       {transactions.length === 0 && !isLoading ? (
         <EmptyTransactions compact />
       ) : (
-        <div style={listStyle}>
-          {transactions.map((tx) => (
-            <TransactionItem key={tx.hash} tx={tx} />
-          ))}
+        <div
+          style={scrollStyle}
+          ref={scrollRef}
+          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+        >
+          <div style={listStyle}>
+            {/* Placeholders for the rows that are not mounted, so the scrollbar
+                still reflects the whole list. */}
+            {window.padTop > 0 && <div style={spacerStyle(window.padTop)} aria-hidden="true" />}
+            {transactions.slice(window.start, window.end).map((tx) => (
+              <TransactionItem key={tx.hash} tx={tx} />
+            ))}
+            {window.padBottom > 0 && <div style={spacerStyle(window.padBottom)} aria-hidden="true" />}
+          </div>
         </div>
+        {viewportHeight === 0 && (
+          // Measured after mount; before that the window cannot know how much is
+          // visible, so every row is mounted once to establish the height.
+          <ViewportProbe onMeasured={setViewportHeight} targetRef={scrollRef} />
+        )}
       )}
 
       <div style={actionsStyle}>
@@ -216,6 +242,45 @@ const errorStyle: CSSProperties = {
 const listStyle: CSSProperties = {
   display: 'grid',
   gap: 10,
+}
+
+/**
+ * A fixed-height scroll viewport. A bounded viewport is what makes windowing
+ * possible at all: without one the container grows to fit every row and
+ * "visible" is the entire list.
+ */
+const scrollStyle: CSSProperties = {
+  display: 'grid',
+  gap: 10,
+  maxHeight: 640,
+  overflowY: 'auto',
+  // Keeps a scrollbar on platforms that overlay it, so the list looks scrollable.
+  overflowAnchor: 'none'
+}
+
+const spacerStyle = (height: number): CSSProperties => ({ height })
+
+/**
+ * Reports the viewport height once the scroll container is laid out.
+ *
+ * `offsetHeight` is 0 in jsdom, so this falls back to the style's `maxHeight`
+ * rather than reporting a zero-height viewport that would mount one row.
+ */
+function ViewportProbe({
+  targetRef,
+  onMeasured
+}: {
+  targetRef: React.RefObject<HTMLDivElement | null>
+  onMeasured: (height: number) => void
+}) {
+  useEffect(() => {
+    const node = targetRef.current
+    if (!node) return
+    const measured = node.offsetHeight || parseInt(scrollStyle.maxHeight as string, 10) || 640
+    onMeasured(measured)
+  }, [onMeasured, targetRef])
+
+  return null
 }
 
 const itemStyle: CSSProperties = {

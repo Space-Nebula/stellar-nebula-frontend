@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef } from 'react'
+import { useId } from 'react'
 import type { ReactNode } from 'react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -27,15 +28,6 @@ export interface ModalProps {
   className?: string
 }
 
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'textarea:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',')
-
 /**
  * Centralised, accessible modal primitive. Handles focus trapping, focus
  * restoration, body scroll lock, ESC + backdrop dismissal, and a consistent
@@ -58,72 +50,13 @@ export function Modal({
   hideCloseButton = false,
   className,
 }: ModalProps) {
-  const panelRef = useRef<HTMLDivElement>(null)
-  const previouslyFocused = useRef<HTMLElement | null>(null)
   const titleId = useId()
-
-  // Keep callbacks fresh without re-running the main effect.
-  const onCloseRef = useRef(onClose)
-  const closeOnEscRef = useRef(closeOnEsc)
-  useEffect(() => {
-    onCloseRef.current = onClose
-    closeOnEscRef.current = closeOnEsc
+  // Focus in, cycle, restore, and lock the page behind — the same contract every
+  // dialog in the app owes the user, so it is one shared implementation.
+  const panelRef = useFocusTrap<HTMLDivElement>({
+    active: isOpen,
+    onEscape: closeOnEsc ? onClose : undefined
   })
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    const panel = panelRef.current
-    previouslyFocused.current = document.activeElement as HTMLElement | null
-
-    const { body } = document
-    const previousOverflow = body.style.overflow
-    body.style.overflow = 'hidden'
-
-    // Focus the first focusable element, falling back to the panel itself.
-    const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
-    ;(firstFocusable ?? panel)?.focus()
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && closeOnEscRef.current) {
-        event.stopPropagation()
-        onCloseRef.current()
-        return
-      }
-
-      if (event.key !== 'Tab' || !panel) return
-
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-        (el) => el.offsetParent !== null || el === document.activeElement
-      )
-
-      if (focusable.length === 0) {
-        event.preventDefault()
-        panel.focus()
-        return
-      }
-
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      const active = document.activeElement
-
-      if (event.shiftKey && (active === first || active === panel)) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown, true)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-      body.style.overflow = previousOverflow
-      previouslyFocused.current?.focus?.()
-    }
-  }, [isOpen])
 
   if (!isOpen) return null
 

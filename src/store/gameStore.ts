@@ -83,7 +83,8 @@ export type GameStore = GameState & GameActions
 
 export { gameStoreStorageKey }
 
-const DEFAULT_SCAN_COOLDOWN_MS = 60_000
+/** Scan cooldown applied when a caller does not specify one. */
+export const DEFAULT_SCAN_COOLDOWN_MS = 60_000
 
 /** Bump whenever the shape of the persisted GameState slice changes. */
 export const GAME_STORE_SCHEMA_VERSION = 2
@@ -338,15 +339,43 @@ export const useGameStore = create<GameStore>()(
           return optimisticOperations.some((op) => op.status === 'pending')
         },
 
+        // Cooldowns are a rate limit, so the rules are deliberately one-directional:
+        //
+        //  - a positive duration adds an entry, or *extends* one that is still
+        //    running. A shorter add must never shorten a live cooldown: a client
+        //    that asked for 5s and then 1s would otherwise talk itself out of the
+        //    limit it was given.
+        //  - a zero duration means "no cooldown", and removes any entry.
+        //  - a negative or non-finite duration is a caller bug. It is ignored
+        //    rather than treated as zero, because silently clearing an active
+        //    rate limit is the worse failure of the two.
+        //  - expired entries are dropped on the way through, so a cooldown list
+        //    cannot grow without bound between prunes.
         addScanCooldown: (nebulaId, cooldownMs = DEFAULT_SCAN_COOLDOWN_MS) =>
           set((state) => {
-            const readyAt = new Date(Date.now() + cooldownMs).toISOString()
-            const existing = state.scanCooldowns.findIndex((c) => c.nebulaId === nebulaId)
-            if (existing === -1) {
-              return { scanCooldowns: [...state.scanCooldowns, { nebulaId, readyAt }] }
+            const now = Date.now()
+
+            if (Number.isNaN(cooldownMs) || !Number.isFinite(cooldownMs)) return state
+            if (cooldownMs < 0) return state
+
+            if (cooldownMs === 0) {
+              const remaining = state.scanCooldowns.filter((c) => c.nebulaId !== nebulaId)
+              if (remaining.length === state.scanCooldowns.length) return state
+              return { scanCooldowns: remaining }
             }
-            const updated = [...state.scanCooldowns]
-            updated[existing] = { nebulaId, readyAt }
+
+            const requestedReadyAt = now + cooldownMs
+            const live = state.scanCooldowns.filter(
+              (c) => c.nebulaId === nebulaId || now < new Date(c.readyAt).getTime()
+            )
+            const existing = live.find((c) => c.nebulaId === nebulaId)
+            const readyAt = new Date(
+              existing ? Math.max(requestedReadyAt, new Date(existing.readyAt).getTime()) : requestedReadyAt
+            ).toISOString()
+
+            if (!existing) return { scanCooldowns: [...live, { nebulaId, readyAt }] }
+
+            const updated = live.map((c) => (c.nebulaId === nebulaId ? { nebulaId, readyAt } : c))
             return { scanCooldowns: updated }
           }),
 

@@ -1,7 +1,5 @@
 import { useCallback } from 'react'
-import { useGameStore } from '@/store/gameStore'
-
-const DEFAULT_COOLDOWN_MS = 60_000
+import { DEFAULT_SCAN_COOLDOWN_MS, useGameStore } from '@/store/gameStore'
 
 export function useScanCooldown() {
   const scanCooldowns = useGameStore((s) => s.scanCooldowns)
@@ -22,7 +20,7 @@ export function useScanCooldown() {
   )
 
   const startCooldown = useCallback(
-    (pointId: string, cooldownMs = DEFAULT_COOLDOWN_MS) => {
+    (pointId: string, cooldownMs = DEFAULT_SCAN_COOLDOWN_MS) => {
       addScanCooldown(pointId, cooldownMs)
     },
     [addScanCooldown]
