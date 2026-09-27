@@ -4,6 +4,7 @@ import type { StellarNetworkConfig } from '@config/stellar'
 import { getTransactionHistory, type PaginatedTransactions } from '@services/history/transactions'
 import type { StellarTransaction } from '@/types'
 import { EmptyTransactions } from '@/components/UI/EmptyStates'
+import { sanitizeContractString } from '@/utils/xss-protection'
 import { computeRowWindow, mergeTransactionPages } from './transactionWindow'
 
 interface TransactionHistoryProps {
@@ -58,7 +59,8 @@ function TransactionItem({ tx }: { tx: StellarTransaction }) {
         </span>
       </div>
 
-      <p style={memoStyle}>{tx.memo ?? 'No memo attached'}</p>
+      {/* #301 — a memo is arbitrary text any counterparty can attach to a payment. */}
+      <p style={memoStyle}>{tx.memo ? sanitizeContractString(tx.memo) : 'No memo attached'}</p>
 
       <ul style={opListStyle}>
         {summary.map((line, index) => (

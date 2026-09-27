@@ -16,7 +16,11 @@ export default defineConfig({
       sourcemap: true,
     } as any),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not 'autoUpdate'): the plugin only readies the new service
+      // worker and lets the app decide when to activate it, so the update
+      // notification (issue #325) controls the moment of `skipWaiting`
+      // instead of it happening silently in the background.
+      registerType: 'prompt',
       includeAssets: ['vite.svg', 'icon-*.png', 'icon-*.webp', '**/*.webp'],
       manifest: {
         name: 'Nebula Nomad - Space Exploration on Stellar',

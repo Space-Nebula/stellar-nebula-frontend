@@ -11,10 +11,15 @@ import './App.css'
 import { createScopedLogger } from './services/logging'
 import { analytics } from './services/analytics'
 import { env } from './config'
+import { useServiceWorkerUpdate } from './hooks/useServiceWorkerUpdate'
 
 const log = createScopedLogger('App')
 
 function App() {
+  // Shows a toast (Refresh button) when a new service worker is waiting,
+  // instead of updates applying silently (#325).
+  useServiceWorkerUpdate()
+
   useEffect(() => {
     // Initialize analytics with environment configuration
     log.info('Initializing application')
