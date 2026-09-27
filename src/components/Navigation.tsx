@@ -5,6 +5,7 @@ import { HelpModal } from './Help/HelpModal'
 import { MobileMenu } from './Layout/MobileMenu'
 
 import NotificationCenter from './Notifications/NotificationCenter'
+import { WebSocketStatus } from './WebSocket/WebSocketStatus'
 
 const navigationItems = [
   { label: 'Home', to: '/' },
@@ -51,6 +52,7 @@ function Navigation() {
         </nav>
 
         <div className="header-tools">
+          <WebSocketStatus variant="compact" />
           <NotificationCenter />
         </div>
 

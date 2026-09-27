@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Vector3 } from 'three'
 import type { Points, ShaderMaterial } from 'three'
@@ -99,6 +99,16 @@ export function Starfield({ density, performanceMode = false }: StarfieldProps) 
       pointsRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.01) * 0.015
     }
   })
+
+  useEffect(() => {
+    const mat = materialRef.current
+    return () => {
+      geometry.dispose()
+      if (mat) {
+        mat.dispose()
+      }
+    }
+  }, [geometry])
 
   return (
     <points ref={pointsRef} geometry={geometry} frustumCulled={false}>

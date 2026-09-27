@@ -22,3 +22,5 @@ export type {
   UseTransactionHistoryOptions,
   UseTransactionHistoryReturn,
 } from './useTransactionHistory'
+export { useWebSocketStatus } from './useWebSocketStatus'
+export type { UseWebSocketStatusReturn } from './useWebSocketStatus'
