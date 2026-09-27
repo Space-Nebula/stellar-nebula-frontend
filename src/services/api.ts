@@ -2,6 +2,13 @@ import { env } from '../config'
 import { createScopedLogger } from './logging'
 import { addMonitoringBreadcrumb } from './monitoring'
 import { applyCsrfHeaders, generateCsrfToken, getCsrfToken } from '../utils/csrf'
+import {
+  apiCache,
+  cacheKeyFor,
+  isCacheableMethod,
+  parseCacheControl,
+  type CachedResponse,
+} from '../utils/apiCache'
 
 const log = createScopedLogger('API')
 
@@ -20,6 +27,11 @@ export interface ApiError {
 export interface ApiRequestConfig extends RequestInit {
   url: string
   retries?: number
+}
+
+export interface ApiCallOptions extends RequestInit {
+  /** Set false to bypass the GET response cache for this call. */
+  cache?: boolean
 }
 
 type RequestInterceptor = (config: ApiRequestConfig) => ApiRequestConfig | Promise<ApiRequestConfig>
@@ -113,7 +125,7 @@ async function executeFetch(
  */
 async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: ApiCallOptions = {},
   retries = 2
 ): Promise<ApiResponse<T>> {
   let config: ApiRequestConfig = { ...options, url: path, retries }
@@ -143,6 +155,21 @@ async function request<T>(
   }
 
   const finalUrl = config.url
+  const method_ = csrfSafeMethod
+
+  // Issue #307: cache only safe reads, keyed on path + normalized query.
+  // Writes never read from cache and never write to it — they invalidate the
+  // affected reads instead (see invalidateAfterMutation below).
+  const cacheable = isCacheableMethod(method_) && !options.cache
+  const cacheKey = cacheable ? cacheKeyFor(finalUrl) : null
+
+  if (cacheKey) {
+    const cached = apiCache.get(cacheKey)
+    if (cached) {
+      log.debug(`${method_} ${path} ${cached.status} (cache)`, { duration: 0 })
+      return { data: cached.data as T, error: null, status: cached.status }
+    }
+  }
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), env.API_TIMEOUT_MS)
@@ -186,6 +213,25 @@ async function request<T>(
       status: response.status,
       duration,
     })
+
+    // Issue #307: store only when the server allows it. no-store/private/
+    // no-cache (and max-age=0) responses are never retained.
+    if (cacheKey) {
+      const { directive, ttlMs } = parseCacheControl(
+        response.headers.get('cache-control'),
+        apiCache.defaultTtlMs
+      )
+      if (directive === 'store') {
+        const entry: CachedResponse<T> = { data, status: response.status }
+        apiCache.set(cacheKey, entry, ttlMs)
+      }
+    }
+
+    // Issue #307: a successful mutation invalidates the reads it can affect —
+    // the same path plus its collection prefix (POST /ships/1 → /ships, /ships/1).
+    if (!cacheable && response.ok) {
+      invalidateRelatedCaches(path)
+    }
 
     return { data, error: null, status: response.status }
   } catch (error) {
@@ -231,12 +277,29 @@ async function request<T>(
 }
 
 /**
+ * Issue #307: invalidation strategy.
+ *
+ * A write to `/ships/1` can change `/ships/1` and the `/ships` collection, so
+ * both are dropped. The key path is also kept for the exact match.
+ */
+function invalidateRelatedCaches(path: string): void {
+  const clean = path.split('?')[0] ?? path
+  apiCache.invalidate(clean)
+  const lastSlash = clean.lastIndexOf('/')
+  if (lastSlash > 0) {
+    apiCache.invalidatePrefix(clean.slice(0, lastSlash))
+  } else {
+    apiCache.invalidatePrefix('/')
+  }
+}
+
+/**
  * Perform an HTTP GET request.
  *
  * @example
  * const { data, error } = await get<User[]>('/users')
  */
-export function get<T>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {
+export function get<T>(path: string, options?: ApiCallOptions): Promise<ApiResponse<T>> {
   return request<T>(path, { ...options, method: 'GET' })
 }
 
