@@ -1,5 +1,6 @@
 /* eslint-disable */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 export interface HelpFaqItem {
   id: string
@@ -63,28 +64,26 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
     })
   }, [normalizedQuery])
 
-  useEffect(() => {
-    if (!isOpen) return
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [isOpen, onClose])
+  // This dialog is not the shared `Modal` primitive, so it has to own the same
+  // contract: focus moves in, Tab stays inside, ESC closes, and focus goes back
+  // to the help button afterwards. It previously only handled ESC, which left a
+  // keyboard user tabbing through the page *behind* the overlay and never
+  // returning to the trigger.
+  const dialogRef = useFocusTrap<HTMLElement>({ active: isOpen, onEscape: onClose })
 
   if (!isOpen) return null
 
   return (
     <div className="help-modal-overlay" role="presentation" onClick={onClose}>
       <section
+        ref={dialogRef}
         className="help-modal"
         role="dialog"
         aria-modal="true"
         aria-label="Help and frequently asked questions"
+        // Focusable so the trap has somewhere to hold focus when the dialog
+        // contains no focusable child, and so it can be focused programmatically.
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="help-modal-header">
