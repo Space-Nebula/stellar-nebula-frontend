@@ -11,6 +11,13 @@ export type AnalyticsEventName =
   | 'share_created'
   | 'error_reported'
   | 'performance_metric'
+  | 'performance_metrics_exported'
+  | 'pwa_install_prompt_shown'
+  | 'pwa_install_accepted'
+  | 'pwa_install_dismissed'
+  | 'pwa_install_deferred'
+  | 'sw_update_available'
+  | 'sw_update_applied'
 
 export interface AnalyticsEventPayload {
   [key: string]: string | number | boolean | null | undefined

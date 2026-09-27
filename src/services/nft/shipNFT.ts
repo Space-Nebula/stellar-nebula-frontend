@@ -1,4 +1,5 @@
 import type { StellarNetworkConfig } from '@config/stellar'
+import { sanitizeContractString, sanitizeURL } from '@/utils/xss-protection'
 
 export interface ShipNFTAttribute {
   trait_type: string
@@ -105,13 +106,17 @@ function parseMetadata(raw: unknown): ShipNFTMetadata {
     return { name: 'Unnamed ship', attributes: [] }
   }
 
+  // #301 — this metadata comes from an arbitrary off-chain URI any account
+  // can point its `metadata_uri` data entry at, so every string field is
+  // sanitized before it enters app state and gets rendered.
   const source = raw as Record<string, unknown>
   const metadata: ShipNFTMetadata = {
-    name: typeof source.name === 'string' ? source.name : 'Unnamed ship',
-    description: typeof source.description === 'string' ? source.description : undefined,
-    image: typeof source.image === 'string' ? source.image : undefined,
-    model: typeof source.model === 'string' ? source.model : undefined,
-    tier: typeof source.tier === 'string' ? source.tier : undefined,
+    name: typeof source.name === 'string' ? sanitizeContractString(source.name) : 'Unnamed ship',
+    description:
+      typeof source.description === 'string' ? sanitizeContractString(source.description) : undefined,
+    image: typeof source.image === 'string' ? sanitizeURL(source.image) : undefined,
+    model: typeof source.model === 'string' ? sanitizeContractString(source.model) : undefined,
+    tier: typeof source.tier === 'string' ? sanitizeContractString(source.tier) : undefined,
     stats:
       source.stats && typeof source.stats === 'object'
         ? Object.fromEntries(
@@ -132,7 +137,12 @@ function parseMetadata(raw: unknown): ShipNFTMetadata {
           ) {
             return []
           }
-          return [{ trait_type: item.trait_type, value: item.value }]
+          return [
+            {
+              trait_type: sanitizeContractString(item.trait_type),
+              value: typeof item.value === 'string' ? sanitizeContractString(item.value) : item.value,
+            },
+          ]
         })
       : [],
   }

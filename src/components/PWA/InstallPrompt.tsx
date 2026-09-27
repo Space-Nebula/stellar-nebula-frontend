@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { useEffect, useState } from 'react'
+import { trackEvent } from '@/services/analytics'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -28,6 +29,7 @@ export function InstallPrompt() {
         const dismissed = localStorage.getItem('pwa-install-dismissed')
         if (!dismissed) {
           setShowPrompt(true)
+          trackEvent('pwa_install_prompt_shown', {})
         }
       }, 30000)
     }
@@ -51,6 +53,9 @@ export function InstallPrompt() {
 
     deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
+    trackEvent(outcome === 'accepted' ? 'pwa_install_accepted' : 'pwa_install_dismissed', {
+      source: 'native_prompt',
+    })
 
     if (outcome === 'accepted') {
       setShowPrompt(false)
@@ -61,6 +66,7 @@ export function InstallPrompt() {
   const handleDismiss = () => {
     setShowPrompt(false)
     localStorage.setItem('pwa-install-dismissed', 'true')
+    trackEvent('pwa_install_deferred', { source: 'maybe_later' })
   }
 
   if (isInstalled || !showPrompt) return null

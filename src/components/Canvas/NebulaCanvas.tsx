@@ -5,6 +5,7 @@ import { disposeThreeObject } from '@/utils/threejs/cleanup'
 import { NebulaScene } from './NebulaScene'
 import { CameraControls } from './CameraControls'
 import { FpsCounter } from './FpsCounter'
+import { RenderStatsCollector } from './RenderStatsCollector'
 import { BloomEffect } from '../Effects'
 import { DepthOfFieldEffect } from '../Effects/DepthOfFieldEffect'
 import { WebGlFallback } from './WebGlFallback'
@@ -304,6 +305,7 @@ export function NebulaCanvas({ showFps = false, onScanComplete }: NebulaCanvasPr
           <DepthOfFieldEffect enabled={!performanceMode} performanceMode={performanceMode} />
           <CameraControls isMobile={deviceHints.isMobile} performanceMode={performanceMode} />
           <CanvasResourceCleanup />
+          {showFps && <RenderStatsCollector />}
           <Preload all />
         </Suspense>
       </Canvas>
