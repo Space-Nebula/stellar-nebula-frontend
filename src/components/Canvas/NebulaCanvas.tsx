@@ -1,12 +1,13 @@
 import { Suspense, useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { Preload } from '@react-three/drei'
+import { disposeThreeObject } from '@/utils/threejs/cleanup'
 import { NebulaScene } from './NebulaScene'
 import { CameraControls } from './CameraControls'
 import { FpsCounter } from './FpsCounter'
 import { BloomEffect } from '../Effects'
-import { DepthOfFieldEffect } from './Effects/DepthOfFieldEffect'
-import { WebGlFallback } from './webgl-support'
+import { DepthOfFieldEffect } from '../Effects/DepthOfFieldEffect'
+import { WebGlFallback } from './WebGlFallback'
 import { useGraphicsStore } from '@/store'
 import { useAdaptivePerformanceMode } from '@/hooks/useAdaptivePerformanceMode'
 import { useScanCooldown } from '@/hooks/useScanCooldown'
@@ -16,6 +17,18 @@ import { rollScanReward, rollResourceAmount } from '@/utils/rarity'
 import { createRNG } from '@/utils/procedural/nebula'
 import { SCAN_COOLDOWN_MS, SCAN_CHANNEL_DURATION_SEC } from '@/constants/game'
 import type { ResourceType, RarityTier } from '@/types/game'
+
+function CanvasResourceCleanup() {
+  const { gl, scene } = useThree()
+  useEffect(() => {
+    return () => {
+      disposeThreeObject(scene)
+      gl.dispose()
+      gl.forceContextLoss()
+    }
+  }, [gl, scene])
+  return null
+}
 
 interface NebulaCanvasProps {
   showFps?: boolean
@@ -288,8 +301,9 @@ export function NebulaCanvas({ showFps = false, onScanComplete }: NebulaCanvasPr
             intensity={bloomIntensity}
             performanceMode={performanceMode}
           />
-          <DepthOfFieldEffect performanceMode={performanceMode} />
+          <DepthOfFieldEffect enabled={!performanceMode} performanceMode={performanceMode} />
           <CameraControls isMobile={deviceHints.isMobile} performanceMode={performanceMode} />
+          <CanvasResourceCleanup />
           <Preload all />
         </Suspense>
       </Canvas>

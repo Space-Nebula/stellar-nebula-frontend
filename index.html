@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Content Security Policy for XSS protection (#261) -->
+    <!-- Content Security Policy for XSS and resource protection (#261) -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.logrocket.io https://horizon-futurenet.stellar.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://horizon-futurenet.stellar.org https://*.stellar.org wss://*.stellar.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.logrocket.io https://*.stellar.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.stellar.org wss://*.stellar.org https://*.sentry.io https://*.logrocket.io https://cdn.logrocket.io http://localhost:* ws://localhost:* wss://*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';"
     />
     <!-- LogRocket Session Replay - Load early for maximum coverage (with SRI) -->
     <!-- SRI hash auto-generated via `node scripts/generate-sri.mjs --update` -->

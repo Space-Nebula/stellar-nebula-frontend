@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import * as THREE from 'three'
+import type * as THREE from 'three'
 
 export interface ThreeJsCleanupProps {
   /** Object3D refs with geometries and materials to dispose */
@@ -12,20 +12,32 @@ export interface ThreeJsCleanupProps {
   renderer?: THREE.WebGLRenderer
 }
 
+type DisposableObject = THREE.Object3D & {
+  geometry?: THREE.BufferGeometry
+  material?: THREE.Material | THREE.Material[]
+}
+
+export function disposeThreeObject(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    const item = child as DisposableObject
+    if (item.geometry) {
+      item.geometry.dispose?.()
+    }
+    if (item.material) {
+      if (Array.isArray(item.material)) {
+        item.material.forEach((mat) => mat.dispose?.())
+      } else {
+        item.material.dispose?.()
+      }
+    }
+  })
+}
+
 export function useThreeJsCleanup({ objects, materials, textures, renderer }: ThreeJsCleanupProps) {
   useEffect(() => {
     return () => {
       objects?.forEach((obj) => {
-        if (obj.geometry) {
-          obj.geometry.dispose()
-        }
-        if (obj.material) {
-          if (Array.isArray(obj.material)) {
-            obj.material.forEach((mat) => mat.dispose?.())
-          } else {
-            obj.material.dispose?.()
-          }
-        }
+        disposeThreeObject(obj)
       })
 
       materials?.forEach((material) => {
@@ -38,8 +50,10 @@ export function useThreeJsCleanup({ objects, materials, textures, renderer }: Th
 
       if (renderer) {
         renderer.dispose?.()
-        renderer.forceContextLoss()
+        renderer.forceContextLoss?.()
       }
     }
   }, [objects, materials, textures, renderer])
 }
+
+export default useThreeJsCleanup

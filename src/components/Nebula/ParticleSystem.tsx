@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color } from 'three'
 import type { Points, ShaderMaterial } from 'three'
@@ -165,11 +165,10 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
   })
 
   const effectiveDensity = Math.min(1.2, Math.max(0.3, density))
-  const baseCount = MAX_PARTICLE_COUNT * effectiveDensity
   const performanceFactor = performanceMode ? 0.35 : 0.5
   const particleCount = Math.max(
     MIN_PARTICLE_COUNT,
-    Math.round(lodParticleCount * performanceFactor)
+    Math.round(lodParticleCount * effectiveDensity * performanceFactor)
   )
 
   const geometry = useMemo(
@@ -199,6 +198,16 @@ export function ParticleSystem({ density = 0.8, performanceMode = false }: Parti
       pointsRef.current.rotation.x = Math.sin(clock.elapsedTime * 0.07) * 0.03
     }
   })
+
+  useEffect(() => {
+    const mat = materialRef.current
+    return () => {
+      geometry.dispose()
+      if (mat) {
+        mat.dispose()
+      }
+    }
+  }, [geometry])
 
   return (
     <points ref={pointsRef} geometry={geometry} frustumCulled={false}>

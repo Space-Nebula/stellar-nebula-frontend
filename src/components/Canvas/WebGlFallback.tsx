@@ -1,4 +1,4 @@
-import { useWebGlSupport } from './webgl-support'
+import { useWebGlSupport } from '@/utils/threejs/webgl-support'
 
 interface WebGlFallbackProps {
   alternatives?: string[]

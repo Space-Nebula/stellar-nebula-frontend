@@ -1,25 +1,29 @@
-import { DepthOfField } from '@react-three/postprocessing'
-import { useMemo } from 'react'
+import { DepthOfField, EffectComposer } from '@react-three/postprocessing'
 
 interface DepthOfFieldEffectProps {
-  enabled: boolean
+  enabled?: boolean
   performanceMode?: boolean
 }
 
-export function DepthOfFieldEffect({ enabled, performanceMode = false }: DepthOfFieldEffectProps) {
-  const adaptiveMode = performanceMode || window.matchMedia('(pointer: coarse)').matches
+export function DepthOfFieldEffect({
+  enabled = true,
+  performanceMode = false,
+}: DepthOfFieldEffectProps) {
+  const adaptiveMode =
+    performanceMode ||
+    (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches)
 
   if (!enabled) {
     return null
   }
 
   return (
-    <DepthOfField
-      focusDistance={10}
-      radius={adaptiveMode ? 2 : 1}
-      bokehScale={1}
-      bokehSize={10}
-      visibleRange={adaptiveMode ? [0.5, 20] : [0.3, 15]}
-    />
+    <EffectComposer multisampling={0}>
+      <DepthOfField
+        focusDistance={10}
+        focalLength={adaptiveMode ? 0.05 : 0.02}
+        bokehScale={adaptiveMode ? 2 : 1}
+      />
+    </EffectComposer>
   )
 }

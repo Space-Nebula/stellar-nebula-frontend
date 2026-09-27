@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Vector3 } from 'three'
 
@@ -47,3 +48,5 @@ export function useThreeJsLod({
 
   return particleCount
 }
+
+export default useThreeJsLod
