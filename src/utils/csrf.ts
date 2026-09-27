@@ -58,6 +58,15 @@ export function generateCsrfToken(): string {
   return token
 }
 
+/** Test seam: clears the stored token and its meta tag. */
+export function clearCsrfTokenForTests(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+  document.cookie = `${CSRF_TOKEN_COOKIE}=; path=/; Max-Age=0`
+  document.querySelector('meta[name="csrf-token"]')?.remove()
+}
+
 export function shouldAttachCsrf(method?: string): boolean {
   const normalizedMethod = (method ?? 'GET').toUpperCase()
   return !['GET', 'HEAD', 'OPTIONS'].includes(normalizedMethod)
