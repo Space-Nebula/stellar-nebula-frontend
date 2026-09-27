@@ -68,6 +68,11 @@ export class SimpleCache<T = any> {
     this.map.delete(key)
   }
 
+  /** Current keys, in insertion (LRU) order. */
+  keys(): string[] {
+    return Array.from(this.map.keys())
+  }
+
   /** Clear all entries and reset stats. */
   clear() {
     this.map.clear()
