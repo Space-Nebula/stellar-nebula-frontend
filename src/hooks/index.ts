@@ -15,6 +15,14 @@ export type {
   TransactionRetryOptions,
   UseTransactionRetryReturn,
 } from './useTransactionRetry'
+export { useTransactionRecovery } from './useTransactionRecovery'
+export type {
+  RecoveryOutcome,
+  TransactionRecovery,
+  UseTransactionRecoveryOptions,
+} from './useTransactionRecovery'
+export { useFocusTrap, FOCUSABLE_SELECTOR } from './useFocusTrap'
+export type { FocusTrapOptions } from './useFocusTrap'
 export { useFrameRateMonitor } from './useFrameRateMonitor'
 export { useRenderResourceTracker } from './useRenderResourceTracker'
 export { useTransactionHistory } from './useTransactionHistory'
