@@ -15,6 +15,10 @@ import {
   signTransactionWithLedger,
   disconnectLedger,
   getLedgerNetwork,
+  isXBullInstalled,
+  connectXBull,
+  signTransactionWithXBull,
+  getXBullNetwork,
   isWalletConnectAvailable,
   connectWalletConnect,
   signTransactionWithWalletConnect,
@@ -63,6 +67,7 @@ export interface WalletContextValue {
   isFreighterInstalled: boolean
   isAlbedoAvailable: boolean
   isLedgerAvailable: boolean
+  isXBullInstalled: boolean
   isWalletConnectAvailable: boolean
   networkMismatchWarning: string | null
   connect: (type: WalletType) => Promise<void>
@@ -141,6 +146,20 @@ async function validateWalletSession(persisted: PersistedWallet): Promise<Wallet
         walletType: persisted.walletType,
         network: persisted.network,
       }
+    } else if (persisted.walletType === 'xbull') {
+      const installed = await isXBullInstalled()
+      if (!installed) return null
+
+      const currentKey = await connectXBull()
+      if (currentKey !== persisted.publicKey) return null
+
+      const network = await getXBullNetwork()
+      return {
+        isConnected: true,
+        publicKey: currentKey,
+        walletType: persisted.walletType,
+        network,
+      }
     } else if (persisted.walletType === 'walletconnect') {
       if (!isWalletConnectAvailable()) return null
       const session = loadWalletConnectSession()
@@ -187,6 +206,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [reconnectError, setReconnectError] = useState<string | null>(null)
   const [freighterInstalled, setFreighterInstalled] = useState(false)
   const [ledgerAvailable, setLedgerAvailable] = useState(false)
+  const [xbullInstalled, setXbullInstalled] = useState(false)
   const [networkMismatchWarning, setNetworkMismatchWarning] = useState<string | null>(null)
   const albedoAvailable = isAlbedoAvailable()
   const walletConnectAvailable = isWalletConnectAvailable()
@@ -203,6 +223,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
     isLedgerAvailable()
       .then(setLedgerAvailable)
       .catch(() => setLedgerAvailable(false))
+  }, [])
+
+  useEffect(() => {
+    isXBullInstalled()
+      .then(setXbullInstalled)
+      .catch(() => setXbullInstalled(false))
   }, [])
 
   // Auto-reconnect on mount if user was previously connected
@@ -306,6 +332,17 @@ export function WalletProvider({ children }: WalletProviderProps) {
           const result = await connectWalletConnect(wcNetwork)
           publicKey = result.publicKey
           network = wcNetwork
+        } else if (type === 'xbull') {
+          const installed = await isXBullInstalled()
+          if (!installed) {
+            const walletError = handleWalletConnectionError(
+              new Error('xBull is not installed'),
+              type
+            )
+            throw new Error(formatWalletError(walletError))
+          }
+          publicKey = await connectXBull()
+          network = await getXBullNetwork()
         } else if (type === 'ledger') {
           const available = await isLedgerAvailable()
           if (!available) {
@@ -491,6 +528,13 @@ export function WalletProvider({ children }: WalletProviderProps) {
           )
         } else if (walletState.walletType === 'albedo') {
           signedXdr = await signTransactionWithAlbedo(xdr, walletState.network)
+        } else if (walletState.walletType === 'xbull') {
+          const passphraseMap: Record<StellarNetwork, string> = {
+            testnet: 'Test SDF Network ; September 2015',
+            futurenet: 'Test SDF Future Network ; October 2022',
+            mainnet: 'Public Global Stellar Network ; September 2015',
+          }
+          signedXdr = await signTransactionWithXBull(xdr, passphraseMap[walletState.network])
         } else if (walletState.walletType === 'walletconnect') {
           const wcSession = loadWalletConnectSession()
           if (!wcSession) {
@@ -557,6 +601,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       isFreighterInstalled: freighterInstalled,
       isAlbedoAvailable: albedoAvailable,
       isLedgerAvailable: ledgerAvailable,
+      isXBullInstalled: xbullInstalled,
       isWalletConnectAvailable: walletConnectAvailable,
       networkMismatchWarning,
       connect,
@@ -575,6 +620,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       freighterInstalled,
       albedoAvailable,
       ledgerAvailable,
+      xbullInstalled,
       walletConnectAvailable,
       networkMismatchWarning,
       connect,

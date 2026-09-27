@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { isRetryableStellarError } from '@/utils/stellar/retry'
 
 export interface TransactionRetryFrame<TPayload> {
@@ -129,8 +129,7 @@ export function useTransactionRetry<TPayload = unknown>({
         }
 
         lastError = result.error
-        const canContinue =
-          attemptIndex < totalAttempts - 1 && shouldRetry(result.error)
+        const canContinue = attemptIndex < totalAttempts - 1 && shouldRetry(result.error)
 
         setLastFailure({
           transactionId: current.transactionId,
@@ -148,9 +147,7 @@ export function useTransactionRetry<TPayload = unknown>({
       }
 
       setLastFailure((prev) =>
-        prev
-          ? { ...prev, error: messageOf(lastError, 'Transaction failed') }
-          : prev
+        prev ? { ...prev, error: messageOf(lastError, 'Transaction failed') } : prev
       )
       return false
     } finally {

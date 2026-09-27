@@ -20,6 +20,12 @@ const WALLET_OPTIONS: WalletOption[] = [
     icon: '🚀',
   },
   {
+    type: 'xbull',
+    name: 'xBull',
+    description: 'Browser extension wallet for Stellar',
+    icon: '🐂',
+  },
+  {
     type: 'ledger',
     name: 'Ledger',
     description: 'Hardware wallet via USB device approval',
@@ -55,6 +61,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
     isAlbedoAvailable,
     isLedgerAvailable,
     isWalletConnectAvailable,
+    isXBullInstalled,
     clearError,
   } = useWallet()
 
@@ -110,12 +117,19 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
   const isAvailable = useCallback(
     (type: WalletType): boolean => {
       if (type === 'freighter') return isFreighterInstalled
+      if (type === 'xbull') return isXBullInstalled
       if (type === 'ledger') return isLedgerAvailable
       if (type === 'albedo') return isAlbedoAvailable
       if (type === 'walletconnect') return isWalletConnectAvailable
       return false
     },
-    [isFreighterInstalled, isLedgerAvailable, isAlbedoAvailable, isWalletConnectAvailable]
+    [
+      isFreighterInstalled,
+      isXBullInstalled,
+      isLedgerAvailable,
+      isAlbedoAvailable,
+      isWalletConnectAvailable,
+    ]
   )
 
   if (!isOpen) return null

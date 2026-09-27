@@ -17,6 +17,7 @@ function makeCtx(overrides: Partial<WalletContextValue>): WalletContextValue {
     isFreighterInstalled: false,
     isAlbedoAvailable: false,
     isLedgerAvailable: false,
+    isXBullInstalled: false,
     isWalletConnectAvailable: false,
     networkMismatchWarning: null,
     connect: noopAsync,

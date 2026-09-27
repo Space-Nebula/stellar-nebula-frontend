@@ -53,7 +53,7 @@ describe('StorePerformanceMonitor', () => {
       increment: () => set({ count: 1 }),
     }))
 
-    const wrapped = monitor.middleware(mockCreator)
+    const wrapped = monitor.middleware(mockCreator) as (...args: any[]) => any
     const mockSet = vi.fn()
     const mockGet = vi.fn()
     const mockApi = {} as any
@@ -85,7 +85,7 @@ describe('StorePerformanceMonitor', () => {
       increment: () => set({ count: 1 }),
     }))
 
-    const wrapped = monitor.middleware(mockCreator)
+    const wrapped = monitor.middleware(mockCreator) as (...args: any[]) => any
     const mockSet = vi.fn()
     const mockGet = vi.fn()
     const mockApi = {} as any

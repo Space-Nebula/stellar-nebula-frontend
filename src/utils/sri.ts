@@ -99,7 +99,7 @@ export function loadScriptWithSRI(
       const fallbackScript = document.createElement('script')
       fallbackScript.src = resource.fallback
       fallbackScript.async = true
-      fallbackScript.onload = () => options.onFallback?.(event)
+      fallbackScript.onload = () => options.onFallback?.(event as Event)
       fallbackScript.onerror = (e) => options.onError?.(e as Event)
       document.head.appendChild(fallbackScript)
     } else {
@@ -108,10 +108,10 @@ export function loadScriptWithSRI(
       console.warn(
         `[SRI] No fallback configured for ${resource.url}. Resource will be unavailable.`
       )
-      options.onError?.(event)
+      options.onError?.(event as Event)
     }
 
-    options.onFallback?.(event)
+    options.onFallback?.(event as Event)
   }
 
   if (options.timeoutMs) {

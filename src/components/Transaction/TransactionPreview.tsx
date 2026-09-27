@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import type { ParsedSimulationResult, ContractNativeValue } from '@/utils/stellar/responseParser'
 
 export interface TransactionPreviewCost {
