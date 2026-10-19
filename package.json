@@ -40,12 +40,14 @@
     "sri:check": "node scripts/generate-sri.mjs --check",
     "unused-exports:check": "node scripts/check-unused-exports.mjs",
     "unused-exports:update-baseline": "node scripts/check-unused-exports.mjs --update-baseline",
-    "images:check": "node scripts/optimize-images.mjs"
+    "images:check": "node scripts/optimize-images.mjs",
+    "check-duplicates": "node scripts/check-duplicates.mjs"
   },
   "dependencies": {
     "@albedo-link/intent": "^0.13.0",
     "@ledgerhq/hw-app-str": "^7.7.7",
     "@ledgerhq/hw-transport-webusb": "^6.35.0",
+    "@oxc-parser/binding-linux-x64-gnu": "^0.127.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@react-three/postprocessing": "^3.0.4",
@@ -67,6 +69,11 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "prettier --write",
     "*.{json,css,md}": "prettier --write"
+  },
+  "overrides": {
+    "three": "0.170.0",
+    "react": "$react",
+    "react-dom": "$react-dom"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^5.2.1",

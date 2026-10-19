@@ -36,12 +36,21 @@
 
     <link rel="preload" as="image" href="/vite.svg" type="image/svg+xml" />
 
-    <!-- LogRocket Session Replay - Load early for maximum coverage (with SRI) -->
+    <!-- LogRocket Session Replay (with SRI) -->
     <!-- SRI hash auto-generated via `node scripts/generate-sri.mjs --update` -->
+    <!--
+      Deferred to the window `load` event (#382) instead of injected immediately:
+      the script tag itself was already async/non-blocking, but creating it
+      during head parsing still competed with critical-path requests (fonts, the
+      app bundle) for an early connection and a slot on the network/main thread.
+      Session replay coverage from page load onward is not needed for a tool
+      whose job is reproducing bugs after the fact, so waiting until the page has
+      finished loading has no practical effect on what LogRocket can capture.
+    -->
     <script>
       // Only load LogRocket in production/staging environments
       if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        ;(function () {
+        window.addEventListener('load', function () {
           var script = document.createElement('script')
           script.src = 'https://cdn.logrocket.io/LogRocket.min.js'
           script.async = true
@@ -66,7 +75,7 @@
             document.head.appendChild(fallback)
           }
           document.head.appendChild(script)
-        })()
+        })
       }
     </script>
     <title>Stellar Nebula</title>

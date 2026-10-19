@@ -125,6 +125,11 @@ jobs:
       - name: Audit npm dependencies
         run: npm run audit:ci
 
+      # Fails if react, react-dom, three, or the Stellar SDK resolve to more than
+      # one version in package-lock.json (#381).
+      - name: Check for duplicate critical dependencies
+        run: npm run check-duplicates
+
       - name: Audit summary
         if: ${{ !cancelled() }}
         run: |

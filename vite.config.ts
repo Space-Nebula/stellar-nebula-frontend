@@ -200,6 +200,12 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    // Force a single copy of these packages even if a transitive dependency
+    // declares its own (compatible) semver range for one of them. Without this,
+    // libraries like @react-three/drei or postprocessing can end up bundling
+    // their own copy of react/three, doubling an already-large chunk and, for
+    // React, silently breaking hooks across the two copies (#381).
+    dedupe: ['react', 'react-dom', 'three', '@react-three/fiber', '@react-three/drei'],
     alias: {
       '@': resolve(__dirname, 'src'),
       '@components': resolve(__dirname, 'src/components'),
@@ -239,6 +245,14 @@ export default defineConfig({
             }
             if (id.includes('react') || id.includes('react-router') || id.includes('react-dom')) {
               return 'react-vendor'
+            }
+            // Sentry/LogRocket setup (Sentry.init, replay, tracing) is deferred to
+            // an idle callback after the app renders (src/main.tsx, #382); keeping
+            // the SDK in its own chunk - rather than folded into "vendor" - means
+            // its own weight can be tracked/budgeted separately and it is cached
+            // independently of unrelated vendor code that changes more often.
+            if (id.includes('@sentry/')) {
+              return 'monitoring-vendor'
             }
             return 'vendor'
           }

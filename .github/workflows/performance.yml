@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 env:
   NODE_VERSION: 20
@@ -37,6 +38,36 @@ jobs:
       - name: Run performance unit tests
         run: npm run performance:test
 
+  size-budget:
+    name: Bundle size budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npx vite build
+
+      # size-limit reads .size-limit.json and fails (exit 1) when any chunk
+      # exceeds its limit. The action additionally posts a PR comment with the
+      # before/after sizes so reviewers can see the impact at a glance (#384).
+      - name: Enforce bundle size budgets
+        uses: andresz1/size-limit-action@v1.8.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_step: install
+
   lighthouse:
     name: Lighthouse CI budget checks
     runs-on: ubuntu-latest
@@ -55,6 +86,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Builds the app and runs Lighthouse CI against the preview server. The
+      # `assert` block in .lighthouserc.cjs defines the performance budgets;
+      # @lhci/cli exits non-zero when any assertion fails, which fails this job
+      # (#384). The step is named consistently with .lighthouserc.cjs so the
+      # budget numbers are easy to find.
       - name: Build and run Lighthouse CI
         run: npm run performance:ci
 
@@ -66,12 +102,60 @@ jobs:
           path: .lighthouseci
           if-no-files-found: warn
 
-      - name: Assert Lighthouse budgets
-        if: github.event_name == 'pull_request'
-        run: |
-          # Fail the workflow if Lighthouse CI assertions failed
-          if [ -f .lighthouseci/lhr-*.json ]; then
-            echo "Lighthouse reports generated successfully"
-          else
-            echo "WARNING: No Lighthouse reports found"
-          fi
+      # Parse the Lighthouse JSON output and post a summary comment on PRs so
+      # reviewers can see every Core Web Vital score without downloading the
+      # full report artifact (#384).
+      - name: Comment Lighthouse budget report on PR
+        if: github.event_name == 'pull_request' && always()
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const marker = '<!-- lighthouse-budget-report -->';
+
+            let body = `${marker}\n## Lighthouse Budget Report\n\n`;
+
+            try {
+              const dir = '.lighthouseci';
+              const files = fs.readdirSync(dir).filter(f => f.startsWith('lhr-') && f.endsWith('.json'));
+              if (files.length === 0) {
+                body += '_No Lighthouse reports found._';
+              } else {
+                // Use the best-performing run (matches `aggregationMethod: "optimistic"`)
+                const reports = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+                const best = reports.sort((a, b) =>
+                  (b.categories?.performance?.score ?? 0) - (a.categories?.performance?.score ?? 0)
+                )[0];
+
+                const score = n => typeof n === 'number' ? `${Math.round(n * 100)}` : 'n/a';
+                const ms   = n => typeof n === 'number' ? `${Math.round(n)} ms` : 'n/a';
+                const cls  = n => typeof n === 'number' ? n.toFixed(3) : 'n/a';
+
+                const perf = best.categories?.performance;
+                const audits = best.audits ?? {};
+                const icon = s => s >= 0.9 ? '✅' : s >= 0.5 ? '⚠️' : '❌';
+
+                body += `| Metric | Value | Budget |\n|---|---|---|\n`;
+                body += `| Performance score | ${icon(perf?.score ?? 0)} **${score(perf?.score)}** | ≥ 80 |\n`;
+                body += `| First Contentful Paint | ${ms(audits['first-contentful-paint']?.numericValue)} | ≤ 1800 ms |\n`;
+                body += `| Largest Contentful Paint | ${ms(audits['largest-contentful-paint']?.numericValue)} | ≤ 2500 ms |\n`;
+                body += `| Total Blocking Time | ${ms(audits['total-blocking-time']?.numericValue)} | ≤ 250 ms |\n`;
+                body += `| Cumulative Layout Shift | ${cls(audits['cumulative-layout-shift']?.numericValue)} | ≤ 0.1 |\n`;
+                body += `| Time to Interactive | ${ms(audits['interactive']?.numericValue)} | ≤ 4000 ms |\n`;
+                body += `\n_Full reports in the \`lighthouse-reports\` artifact._`;
+              }
+            } catch (e) {
+              body += `_Failed to parse Lighthouse reports: ${e.message}_`;
+            }
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find(c => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
