@@ -2,6 +2,7 @@ import type { rpc } from '@stellar/stellar-sdk'
 import { createStellarRpcServer, getActiveStellarConfig } from '@config/stellar'
 import { retryAsync, isRetryableStellarError } from './retry'
 import { parseSimulationResponse, type ParsedSimulationResult } from './responseParser'
+import { withRateLimit } from '@/utils/rate-limiter'
 import type { StellarNetworkConfig } from '@config/stellar'
 
 export interface SimulateContractTransactionOptions {
@@ -20,13 +21,16 @@ export async function simulateContractTransaction<T = unknown>(
   }
 
   const response = await retryAsync(
+    // Issue #483: each attempt (including retries) counts against the RPC rate limit
     async () =>
-      rpcServer.simulateTransaction({
-        transaction: transactionXdr,
-        ...(typeof options.instructionLeeway === 'number'
-          ? { resourceConfig: { instructionLeeway: options.instructionLeeway } }
-          : {}),
-      }),
+      withRateLimit('rpc', () =>
+        rpcServer.simulateTransaction({
+          transaction: transactionXdr,
+          ...(typeof options.instructionLeeway === 'number'
+            ? { resourceConfig: { instructionLeeway: options.instructionLeeway } }
+            : {}),
+        })
+      ),
     {
       retries: options.retries ?? 2,
       shouldRetry: (error) => isRetryableStellarError(error),

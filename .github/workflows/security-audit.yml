@@ -1,0 +1,78 @@
+name: Security Audit
+
+# Weekly dependency vulnerability scan (#482). It runs even when no pull requests are open,
+# so an advisory published for an existing dependency is noticed within a week. Dependabot
+# opens the fix PRs (.github/dependabot.yml); this job is the independent safety net that
+# runs the same reviewed gate as CI (`npm run audit:ci`, see docs/SECURITY.md).
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run dependency audit gate
+        run: npm run audit:ci
+
+      # Keeps one open tracking issue instead of a new one every week.
+      - name: Open or update tracking issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Weekly dependency audit failed'
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const body = [
+              'The scheduled dependency audit (`npm run audit:ci`) failed.',
+              '',
+              `Run: ${runUrl}`,
+              '',
+              'Fix the advisory with an upgrade or a reviewed entry in `.audit-allowlist.json`. See docs/SECURITY.md.',
+            ].join('\n')
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security-audit',
+            })
+            const existing = open.find((issue) => issue.title === title)
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Still failing: ${runUrl}`,
+              })
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['security', 'security-audit'],
+              })
+            }
