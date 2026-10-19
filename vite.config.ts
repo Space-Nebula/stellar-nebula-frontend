@@ -61,6 +61,33 @@ function generatePreloadHints(): Plugin {
 }
 
 /**
+ * Fails the production build when the LogRocket SRI hash in index.html does not match the
+ * hash recorded in src/utils/sri.ts (#485). The check only compares committed values; it
+ * never fetches the CDN, so it works offline. Refresh both with `npm run sri:update`.
+ */
+function verifySriIntegrity(): Plugin {
+  return {
+    name: 'verify-sri-integrity',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        const recorded = readFileSync(resolve(__dirname, 'src/utils/sri.ts'), 'utf8').match(
+          /integrity: '(sha384-[^']+)'/
+        )?.[1]
+        const declared = html.match(/script\.integrity = '(sha384-[^']+)'/)?.[1]
+        if (!recorded || declared !== recorded) {
+          throw new Error(
+            `[SRI] index.html integrity (${declared ?? 'missing'}) does not match src/utils/sri.ts (${recorded ?? 'missing'}). Run "npm run sri:update" and commit the result.`
+          )
+        }
+        return html
+      },
+    },
+  }
+}
+
+/**
  * Security headers for the dev and preview servers (#487, #489). Keep in sync with
  * vercel.json and nginx.conf, which are the headers production actually serves.
  */
@@ -84,6 +111,7 @@ export default defineConfig({
     react(),
     inlineCriticalCss(),
     generatePreloadHints(),
+    verifySriIntegrity(),
     visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true, template: 'treemap' }),
     visualizer({
       filename: 'stats.json',

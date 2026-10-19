@@ -40,7 +40,7 @@ Key security principles applied:
 | Control                                                                                                                                                                                                                                                                             | Where                                               |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | CI gate: `npm run audit:ci` (`scripts/audit-check.mjs`) fails on any unreviewed high/critical advisory, any high/critical advisory in production dependencies, and any allowlist entry that has **expired** or **no longer matches** an advisory (so stale exceptions get removed). | `dependency-scan` job in `.github/workflows/ci.yml` |
-| The same scan runs **weekly on a schedule**, so a newly published advisory turns the job red even when no PRs are open.                                                                                                                                                             | `.github/workflows/ci.yml` (`schedule`)             |
+| The same scan runs **weekly on a schedule** (Mondays 07:00 UTC, #482), so a newly published advisory is caught even when no PRs are open. A failed run opens or updates a `security-audit` tracking issue. CI also runs it weekly at 06:00 UTC.                                                                                                                                                             | `.github/workflows/ci.yml` (`schedule`)             |
 | Dependabot opens grouped version-update PRs daily (npm) and weekly (GitHub Actions); security-update PRs are grouped separately.                                                                                                                                                    | `.github/dependabot.yml`                            |
 | Dependabot alerts and security updates must be enabled for the repository (Settings → Code security → Dependabot alerts / Dependabot security updates).                                                                                                                             | Repository settings                                 |
 
@@ -213,9 +213,19 @@ External CDN scripts (currently LogRocket) are loaded with a `sha384` integrity 
 
 - `npm run sri:generate` fetches each CDN resource and prints its hash.
 - `npm run sri:update` writes the hashes into `index.html` and `src/utils/sri.ts`.
-- `npm run sri:check` verifies the committed hashes and runs in the `build` job of `ci.yml`.
+- `npm run sri:check` fetches each CDN script and verifies the hash against `index.html` and `src/utils/sri.ts`. It runs in the `build` job of `ci.yml` (#485).
+- The Vite plugin `verify-sri-integrity` in `vite.config.ts` fails `vite build` when the `index.html` hash does not match `src/utils/sri.ts`. It does not fetch, so it runs offline.
+- `.github/workflows/sri-update.yml` runs weekly, regenerates the hashes, and opens a pull request only when they change.
 
-When a CDN resource changes upstream, run `npm run sri:update` and commit the result. To add a resource, add it to `CDN_RESOURCES` in `scripts/generate-sri.mjs` and `SRI_RESOURCES` in `src/utils/sri.ts`.
+When a CDN resource changes upstream, the weekly job opens a PR. You can also run `npm run sri:update` locally and commit the result. To add a resource, add it to `CDN_RESOURCES` in `scripts/generate-sri.mjs` and `SRI_RESOURCES` in `src/utils/sri.ts`.
+
+SRI does not apply to the Google Fonts stylesheet. Google serves different CSS to different browsers, so its bytes cannot be pinned with a hash. It is covered by the CSP `style-src` and `font-src` directives instead.
+
+## Sentry DSN Exposure
+
+The Sentry DSN (`VITE_SENTRY_DSN`) is public by design (#484). It is a write-only ingest key that ships in the client bundle, so its exposure is an accepted risk. The worst case is that someone sends fake events to the project; they cannot read issues, releases or settings.
+
+Mitigations: PII is off (`sendDefaultPii: false`), wallet data is redacted before sending (#486), noise is filtered in `beforeSend`, and event rate limits and allowed domains are set in Sentry. See [MONITORING.md](./MONITORING.md#sentry-dsn-exposure-484) for the full table.
 
 ## Environment Variable Security
 

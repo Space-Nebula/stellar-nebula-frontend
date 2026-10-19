@@ -45,6 +45,7 @@ applies them at every point where data leaves the app.
 | `responseSanitizer` | LogRocket `init` | Drops response bodies from Stellar hosts (`*.stellar.org`) |
 | `beforeBreadcrumb` | Sentry `init` | Sanitizes every breadcrumb before it is stored |
 | `beforeSend` | Sentry `init` | Sanitizes `extra`, `contexts` and the request URL |
+| `sendDefaultPii: false` | Sentry `init` | No IP addresses, cookies or user identity are attached by default (#484) |
 | Shortened user ID | `setMonitoringUser()` | Sends `GABCD…WXYZ` to Sentry and LogRocket instead of the full public key |
 
 Redaction rules:
@@ -57,6 +58,28 @@ Redaction rules:
 When you add a new `captureMonitoringEvent` or `addMonitoringBreadcrumb` call, pass data through
 these helpers rather than sending raw values. See [PRIVACY.md](./PRIVACY.md) for the policy and the open
 GDPR items.
+
+## Sentry DSN Exposure (#484)
+
+`VITE_SENTRY_DSN` is compiled into the client bundle. This is expected: a Sentry DSN is a public ingest key. It lets a browser send events to one project and does not grant read access to issues, releases or project settings. Anyone can already see it in the page source, so hiding it does not protect the project.
+
+Protection therefore comes from Sentry-side settings and from scrubbing data before it leaves the app:
+
+| Control | Where | Status |
+| :--- | :--- | :--- |
+| Public DSN, no secret tokens in `VITE_*` variables | `.env.example`, `.env.production` | Documented |
+| Client-side PII off (`sendDefaultPii: false`) | `src/services/monitoring.ts` | Enforced in code |
+| Wallet addresses, secrets and amounts redacted | `beforeBreadcrumb`, `beforeSend` | Enforced in code (#486) |
+| Noise filtering (`ResizeObserver`, network errors) | `beforeSend` | Enforced in code |
+| Rate limiting of accepted events per project | Sentry → Project Settings → Client Keys (DSN) → Rate Limits | Dashboard setting. Must be configured in Sentry; not enforced by this repo |
+| Inbound data filters (browser extensions, legacy browsers) | Sentry → Project Settings → Inbound Filters | Dashboard setting. Recommended: enable the defaults |
+| Allowed domains for the DSN | Sentry → Project Settings → Client Keys (DSN) → Allowed Domains | Dashboard setting. Recommended: restrict to the production and staging hosts |
+
+Rules for contributors:
+
+- Never add a token, auth key or private credential as a `VITE_*` variable. Anything prefixed `VITE_` is public.
+- The Sentry auth token used to upload source maps is a CI secret and must never reach the client bundle.
+- If the DSN is ever rotated or leaked, the impact is limited to spam events. Rotate it in Sentry and update the CI secret; no code change is needed.
 
 ## Performance Dashboards & Regressions
 

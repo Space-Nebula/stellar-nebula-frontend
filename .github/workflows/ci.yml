@@ -8,7 +8,7 @@ on:
     branches:
       - main
   # Weekly run so a newly published advisory fails `dependency-scan` (and alerts the
-  # team) even when nothing is being merged.
+  # team) even when nothing is being merged. security-audit.yml (#482) also runs weekly.
   schedule:
     - cron: '0 6 * * 1'
   workflow_dispatch:
@@ -252,6 +252,11 @@ jobs:
 
       - name: Check image budget
         run: npm run images:check
+
+      # Fetches each CDN script and fails if its hash no longer matches index.html and
+      # src/utils/sri.ts (#485). Refreshed automatically by .github/workflows/sri-update.yml.
+      - name: Verify SRI hashes for CDN scripts
+        run: npm run sri:check
 
       # Same steps as `npm run build`, split so a failure names the stage that broke.
       - name: Type check (tsc -b)

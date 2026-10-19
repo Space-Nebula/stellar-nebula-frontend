@@ -1,5 +1,6 @@
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createScopedLogger } from '@/services/logging'
+import { withRateLimit } from '@/utils/rate-limiter'
 
 const log = createScopedLogger('HorizonUtils')
 
@@ -23,7 +24,8 @@ export async function fetchAccountTransactions(
       query = query.cursor(cursor)
     }
 
-    const result = await query.call()
+    // Issue #483: Horizon calls are throttled client-side (see docs/API_LIMITS.md)
+    const result = await withRateLimit('horizon', () => query.call())
     log.info('Transactions fetched', {
       accountId: accountId.slice(0, 8),
       count: result.records.length,

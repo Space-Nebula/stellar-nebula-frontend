@@ -89,6 +89,9 @@ async function initializeSentry(config: MonitoringConfig): Promise<void> {
       dsn: config.sentryDsn!,
       environment: config.sentryEnvironment,
       release: config.sentryRelease,
+      // Issue #484: the DSN is a public, write-only ingest key, so it may ship in the bundle.
+      // Personal data stays out of events: no IP addresses, cookies or user identity by default.
+      sendDefaultPii: false,
       integrations: [
         Sentry.browserTracingIntegration(),
         Sentry.replayIntegration({

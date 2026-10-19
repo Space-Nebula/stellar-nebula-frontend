@@ -49,3 +49,6 @@ bundle-report.md
 
 # Test coverage reports
 coverage/
+
+# SRI manifest written by scripts/generate-sri.mjs on every run (#485)
+sri-manifest.json

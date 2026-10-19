@@ -1,0 +1,55 @@
+name: SRI Hash Update
+
+# Refreshes the Subresource Integrity hashes for CDN scripts (#485). When LogRocket ships a
+# new build, the committed hash no longer matches and `ci.yml` fails at "Verify SRI hashes".
+# This job regenerates the hashes and opens a pull request so the fix is reviewed, not merged
+# silently. No pull request is opened when the hashes are already current.
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-sri:
+    name: Regenerate SRI hashes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Runs the generator directly, so no dependencies need to be installed.
+      - name: Fetch CDN scripts and update hashes
+        run: node scripts/generate-sri.mjs --update
+
+      - name: Open pull request if hashes changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automated/sri-update
+          base: main
+          delete-branch: true
+          commit-message: 'security: Refresh SRI hashes for CDN assets'
+          title: 'security: Refresh SRI hashes for CDN assets'
+          body: |
+            Automated update from `.github/workflows/sri-update.yml`.
+
+            `scripts/generate-sri.mjs --update` fetched the current CDN scripts and rewrote their
+            `sha384` hashes in `index.html` and `src/utils/sri.ts`. Review the upstream change
+            before merging.
+          labels: |
+            security
+            automation
+          add-paths: |
+            index.html
+            src/utils/sri.ts
