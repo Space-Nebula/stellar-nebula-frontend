@@ -23,7 +23,6 @@ import type { ResourceType, RarityTier } from '@/types/game'
 import { SCAN_POINTS_META } from './scanPoints'
 import { ScanPointControls } from './ScanPointControls'
 import { CanvasLiveRegion, CanvasSkipLink } from './CanvasStatusLayer'
-import { useDeviceHints } from './useDeviceHints'
 import { useScanPointKeyboardNav } from './useScanPointKeyboardNav'
 
 import { cleanScene } from '@/utils/three-cleanup'

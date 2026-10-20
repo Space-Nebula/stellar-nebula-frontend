@@ -1130,6 +1130,16 @@ describe('myService', () => {
 
 ---
 
+## Shared Code Reuse
+
+Logic that more than one component or hook needs lives in one place, so fixes land once.
+
+- **Error messages**: `getErrorMessage(error, fallback)` in `src/utils/error-messages.ts` returns the message of a caught `Error`, or the fallback for anything else. Use it instead of repeating `err instanceof Error ? err.message : '...'`. `toFriendlyError` and `describeError` in the same module turn errors into text for people using the app.
+- **Hooks**: Shared stateful logic goes in `src/hooks/`. Components import from there rather than copying effects.
+- **Utilities**: Pure helpers go in `src/utils/`, with tests in its `__tests__` folder.
+
+When you find the same logic in a second place, move it to one of these locations and update both callers.
+
 ## Conclusion
 
 This architecture document provides a comprehensive overview of the Stellar Nebula Frontend application. The system is designed for:

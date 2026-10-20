@@ -1,7 +1,7 @@
 /* eslint-disable */
 export type WSStatus = 'connecting' | 'open' | 'closed' | 'error' | 'reconnecting'
 
-export type Handler = (payload: any) => void
+export type Handler = (payload: unknown) => void
 export type StatusHandler = (status: WSStatus, details: ConnectionStatusDetails) => void
 
 export interface ConnectionStatusDetails {
@@ -15,7 +15,7 @@ export interface ConnectionStatusDetails {
 
 export interface QueuedMessage {
   id: string
-  payload: any
+  payload: unknown
   timestamp: number
   signature?: string
 }
@@ -58,9 +58,9 @@ export class WebSocketManager {
   private shouldReconnect = true
   private reconnectAttempt = 0
   private nextRetryDelayMs: number | null = null
-  private reconnectTimer: any = null
-  private connectionTimeoutTimer: any = null
-  private heartbeatTimer: any = null
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private connectionTimeoutTimer: ReturnType<typeof setTimeout> | null = null
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private heartbeatIntervalMs: number
   private maxQueueSize: number
   private messageQueue: QueuedMessage[] = []
@@ -358,19 +358,19 @@ export class WebSocketManager {
     }
   }
 
-  private handleMessage(raw: any) {
-    let data: any = raw
+  private handleMessage(raw: unknown) {
+    let data: unknown = raw
     try {
       data = typeof raw === 'string' ? JSON.parse(raw) : raw
     } catch {
       /* ignore */
     }
-    const type = data?.type ?? 'message'
+    const type = (data as { type?: string } | null)?.type ?? 'message'
     this.publish(type, data)
     this.publish('*', data)
   }
 
-  private publish(event: string, payload: any) {
+  private publish(event: string, payload: unknown) {
     const set = this.subscriptions.get(event)
     if (!set) return
     for (const h of Array.from(set)) {
@@ -466,7 +466,7 @@ export class WebSocketManager {
    * If connection is not open, automatically queues the message for replay
    * with deduplication unless `queueIfOffline: false` is passed.
    */
-  send(obj: any, options: { queueIfOffline?: boolean; deduplicate?: boolean } = {}) {
+  send(obj: unknown, options: { queueIfOffline?: boolean; deduplicate?: boolean } = {}) {
     const queueIfOffline = options.queueIfOffline ?? true
     const shouldDeduplicate = options.deduplicate ?? this.deduplicateQueue
 

@@ -12,6 +12,7 @@ import {
 import { estimateTransactionFee, formatFeeInXlm } from '@/utils/stellar/feeEstimation'
 import { getActiveStellarConfig } from '@/config/stellar'
 import { ConfirmModal } from './ConfirmModal'
+import { getErrorMessage } from '@utils/error-messages'
 
 function isValidAssetCode(code: string): boolean {
   return /^[A-Z0-9]{1,12}$/.test(code)
@@ -90,7 +91,7 @@ export function TrustlineManager() {
         )
       }
     } catch (error) {
-      setStatusError(error instanceof Error ? error.message : 'Unable to inspect trustline state.')
+      setStatusError(getErrorMessage(error, 'Unable to inspect trustline state.'))
     } finally {
       setIsChecking(false)
     }
@@ -132,9 +133,7 @@ export function TrustlineManager() {
       setEstimatedFeeStroops(fee.stroops)
       setConfirmOpen(true)
     } catch (error) {
-      setStatusError(
-        error instanceof Error ? error.message : 'Unable to prepare trustline transaction.'
-      )
+      setStatusError(getErrorMessage(error, 'Unable to prepare trustline transaction.'))
     } finally {
       setIsPreparing(false)
     }
@@ -172,7 +171,7 @@ export function TrustlineManager() {
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Failed to submit trustline transaction.'
+        getErrorMessage(error, 'Failed to submit trustline transaction.')
       setWalletError(message)
     } finally {
       setIsSubmitting(false)

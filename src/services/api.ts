@@ -10,6 +10,7 @@ import {
   parseCacheControl,
   type CachedResponse,
 } from '../utils/apiCache'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('API')
 
@@ -257,7 +258,7 @@ async function request<T>(
       }
     }
 
-    const errorMessage = error instanceof Error ? error.message : 'Network error'
+    const errorMessage = getErrorMessage(error, 'Network error')
     log.error(
       `${method} ${path} network error`,
       error instanceof Error ? error : new Error(errorMessage),

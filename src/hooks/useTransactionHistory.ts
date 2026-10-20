@@ -15,6 +15,7 @@ import type {
 } from '@/services/history/transactionPersistence'
 import type { StellarNetworkConfig } from '@/config/stellar'
 import { createScopedLogger } from '@/services/logging'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('useTransactionHistory')
 
@@ -142,7 +143,7 @@ export function useTransactionHistory(
         setState(updatedState)
         return result
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Sync failed'
+        const message = getErrorMessage(err, 'Sync failed')
         setError(message)
         log.error('Auto-sync failed', err instanceof Error ? err : new Error(message))
         return null
@@ -181,7 +182,7 @@ export function useTransactionHistory(
         setState(updatedState)
         return result
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Sync failed'
+        const message = getErrorMessage(err, 'Sync failed')
         setError(message)
         return null
       } finally {
@@ -201,7 +202,7 @@ export function useTransactionHistory(
       const updatedState = initTransactionHistory(accountId, network)
       setState(updatedState)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Load more failed'
+      const message = getErrorMessage(err, 'Load more failed')
       setError(message)
     } finally {
       setState((prev) => ({ ...prev, isSyncing: false }))

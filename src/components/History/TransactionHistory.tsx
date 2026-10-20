@@ -6,6 +6,7 @@ import type { StellarTransaction } from '@/types'
 import { EmptyTransactions } from '@/components/UI/EmptyStates'
 import { sanitizeContractString } from '@/utils/xss-protection'
 import { computeRowWindow, mergeTransactionPages } from './transactionWindow'
+import { getErrorMessage } from '@utils/error-messages'
 
 interface TransactionHistoryProps {
   accountId: string | null | undefined
@@ -123,7 +124,7 @@ export function TransactionHistory({
         )
         setNextHref(page.nextCursor)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unable to load transaction history')
+        setError(getErrorMessage(err, 'Unable to load transaction history'))
       } finally {
         setIsLoading(false)
       }

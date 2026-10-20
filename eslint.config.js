@@ -55,6 +55,8 @@ export default defineConfig([
           depth: 3,
         },
       ],
+      // Explicit `any` defeats type checking. Use `unknown` and narrow instead.
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       // Application code logs through `logger` (src/services/logging.ts). Direct console
       // calls are errors, except warn/error which the logger itself may emit.

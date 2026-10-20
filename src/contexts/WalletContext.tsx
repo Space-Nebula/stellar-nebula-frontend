@@ -43,6 +43,7 @@ import { setSessionPassphrase, saveEncryptedCopy } from '@/utils/storage'
 import { withTimeout, SIGNING_TIMEOUT_MS, SIGNING_TIMEOUT_MESSAGE } from '@/utils/stellar/timeout'
 import { useSessionTimeout } from '@/hooks/useSessionTimeout'
 import { SessionTimeoutWarning } from '@/components/Wallet/SessionTimeoutWarning'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('WalletContext')
 
@@ -280,7 +281,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
           walletType: persisted.walletType,
         })
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to restore wallet connection'
+        const message = getErrorMessage(err, 'Failed to restore wallet connection')
         log.error('Wallet auto-reconnect failed', err instanceof Error ? err : new Error(message))
         setReconnectError(message)
         clearPersistedWallet()
@@ -582,7 +583,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
         return signedXdr
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to sign transaction'
+        const message = getErrorMessage(err, 'Failed to sign transaction')
         log.error('Transaction signing failed', err instanceof Error ? err : new Error(message), {
           walletType: walletState.walletType,
         })

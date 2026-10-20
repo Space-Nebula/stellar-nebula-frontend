@@ -1,5 +1,6 @@
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createScopedLogger } from '@/services/logging'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('HorizonUtils')
 
@@ -32,7 +33,7 @@ export async function fetchAccountTransactions(
 
     return result
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch account transactions'
+    const message = getErrorMessage(err, 'Failed to fetch account transactions')
     log.error('Failed to fetch account transactions', err instanceof Error ? err : new Error(message))
     throw err
   }
@@ -63,7 +64,7 @@ export async function fetchIncrementalTransactions(
 
     return result.records
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch incremental transactions'
+    const message = getErrorMessage(err, 'Failed to fetch incremental transactions')
     log.error('Failed to fetch incremental transactions', err instanceof Error ? err : new Error(message))
     throw err
   }
@@ -88,7 +89,7 @@ export async function getLatestTransaction(
 
     return result.records[0]
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to get latest transaction'
+    const message = getErrorMessage(err, 'Failed to get latest transaction')
     log.error('Failed to get latest transaction', err instanceof Error ? err : new Error(message))
     throw err
   }
@@ -103,13 +104,13 @@ export async function getTransactionById(
     log.info('Transaction fetched by ID', { transactionId: transactionId.slice(0, 8) })
     return tx
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch transaction'
+    const message = getErrorMessage(err, 'Failed to fetch transaction')
     log.error('Failed to fetch transaction by ID', err instanceof Error ? err : new Error(message))
     throw err
   }
 }
 
-export function extractNextCursor(response: Horizon.CollectionPage<any>): string | null {
+export function extractNextCursor(response: { next?: string | null }): string | null {
   if (!response.next) return null
 
   try {

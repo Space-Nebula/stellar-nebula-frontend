@@ -20,6 +20,7 @@ import { fetchShipNFT, type ShipNFTRecord } from '../../services/nft/shipNFT'
 import { retryAsync, isRetryableStellarError } from '@utils/stellar/retry'
 import { haptics } from '@/utils/haptics'
 import { translateContractError } from '@/services/contracts/errorTranslation'
+import { getErrorMessage } from '@utils/error-messages'
 
 interface UseShipUpgradeResult {
   shipNFT: ShipNFTRecord | null
@@ -102,7 +103,7 @@ export function useShipUpgrade(
         updatedStats,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load ship upgrade data')
+      setError(getErrorMessage(err, 'Failed to load ship upgrade data'))
       setQuote(null)
       setShipNFT(null)
       setResourceSnapshot(null)

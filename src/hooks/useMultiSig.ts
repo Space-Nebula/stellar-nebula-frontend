@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import type { MultiSigTransaction, MultiSigSignature } from '@/utils/multisig-utils'
+import type { MultiSigTransaction } from '@/utils/multisig-utils'
 import {
   createMultiSigTransaction,
   addSignature,
@@ -10,6 +10,7 @@ import {
   serializeMultiSigTransaction,
   deserializeMultiSigTransaction,
 } from '@/utils/multisig-utils'
+import { getErrorMessage } from '@utils/error-messages'
 
 export function useMultiSig() {
   const [transaction, setTransaction] = useState<MultiSigTransaction | null>(null)
@@ -30,7 +31,7 @@ export function useMultiSig() {
         const multiSig = createMultiSigTransaction(xdr, threshold, signers)
         setTransaction(multiSig)
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to initialize transaction'
+        const message = getErrorMessage(err, 'Failed to initialize transaction')
         setError(message)
       }
     },
@@ -51,7 +52,7 @@ export function useMultiSig() {
       const updated = addSignature(transaction, signer, signature)
       setTransaction(updated)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add signature'
+      const message = getErrorMessage(err, 'Failed to add signature')
       setError(message)
     }
   }, [transaction])
@@ -82,7 +83,7 @@ export function useMultiSig() {
       const imported = deserializeMultiSigTransaction(serialized)
       setTransaction(imported)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to import transaction'
+      const message = getErrorMessage(err, 'Failed to import transaction')
       setError(message)
     }
   }, [])

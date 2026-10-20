@@ -1,13 +1,21 @@
-/* eslint-disable */
 import { DATA_SYNC_DEFAULT_INTERVAL_MS } from '@/constants/app'
 
-export interface SyncOptions<T = any> {
+export interface SyncOptions<T = unknown> {
   intervalMs?: number
   fetcher: () => Promise<T>
   getLocal: () => Promise<T | null>
   setLocal: (v: T) => Promise<void>
   onConflict?: (local: T, remote: T) => T
   onSync?: (merged: T) => void
+}
+
+/** True when a value carries a numeric `updatedAt`, used to pick the newer copy. */
+function hasUpdatedAt(value: unknown): value is { updatedAt: number } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { updatedAt?: unknown }).updatedAt === 'number'
+  )
 }
 
 /**
@@ -24,7 +32,7 @@ export interface SyncOptions<T = any> {
  * })
  * sync.start()
  */
-export class DataSync<T = any> {
+export class DataSync<T = unknown> {
   private opts: SyncOptions<T>
   private intervalId: number | null = null
   private isSyncing = false
@@ -65,13 +73,8 @@ export class DataSync<T = any> {
       let merged: T = remoteValue
       if (localValue && this.opts.onConflict) {
         merged = this.opts.onConflict(localValue, remoteValue)
-      } else if (
-        localValue &&
-        typeof (localValue as any).updatedAt === 'number' &&
-        typeof (remoteValue as any).updatedAt === 'number'
-      ) {
-        merged =
-          (localValue as any).updatedAt > (remoteValue as any).updatedAt ? localValue : remoteValue
+      } else if (localValue && hasUpdatedAt(localValue) && hasUpdatedAt(remoteValue)) {
+        merged = localValue.updatedAt > remoteValue.updatedAt ? localValue : remoteValue
       }
       await this.opts.setLocal(merged)
       if (this.opts.onSync) this.opts.onSync(merged)

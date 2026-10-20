@@ -67,6 +67,11 @@ const FALLBACK: FriendlyError = {
   action: 'Try again. If it keeps happening, reload the page.',
 }
 
+/** Message of a caught `Error`, or `fallback` for anything else that was thrown. */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
+
 /** Raw text of an error, used for pattern matching and technical details. */
 export function describeError(error: unknown): string {
   if (error instanceof Error) return error.message || error.name
