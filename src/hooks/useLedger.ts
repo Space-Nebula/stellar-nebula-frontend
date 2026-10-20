@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react'
 import type { StellarNetwork } from '@/config/stellar'
 import { createScopedLogger } from '@/services/logging'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('useLedger')
 
@@ -80,7 +81,7 @@ export function useLedger(options: UseLedgerOptions = {}) {
 
       return publicKey
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to connect to Ledger'
+      const message = getErrorMessage(err, 'Failed to connect to Ledger')
       log.error('Ledger connection failed', err instanceof Error ? err : new Error(message))
 
       setState({
@@ -156,7 +157,7 @@ export function useLedger(options: UseLedgerOptions = {}) {
 
         return result.signature
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to sign transaction'
+        const message = getErrorMessage(err, 'Failed to sign transaction')
         log.error('Ledger signing failed', err instanceof Error ? err : new Error(message))
 
         setState((prev) => ({

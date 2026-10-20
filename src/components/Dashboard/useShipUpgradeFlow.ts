@@ -13,6 +13,7 @@ import {
   type Ship,
 } from '../../store'
 import { hasResources } from './dashboardData'
+import { getErrorMessage } from '@utils/error-messages'
 
 /**
  * Owns the upgrade bay state and both upgrade paths for the active ship: the local
@@ -158,7 +159,7 @@ export function useShipUpgradeFlow(activeShip: Ship | null) {
           setUpgradeMessage(`${upgrade.name} failed and changes were rolled back.`)
         }
       } catch (error) {
-        const errMsg = error instanceof Error ? error.message : 'Contract upgrade failed'
+        const errMsg = getErrorMessage(error, 'Contract upgrade failed')
         rollbackOptimisticShipUpdate(shipTxId, errMsg)
         rollbackOptimisticUpdate(resourceTxId, errMsg)
         trackEvent('upgrade_failed', {
@@ -192,11 +193,11 @@ export function useShipUpgradeFlow(activeShip: Ship | null) {
     } catch (error) {
       rollbackOptimisticShipUpdate(
         shipTxId,
-        error instanceof Error ? error.message : 'Upgrade failed'
+        getErrorMessage(error, 'Upgrade failed')
       )
       rollbackOptimisticUpdate(
         resourceTxId,
-        error instanceof Error ? error.message : 'Upgrade failed'
+        getErrorMessage(error, 'Upgrade failed')
       )
       trackEvent('upgrade_failed', {
         upgradeId: upgrade.id,

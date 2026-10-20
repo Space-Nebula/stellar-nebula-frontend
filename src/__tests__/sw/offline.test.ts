@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockCacheStorage, createMockCache } from '../../test/helpers/sw-helpers'
+import { createMockCacheStorage } from '../../test/helpers/sw-helpers'
 
 // ---------------------------------------------------------------------------
 // Workbox navigateFallback configuration values (from vite.config.ts)

@@ -153,8 +153,7 @@ const achievementSlice: StoreSlice<AchievementState> = {
 }
 
 /** Every persisted slice the save/load system knows about, keyed by name. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const REGISTRY: StoreSlice<any>[] = [
+const REGISTRY: StoreSlice<object>[] = [
   gameSlice,
   shipSlice,
   resourceSlice,

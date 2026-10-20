@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { WebSocketManager, type WSStatus } from '../websocket'
 
@@ -11,7 +10,7 @@ class MockWebSocket {
   url: string
   readyState: number = WebSocket.CONNECTING
   sentData: string[] = []
-  listeners: Record<string, ((event: any) => void)[]> = {}
+  listeners: Record<string, ((event: unknown) => void)[]> = {}
 
   constructor(url: string) {
     if (MockWebSocket.shouldFailConstructor) {
@@ -21,12 +20,12 @@ class MockWebSocket {
     MockWebSocket.instances.push(this)
   }
 
-  addEventListener(type: string, listener: (event: any) => void) {
+  addEventListener(type: string, listener: (event: unknown) => void) {
     if (!this.listeners[type]) this.listeners[type] = []
     this.listeners[type].push(listener)
   }
 
-  removeEventListener(type: string, listener: (event: any) => void) {
+  removeEventListener(type: string, listener: (event: unknown) => void) {
     if (this.listeners[type]) {
       this.listeners[type] = this.listeners[type].filter((l) => l !== listener)
     }
@@ -44,7 +43,7 @@ class MockWebSocket {
     this.emit('close', { wasClean: true })
   }
 
-  emit(type: string, event: any = {}) {
+  emit(type: string, event: unknown = {}) {
     if (type === 'open') {
       this.readyState = WebSocket.OPEN
     } else if (type === 'close') {
@@ -58,14 +57,14 @@ class MockWebSocket {
 }
 
 describe('WebSocketManager', () => {
-  let originalWebSocket: any
+  let originalWebSocket: typeof WebSocket
 
   beforeEach(() => {
     vi.useFakeTimers()
     MockWebSocket.instances = []
     MockWebSocket.shouldFailConstructor = false
     originalWebSocket = globalThis.WebSocket
-    globalThis.WebSocket = MockWebSocket as any
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
   })
 
   afterEach(() => {

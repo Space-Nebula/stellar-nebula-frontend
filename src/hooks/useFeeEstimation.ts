@@ -4,10 +4,10 @@ import { BASE_FEE } from '@stellar/stellar-sdk'
 import {
   calculateFeeBreakdown,
   getDetailedFeeEstimate,
-  convertStroopsToLumens,
   type DetailedFeeEstimate,
 } from '@/utils/fee-calculator'
 import { createScopedLogger } from '@/services/logging'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('useFeeEstimation')
 
@@ -59,7 +59,7 @@ export function useFeeEstimation(
         error: null,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to estimate fee'
+      const message = getErrorMessage(err, 'Failed to estimate fee')
       log.error('Fee estimation failed', err instanceof Error ? err : new Error(message))
       setState({
         estimate: null,

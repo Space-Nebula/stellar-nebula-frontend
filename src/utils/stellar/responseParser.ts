@@ -1,4 +1,5 @@
 import { scValToNative, xdr } from '@stellar/stellar-sdk'
+import { getErrorMessage } from '@utils/error-messages'
 
 export type ContractNativePrimitive = string | number | boolean | null
 export type ContractNativeValue =
@@ -73,7 +74,7 @@ function parseScVal(valueXdr: string): ContractNativeValue {
     return normalizeNativeValue(scValToNative(parsed))
   } catch (error) {
     throw new ContractResponseParseError(
-      error instanceof Error ? error.message : 'Unable to parse contract response XDR.'
+      getErrorMessage(error, 'Unable to parse contract response XDR.')
     )
   }
 }

@@ -6,6 +6,7 @@ import {
   signTransactionWithFreighter,
 } from '@services/wallets'
 import type { WalletState, PublicKey, XDR } from '@/types'
+import { getErrorMessage } from '@utils/error-messages'
 
 const INITIAL_STATE: WalletState = {
   isConnected: false,
@@ -39,7 +40,7 @@ export function useFreighterWallet() {
       const network = await getFreighterNetwork()
       setWalletState({ isConnected: true, publicKey, walletType: 'freighter', network })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to connect wallet'
+      const message = getErrorMessage(err, 'Failed to connect wallet')
       setError(message)
     } finally {
       setIsLoading(false)
@@ -71,7 +72,7 @@ export function useFreighterWallet() {
         )
         return signed
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to sign transaction'
+        const message = getErrorMessage(err, 'Failed to sign transaction')
         setError(message)
         return null
       } finally {

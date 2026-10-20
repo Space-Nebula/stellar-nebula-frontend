@@ -7,6 +7,7 @@ import {
   type LeaderboardPage,
 } from '@/services/leaderboard'
 import { ShareButton } from '@/components/Social/ShareButton'
+import { getErrorMessage } from '@utils/error-messages'
 
 const ITEMS_PER_PAGE = 10
 const LOCAL_PLAYER_WALLET = 'LOCAL-PLAYER'
@@ -51,7 +52,7 @@ export function Leaderboard() {
         setLeaderboard(page)
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
-        setError(err instanceof Error ? err.message : 'Failed to load leaderboard data.')
+        setError(getErrorMessage(err, 'Failed to load leaderboard data.'))
       } finally {
         setLoading(false)
       }

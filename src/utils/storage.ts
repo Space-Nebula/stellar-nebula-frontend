@@ -18,7 +18,7 @@ async function deriveAesKeyFromPassphrase(passphrase: string) {
 export interface StorageOptions {
   encryptionKey?: string
   version?: number
-  validate?: (v: any) => boolean
+  validate?: (v: unknown) => boolean
 }
 
 /**
@@ -100,7 +100,7 @@ export class StorageManager {
    * Migrate an existing stored value through a transform function.
    * Useful for schema migrations.
    */
-  async migrate<T>(k: string, transform: (oldValue: any) => T) {
+  async migrate<T>(k: string, transform: (oldValue: unknown) => T) {
     const raw = localStorage.getItem(this.key(k))
     if (!raw) return
     try {
@@ -133,7 +133,7 @@ export function getSessionPassphrase(): string | null {
  * This preserves the existing plaintext stored entries for compatibility while ensuring an
  * encrypted backup is available for the live session.
  */
-export async function saveEncryptedCopy(prefix: string, key: string, value: any) {
+export async function saveEncryptedCopy(prefix: string, key: string, value: unknown) {
   if (!sessionPassphrase) return
   try {
     const mgr = new StorageManager(prefix, { encryptionKey: sessionPassphrase })

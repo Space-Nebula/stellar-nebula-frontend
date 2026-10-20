@@ -1,5 +1,6 @@
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createScopedLogger } from '@/services/logging'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('TransactionCache')
 
@@ -122,7 +123,7 @@ export class TransactionCacheService {
 
       return transactions
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch transactions'
+      const message = getErrorMessage(err, 'Failed to fetch transactions')
       log.error('Failed to fetch transactions', err instanceof Error ? err : new Error(message))
       this.state.isLoading = false
       this.state.error = message
@@ -173,7 +174,7 @@ export class TransactionCacheService {
 
       return this.state.transactions
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch next page'
+      const message = getErrorMessage(err, 'Failed to fetch next page')
       log.error('Failed to fetch next page', err instanceof Error ? err : new Error(message))
       this.state.isLoading = false
       this.state.error = message
@@ -222,7 +223,7 @@ export class TransactionCacheService {
 
       return this.state.transactions
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch new transactions'
+      const message = getErrorMessage(err, 'Failed to fetch new transactions')
       log.error('Failed to fetch new transactions', err instanceof Error ? err : new Error(message))
       this.state.isLoading = false
       this.state.error = message

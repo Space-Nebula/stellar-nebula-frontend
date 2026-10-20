@@ -23,7 +23,7 @@ type Entry<T> = { value: T; expiresAt: number }
  * cache.set('key', 'value')
  * cache.get('key') // 'value'
  */
-export class SimpleCache<T = any> {
+export class SimpleCache<T = unknown> {
   private map = new Map<string, Entry<T>>()
   private ttlMs: number
   private maxEntries: number

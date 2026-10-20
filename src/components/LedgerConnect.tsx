@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLedger } from '@/hooks/useLedger'
 import type { StellarNetwork } from '@/config/stellar'
 import styles from './LedgerConnect.module.css'
+import { getErrorMessage } from '@utils/error-messages'
 
 export interface LedgerConnectProps {
   network?: StellarNetwork
@@ -44,7 +45,7 @@ export function LedgerConnect({
       setStep('connected')
       onConnect?.(publicKey)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to connect to Ledger'
+      const message = getErrorMessage(err, 'Failed to connect to Ledger')
       setStep('error')
       onError?.(message)
     }

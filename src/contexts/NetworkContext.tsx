@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { StellarNetwork } from '@/config/stellar'
 import { getActiveStellarConfig } from '@/config/stellar'
 import { createScopedLogger } from '@/services/logging'
 import { trackEvent } from '@/services/analytics'
+import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('NetworkContext')
 
@@ -88,7 +89,7 @@ export function NetworkProvider({
           previousNetwork: currentNetwork,
         })
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to switch network'
+        const message = getErrorMessage(err, 'Failed to switch network')
         log.error('Network switch failed', err instanceof Error ? err : new Error(message))
         setError(message)
         throw err

@@ -4,6 +4,7 @@ import type { Horizon } from '@stellar/stellar-sdk'
 import { createHorizonServer } from '@config/stellar'
 import type { StellarNetworkConfig } from '@config/stellar'
 import { showSuccess } from '../toast'
+import { getErrorMessage } from '@utils/error-messages'
 
 export interface FormattedBalance {
   assetCode: string
@@ -174,7 +175,7 @@ export function useAccountBalances(
         setIsUnfunded(true)
         setBalances([])
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to fetch balances')
+        setError(getErrorMessage(err, 'Failed to fetch balances'))
       }
     } finally {
       setIsLoading(false)

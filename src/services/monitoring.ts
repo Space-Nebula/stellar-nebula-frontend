@@ -140,6 +140,13 @@ async function initializeSentry(config: MonitoringConfig): Promise<void> {
   }
 }
 
+/** Network request or response as LogRocket passes it to its sanitizers. */
+interface LogRocketNetworkRecord {
+  url: string
+  body?: unknown
+  headers?: Record<string, string>
+}
+
 /**
  * Initialize LogRocket for advanced session replay and user analytics.
  * LogRocket captures user interactions, console logs, network activity, and DOM changes.
@@ -147,7 +154,7 @@ async function initializeSentry(config: MonitoringConfig): Promise<void> {
 function initializeLogRocket(appId: string): void {
   try {
     // Dynamically import LogRocket to avoid bundle bloat if not needed
-    const LogRocket = (window as any).LogRocket
+    const LogRocket = window.LogRocket
 
     if (!LogRocket) {
       // LogRocket script should be loaded in HTML first
@@ -164,7 +171,7 @@ function initializeLogRocket(appId: string): void {
       shouldCaptureIP: false,
       network: {
         // Capture all network requests
-        requestSanitizer: (request: any) => {
+        requestSanitizer: (request: LogRocketNetworkRecord) => {
           // Remove sensitive headers
           if (request.headers) {
             delete request.headers['Authorization']
@@ -180,7 +187,7 @@ function initializeLogRocket(appId: string): void {
           }
           return request
         },
-        responseSanitizer: (response: any) => {
+        responseSanitizer: (response: LogRocketNetworkRecord) => {
           // Horizon and RPC responses contain balances and transaction details: drop them
           if (isStellarNetworkUrl(response.url)) {
             response.body = '[REDACTED]'
@@ -241,7 +248,7 @@ export function setMonitoringUser(userId: string, email?: string, username?: str
     )
 
     // Set LogRocket user if available
-    const LogRocket = (window as any).LogRocket
+    const LogRocket = window.LogRocket
     if (LogRocket) {
       LogRocket.identify(safeUserId, {
         email,
@@ -266,7 +273,7 @@ export function clearMonitoringUser(): void {
   try {
     getSentry().then((Sentry) => Sentry.setUser(null))
 
-    const LogRocket = (window as any).LogRocket
+    const LogRocket = window.LogRocket
     if (LogRocket) {
       LogRocket.logout()
     }
@@ -284,9 +291,9 @@ export function clearMonitoringUser(): void {
 /**
  * Capture a custom event in monitoring systems.
  */
-export function captureMonitoringEvent(eventName: string, data?: Record<string, any>): void {
+export function captureMonitoringEvent(eventName: string, data?: Record<string, unknown>): void {
   try {
-    const safeData = data ? (sanitizeMonitoringData(data) as Record<string, any>) : undefined
+    const safeData = data ? (sanitizeMonitoringData(data) as Record<string, unknown>) : undefined
 
     getSentry().then((Sentry) =>
       Sentry.captureMessage(eventName, {
@@ -297,7 +304,7 @@ export function captureMonitoringEvent(eventName: string, data?: Record<string, 
       })
     )
 
-    const LogRocket = (window as any).LogRocket
+    const LogRocket = window.LogRocket
     if (LogRocket) {
       LogRocket.captureException(new Error(eventName), { extra: safeData })
     }
@@ -312,12 +319,12 @@ export function captureMonitoringEvent(eventName: string, data?: Record<string, 
 export function addMonitoringBreadcrumb(
   message: string,
   category: string = 'user-action',
-  data?: Record<string, any>
+  data?: Record<string, unknown>
 ): void {
   try {
     // Issue #486: redact wallet addresses, secrets and amounts before they leave the app
     const safeMessage = redactStellarKeysInText(message)
-    const safeData = data ? (sanitizeMonitoringData(data) as Record<string, any>) : undefined
+    const safeData = data ? (sanitizeMonitoringData(data) as Record<string, unknown>) : undefined
 
     getSentry().then((Sentry) =>
       Sentry.addBreadcrumb({
@@ -328,7 +335,7 @@ export function addMonitoringBreadcrumb(
       })
     )
 
-    const LogRocket = (window as any).LogRocket
+    const LogRocket = window.LogRocket
     if (LogRocket) {
       LogRocket.captureMessage(safeMessage, {
         extra: safeData,
@@ -365,8 +372,11 @@ export function trackWebVital(metric: WebVitalMetric): void {
 
     // Sentry measurements & tags for performance dashboard
     getSentry().then((Sentry) => {
-      if (typeof (Sentry as any).setMeasurement === 'function') {
-        ;(Sentry as any).setMeasurement(
+      const measurable = Sentry as typeof Sentry & {
+        setMeasurement?: (name: string, value: number, unit: string) => void
+      }
+      if (typeof measurable.setMeasurement === 'function') {
+        measurable.setMeasurement(
           metric.name,
           roundedValue,
           metric.name === 'CLS' ? '' : 'millisecond'
@@ -410,7 +420,7 @@ export function trackWebVital(metric: WebVitalMetric): void {
     })
 
     // LogRocket custom event
-    const LogRocket = (window as any).LogRocket
+    const LogRocket = window.LogRocket
     if (LogRocket && typeof LogRocket.track === 'function') {
       LogRocket.track('Web Vital Recorded', {
         metric: metric.name,
