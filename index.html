@@ -58,21 +58,14 @@
           // Subresource Integrity - prevents CDN compromise attacks
           // Hash generated via `npm run sri:generate` - see scripts/generate-sri.mjs
           script.integrity = 'sha384-8Sg4qcZfgEKs89yaA8MMPQeVhXkzYIYp++A+tf+FjCYRfc6dJKwq2NPrRhP0F0A9'
-          // Fallback for SRI failures (network or integrity mismatch)
+          // Fail closed on SRI failures (integrity mismatch or network). Re-requesting the
+          // script without its integrity hash would run an unverified copy, so session
+          // replay is disabled instead.
           script.onerror = function () {
-            console.warn('[SRI] LogRocket failed to load (integrity or network). Attempting fallback without SRI.')
-            var fallback = document.createElement('script')
-            fallback.src = 'https://cdn.logrocket.io/LogRocket.min.js'
-            fallback.async = true
-            fallback.crossOrigin = 'anonymous'
-            fallback.onerror = function () {
-              console.error('[SRI] LogRocket fallback also failed. Session replay disabled.')
-            }
-            // Report SRI failure if monitoring available
+            console.error('[SRI] LogRocket failed integrity check or network load. Session replay disabled.')
             if (window.analytics && window.analytics.track) {
-              try { window.analytics.track('sri_fallback', { resource: 'logrocket' }) } catch(e) {}
+              try { window.analytics.track('sri_violation', { resource: 'logrocket' }) } catch(e) {}
             }
-            document.head.appendChild(fallback)
           }
           document.head.appendChild(script)
         })()

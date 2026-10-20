@@ -89,6 +89,8 @@ async function initializeSentry(config: MonitoringConfig): Promise<void> {
       dsn: config.sentryDsn!,
       environment: config.sentryEnvironment,
       release: config.sentryRelease,
+      // Explicit: the SDK must not attach IPs, cookies or user identifiers by default (#484).
+      sendDefaultPii: false,
       integrations: [
         Sentry.browserTracingIntegration(),
         Sentry.replayIntegration({

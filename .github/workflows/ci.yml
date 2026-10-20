@@ -257,6 +257,10 @@ jobs:
       - name: Type check (tsc -b)
         run: npx tsc -b --pretty false
 
+      # Fails when a CDN script's hash no longer matches index.html (#485).
+      - name: Verify SRI hashes for CDN scripts
+        run: npm run sri:check
+
       - name: Bundle (vite build)
         run: npx vite build
 

@@ -1,0 +1,48 @@
+name: SRI hash refresh
+
+# Weekly refresh of the pinned CDN integrity hashes (#485). When a CDN script
+# changes upstream, this opens a PR for review instead of letting the build fail.
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: Refresh SRI hashes
+        run: node scripts/generate-sri.mjs --update
+
+      - name: Open pull request if hashes changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- index.html src/utils/sri.ts; then
+            echo 'SRI hashes are up to date.'
+            exit 0
+          fi
+          branch="security/sri-refresh-$(date +%Y%m%d)"
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$branch"
+          git add index.html src/utils/sri.ts
+          git commit -m 'security: refresh SRI hashes for CDN assets'
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title 'security: refresh SRI hashes for CDN assets' \
+            --body 'Automated refresh of pinned CDN integrity hashes. Review the upstream change before merging.'

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { promises as fsPromises, readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { brotliCompressSync } from 'zlib'
+import { createHash } from 'crypto'
 import { VitePWA } from 'vite-plugin-pwa'
 import { visualizer } from 'rollup-plugin-visualizer'
 
@@ -62,6 +63,39 @@ function generatePreloadHints(): Plugin {
 }
 
 /**
+ * Fails the production build when the pinned CDN script in index.html no longer
+ * matches its sha384 integrity hash (#485). Set SKIP_SRI_CHECK=1 to build offline.
+ */
+function verifySriIntegrity(): Plugin {
+  return {
+    name: 'verify-sri-integrity',
+    apply: 'build',
+    async buildStart() {
+      if (process.env.SKIP_SRI_CHECK === '1') return
+
+      const html = readFileSync(resolve(__dirname, 'index.html'), 'utf8')
+      const match = html.match(
+        /script\.src = '(https:\/\/[^']+)'[\s\S]*?script\.integrity = '(sha384-[^']+)'/
+      )
+      if (!match) throw new Error('[SRI] No pinned sha384 integrity hash found in index.html')
+
+      const [, url, expected] = match
+      const response = await fetch(url)
+      if (!response.ok) throw new Error(`[SRI] Could not fetch ${url}: HTTP ${response.status}`)
+
+      const digest = createHash('sha384').update(Buffer.from(await response.arrayBuffer()))
+      const actual = `sha384-${digest.digest('base64')}`
+      if (actual !== expected) {
+        throw new Error(
+          `[SRI] Integrity mismatch for ${url}\n  expected ${expected}\n  actual   ${actual}\n` +
+            'Review the new file, then run "npm run sri:update".'
+        )
+      }
+    },
+  }
+}
+
+/**
  * Generates pre-compressed Brotli files (.br) for all built static assets (#354).
  */
 function brotliCompressionPlugin(): Plugin {
@@ -105,6 +139,7 @@ export default defineConfig({
     react(),
     inlineCriticalCss(),
     generatePreloadHints(),
+    verifySriIntegrity(),
     brotliCompressionPlugin(),
     visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true, template: 'treemap' }),
     visualizer({

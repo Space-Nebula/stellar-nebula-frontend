@@ -58,6 +58,43 @@ When you add a new `captureMonitoringEvent` or `addMonitoringBreadcrumb` call, p
 these helpers rather than sending raw values. See [PRIVACY.md](./PRIVACY.md) for the policy and the open
 GDPR items.
 
+## Sentry DSN Exposure (#484)
+
+The Sentry DSN (`VITE_SENTRY_DSN`) is **public by design**. Vite embeds it in the client bundle,
+and the browser sends events to it directly. That is how Sentry browser SDKs work, so it is not a
+secret. The DSN only allows sending events to this project. It does not allow reading events,
+changing settings, or accessing the Sentry account. Never put a Sentry auth token in a `VITE_*`
+variable, because those values ship to every visitor.
+
+Because the DSN is public, the protection comes from Sentry project settings and from scrubbing
+data in the app before it is sent.
+
+### Code controls
+
+- `sendDefaultPii: false` in `Sentry.init` (`src/services/monitoring.ts`). The SDK does not attach
+  IP addresses, cookies or user identifiers by default.
+- `beforeBreadcrumb` and `beforeSend` redact wallet addresses, secrets and amounts (see the table above).
+- `replayIntegration` masks all text and media.
+
+### Sentry project settings to confirm
+
+These settings live in the Sentry UI, not in the repository. Confirm them for the production project
+and record the date in the release checklist.
+
+- **Rate limiting:** Project Settings → Client Keys (DSN) → the key's rate limit. Set a per-minute
+  limit so a loop or a hostile page cannot flood the project. Turn on spike protection.
+- **Allowed domains:** Client Keys → the key's allowed domains. Limit it to the production and
+  preview hostnames so the DSN does not accept events from unrelated sites.
+- **Data scrubbing:** Project Settings → Security & Privacy. Turn on the default data scrubber and
+  add sensitive field names such as `secret`, `seed`, `token` and `password`.
+- **IP storage:** Project Settings → Security & Privacy → disable storing IP addresses.
+
+### Verifying the setup
+
+1. Set `VITE_SENTRY_DSN` to a test project and load the app.
+2. Confirm that an error event arrives without an IP address or user identifier.
+3. Trigger a test error that includes a fake secret seed, and confirm the seed is redacted in Sentry.
+
 ## Performance Dashboards & Regressions
 
 ### Sentry Performance Dashboard Configuration

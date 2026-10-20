@@ -148,6 +148,12 @@ async function main() {
     results.push(result)
   }
 
+  // In check mode an unreachable CDN must fail the run, not pass on placeholder hashes.
+  if (shouldCheck && results.some((r) => !r.success)) {
+    console.error('\n✗ SRI check failed - could not fetch every CDN resource to verify its hash')
+    process.exit(1)
+  }
+
   console.log('\n--- SRI Hashes ---')
   for (const { url, integrity, success } of results) {
     console.log(`${success ? '✓' : '⚠'} ${url}`)

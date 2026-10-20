@@ -52,6 +52,13 @@ npm audit --omit=dev              # production dependencies only
 npm audit fix                     # apply non-breaking fixes
 ```
 
+### Automated scanning (#482)
+
+- `.github/workflows/security-audit.yml` runs `npm run audit:ci` every week and on demand.
+- `.github/workflows/dependabot-auto-merge.yml` enables auto-merge for Dependabot **minor and patch**
+  updates. Auto-merge waits for the required checks to pass. Major updates and security updates
+  still need a human review. The repository must have "Allow auto-merge" turned on.
+
 ### Adding an exception
 
 Only for development/build-time dependencies, and only when no fixed version can be
@@ -216,6 +223,26 @@ External CDN scripts (currently LogRocket) are loaded with a `sha384` integrity 
 - `npm run sri:check` verifies the committed hashes and runs in the `build` job of `ci.yml`.
 
 When a CDN resource changes upstream, run `npm run sri:update` and commit the result. To add a resource, add it to `CDN_RESOURCES` in `scripts/generate-sri.mjs` and `SRI_RESOURCES` in `src/utils/sri.ts`.
+
+### Refresh automation
+
+`.github/workflows/sri-update.yml` runs `node scripts/generate-sri.mjs --update` every week. If a
+hash changed, it opens a `security/sri-refresh-*` PR for review. `vite build` also fails when the
+pinned hash does not match the live file, so an unreviewed upstream change cannot ship. Set
+`SKIP_SRI_CHECK=1` only for offline builds.
+
+## Sentry DSN Exposure (#484)
+
+The Sentry DSN in `VITE_SENTRY_DSN` is public and is accepted as exposed. It is embedded in the
+client bundle by design, and it only allows sending events to the project. It is not a secret.
+Protection comes from Sentry rate limits, allowed domains, data scrubbing, and redaction in
+`src/services/monitoring.ts`. The full checklist is in [MONITORING.md](./MONITORING.md#sentry-dsn-exposure-484).
+
+## Client-Side Rate Limiting (#483)
+
+Frontend requests to Horizon and contract endpoints are rate limited with a token bucket, so a
+loop or a busy tab cannot flood the endpoints. The limits, usage and limitations are in
+[API_LIMITS.md](./API_LIMITS.md). This is a cost and courtesy guard, not a security boundary.
 
 ## Environment Variable Security
 
