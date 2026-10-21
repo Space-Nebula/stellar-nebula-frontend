@@ -1,4 +1,12 @@
 import type { StellarNetwork } from '@/types'
+import {
+  buildWalletConnectNamespaces,
+  getWalletConnectChainId,
+  getWalletConnectMetadata,
+  getWalletConnectProjectId,
+  isWalletConnectConfigured,
+  WALLETCONNECT_STORAGE_KEY,
+} from '@config/walletconnect'
 // Type-only: the client itself is still loaded lazily in `getSignClient`.
 import type SignClient from '@walletconnect/sign-client'
 
@@ -8,7 +16,7 @@ export interface WalletConnectPairing {
   network: StellarNetwork
 }
 
-const WC_STORAGE_KEY = 'stellar-nebula:walletconnect'
+const WC_STORAGE_KEY = WALLETCONNECT_STORAGE_KEY
 
 let signClient: SignClient | null = null
 
@@ -21,14 +29,16 @@ async function getSignClient(): Promise<SignClient> {
       import('@walletconnect/modal'),
     ])
 
+    const projectId = getWalletConnectProjectId()
+    if (!projectId) {
+      throw new Error(
+        'WalletConnect project ID is missing. Set VITE_WALLETCONNECT_PROJECT_ID in your environment variables.'
+      )
+    }
+
     const client = await SignClientModule.init({
-      projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '',
-      metadata: {
-        name: 'Nebula Nomad',
-        description: 'Space Exploration on Stellar',
-        url: window.location.origin,
-        icons: [`${window.location.origin}/icon-192.png`],
-      },
+      projectId,
+      metadata: getWalletConnectMetadata(),
     })
     signClient = client
 
@@ -41,7 +51,7 @@ async function getSignClient(): Promise<SignClient> {
 }
 
 export function isWalletConnectAvailable(): boolean {
-  return true
+  return typeof window !== 'undefined' && isWalletConnectConfigured()
 }
 
 export async function connectWalletConnect(
@@ -49,16 +59,8 @@ export async function connectWalletConnect(
 ): Promise<{ publicKey: string; session: unknown }> {
   const client = await getSignClient()
 
-  const requiredNamespaces = {
-    stellar: {
-      methods: ['stellar_signAndSubmitXDR', 'stellar_signXDR', 'stellar_getPublicKey'],
-      chains: [`stellar:${network}`],
-      events: [],
-    },
-  }
-
   const { approval } = await client.connect({
-    requiredNamespaces,
+    requiredNamespaces: buildWalletConnectNamespaces(network),
   })
 
   const session = await approval()
@@ -88,7 +90,7 @@ export async function signTransactionWithWalletConnect(
   // Wallets differ: some return `{ signedXDR }`, others the signed XDR string itself.
   const result = await client.request<{ signedXDR?: string } | string>({
     topic: wcSession.topic,
-    chainId: `stellar:${network}`,
+    chainId: getWalletConnectChainId(network),
     request: {
       method: 'stellar_signXDR',
       params: { xdr },

@@ -1,4 +1,6 @@
 export { ConfirmModal } from './ConfirmModal'
+export { TransactionToast } from '../TransactionToast'
+export type { TransactionToastProps, TransactionToastStatus } from '../TransactionToast'
 export { TransactionPending } from './TransactionPending'
 export type { TransactionPendingProps } from './TransactionPending'
 export { TransactionPreview } from './TransactionPreview'

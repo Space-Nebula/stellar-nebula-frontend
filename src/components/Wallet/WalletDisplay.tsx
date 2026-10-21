@@ -19,8 +19,16 @@ interface WalletDisplayProps {
 
 export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
   const { walletState, disconnect, isReconnecting, reconnectError } = useWallet()
-  const { balances, isLoading, error, isUnfunded, isStreaming, balanceChanged } =
-    useAccountBalances(walletState.publicKey)
+  const {
+    balances,
+    isLoading,
+    isRefreshing,
+    error,
+    isUnfunded,
+    isStreaming,
+    balanceChanged,
+    refresh,
+  } = useAccountBalances(walletState.publicKey)
   const [copied, setCopied] = useState(false)
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
@@ -165,6 +173,19 @@ export function WalletDisplay({ onOpenConnectModal }: WalletDisplayProps) {
         </div>
       )}
 
+      {/* Manual balance refresh — polling continues in the background (#456) */}
+      <button
+        type="button"
+        onClick={() => void refresh()}
+        disabled={isLoading || isRefreshing}
+        aria-label={isRefreshing ? 'Refreshing balances' : 'Refresh balances'}
+        aria-busy={isRefreshing}
+        title={isStreaming ? 'Refresh balances (auto-refreshes every 5s)' : 'Refresh balances'}
+        style={refreshButtonStyle}
+      >
+        {isRefreshing ? '…' : '↻'}
+      </button>
+
       {/* Address + copy */}
       <div
         style={addressWrapperStyle}
@@ -287,6 +308,17 @@ const tooltipStyle: React.CSSProperties = {
   zIndex: 50,
   pointerEvents: 'none',
   boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+}
+
+const refreshButtonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: 'rgba(165, 173, 255, 0.75)',
+  cursor: 'pointer',
+  fontSize: 14,
+  padding: '2px 4px',
+  borderRadius: 4,
+  lineHeight: 1,
 }
 
 const disconnectButtonStyle: React.CSSProperties = {

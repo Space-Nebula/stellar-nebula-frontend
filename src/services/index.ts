@@ -1,4 +1,5 @@
 export * from './wallets'
+export * from './balance-watcher'
 export * from './assets/resources'
 export * from './history/transactions'
 export * from './history/transactionPersistence'
