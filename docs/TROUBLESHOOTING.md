@@ -2,6 +2,12 @@
 
 This guide covers the most common wallet, transaction, contract, and rendering problems in Stellar Nebula. When reporting an issue, include the error code, network, wallet type, browser, and transaction hash when one is available. Never include a seed phrase, private key, or signed XDR containing sensitive data.
 
+See also:
+
+- [FAQ.md](FAQ.md) — Answers to common developer and user questions
+- [COMMON_ERRORS.md](COMMON_ERRORS.md) — Quick solutions to common error messages
+- [ERROR_CODES.md](ERROR_CODES.md) — Comprehensive code-to-message mapping
+
 ## Quick Checks
 
 1. Confirm the selected network matches the wallet network: Testnet, Futurenet, or Mainnet.

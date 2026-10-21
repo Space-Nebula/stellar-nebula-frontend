@@ -133,6 +133,14 @@ Quick start:
 cp .env.example .env.local
 ```
 
+## Troubleshooting & FAQ
+
+Encountering issues with setup, wallet connections, or transactions?
+
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) — Comprehensive guide for wallet, transaction, and rendering issues
+- [Frequently Asked Questions (FAQ)](docs/FAQ.md) — Common developer questions and concepts
+- [Common Errors and Solutions](docs/COMMON_ERRORS.md) — Fast lookups for error messages and fixes
+
 Contributing
 We welcome contributions! Fork, branch (feat/your-feature), and submit PRs.
 
