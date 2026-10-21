@@ -123,10 +123,15 @@ Deployment
 Vercel/Netlify: npm run deploy (via scripts/deploy.sh – auto-links to backend).
 Optimize: Vite bundles Three.js efficiently; use vite-plugin-glsl for shaders if expanding.
 
-Environment Variables
+## Environment Variables
 
-VITE_STELLAR_NETWORK=futurenet (or mainnet).
-VITE_CONTRACT_ID=your_deployed_id.
+Configuration is handled via Vite environment variables. See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for full documentation of all variables, defaults, and requirements.
+
+Quick start:
+
+```bash
+cp .env.example .env.local
+```
 
 Contributing
 We welcome contributions! Fork, branch (feat/your-feature), and submit PRs.
@@ -150,13 +155,16 @@ Inspiration: No Man's Sky procedural vibes, but blockchain-native.
 Funders: Built with community support; eyeing Drips Wave II for polish.
 
 ## Recent Changes
+
 - Ongoing improvements and fixes as part of active development.
 - See commit history and open issues for detailed change tracking.
 
 ## Recent Changes
+
 - Ongoing improvements and fixes as part of active development.
 - See commit history and open issues for detailed change tracking.
 
 ## Recent Changes
+
 - Ongoing improvements and fixes as part of active development.
 - See commit history and open issues for detailed change tracking.
