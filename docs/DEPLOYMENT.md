@@ -18,26 +18,31 @@ The process is intentionally the same across environments: build with the correc
 
 ## Build & Environment Variables
 
-Copy `.env.example` to `.env.local` for local development. Reference `.env.staging` and `.env.production` as templates for those environments.
+Copy `.env.example` to `.env.local` for local development. Reference `.env.staging` and `.env.production` as templates for those environments. For full details on all supported options, see [ENVIRONMENT.md](ENVIRONMENT.md).
 
-Critical variables (see `.env.example` for the full list):
+### Production Variables Checklist
 
-| Variable                   | Purpose                                  | Example                                          |
-| -------------------------- | ---------------------------------------- | ------------------------------------------------ |
-| `VITE_APP_ENV`             | `development` / `staging` / `production` | `production`                                     |
-| `VITE_STELLAR_NETWORK`     | `testnet` / `futurenet` / `mainnet`      | `mainnet`                                        |
-| `VITE_STELLAR_RPC_URL`     | Soroban RPC endpoint                     | `https://soroban-rpc.stellar.org`                |
-| `VITE_STELLAR_HORIZON_URL` | Horizon endpoint                         | `https://horizon.stellar.org`                    |
-| `VITE_STELLAR_PASSPHRASE`  | Network passphrase for signing           | `Public Global Stellar Network ; September 2015` |
-| `VITE_NEBULA_CONTRACT_ID`  | Nebula Soroban contract `C…` id          | (secret, set at deploy)                          |
-| `VITE_TOKEN_CONTRACT_ID`   | Token Soroban contract `C…` id           | (secret, set at deploy)                          |
-| `VITE_API_BASE_URL`        | Backend/API base URL                     | `https://api.stellarnebula.io/api`               |
-| `VITE_SENTRY_DSN`          | Sentry error-tracking DSN                | (secret, set at deploy)                          |
-| `VITE_LOGROCKET_APP_ID`    | LogRocket App ID                         | (secret, set at deploy)                          |
-| `VITE_ENABLE_MONITORING`   | Enable monitoring                        | `true`                                           |
-| `VITE_LOG_LEVEL`           | `debug` / `info` / `warn` / `error`      | `warn` (production)                              |
+When configuring CI/CD secrets or cloud provider variables (Vercel, Netlify, Docker), ensure the following values are defined:
 
-> **Security:** all `VITE_*` values are public once built. Contract IDs and DSNs are identifiers, not secrets, but they should still be injected at deploy time via your platform's env/secrets mechanism rather than committed. Contract state-authorization keys must never live in the frontend.
+| Variable                   | Required    | Production Value                                 | Purpose                                                     |
+| -------------------------- | ----------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| `VITE_APP_ENV`             | **Yes**     | `production`                                     | Enables production optimizations, disables debug overlays   |
+| `VITE_STELLAR_NETWORK`     | **Yes**     | `mainnet`                                        | Points wallet connections to Public Global Stellar Network  |
+| `VITE_STELLAR_RPC_URL`     | **Yes**     | `https://soroban-rpc.stellar.org`                | Mainnet Soroban RPC endpoint                                |
+| `VITE_STELLAR_HORIZON_URL` | **Yes**     | `https://horizon.stellar.org`                    | Mainnet Horizon REST API endpoint                           |
+| `VITE_STELLAR_PASSPHRASE`  | **Yes**     | `Public Global Stellar Network ; September 2015` | Required network passphrase for valid mainnet tx signatures |
+| `VITE_NEBULA_CONTRACT_ID`  | **Yes**     | Deployed C... contract address                   | Production Soroban Nebula smart contract address            |
+| `VITE_TOKEN_CONTRACT_ID`   | **Yes**     | Deployed C... contract address                   | Production Soroban Token smart contract address             |
+| `VITE_API_BASE_URL`        | **Yes**     | `https://api.stellarnebula.io/api`               | Production Nomad REST API backend                           |
+| `VITE_API_TIMEOUT_MS`      | No          | `10000`                                          | HTTP request timeout limit (default 10s)                    |
+| `VITE_SENTRY_DSN`          | Recommended | `https://...@sentry.io/...`                      | Sentry exception ingestion DSN                              |
+| `VITE_LOGROCKET_APP_ID`    | Optional    | `org/app`                                        | LogRocket production session telemetry                      |
+| `VITE_ENABLE_MONITORING`   | Optional    | `true`                                           | Enables crash and performance telemetry                     |
+| `VITE_LOG_LEVEL`           | Optional    | `warn`                                           | Suppresses verbose info logs in production                  |
+| `VITE_ENABLE_DEV_TOOLS`    | Optional    | `false`                                          | Disables debug panels for end users                         |
+| `VITE_ENABLE_FPS_COUNTER`  | Optional    | `false`                                          | Disables developer FPS counter                              |
+
+> **Security:** all `VITE_*` values are public once built into client bundles. Contract IDs and DSNs are public identifiers, not secrets, but they should still be injected at deploy time via your platform's env/secrets mechanism rather than committed to git. Contract secret keys must never live in the frontend.
 
 Verify env files are **not** committed (they are gitignored; only `.env.example` is tracked).
 
@@ -66,6 +71,7 @@ docker-compose up dev # serves Vite dev server on :5173
 **Production** (`Dockerfile.prod`)
 
 Multi-stage pipeline:
+
 1. `deps`: Installs production dependencies with layer caching.
 2. `builder`: Executes `npm run build` to generate compiled static assets in `/app/dist`.
 3. `runner`: Minimal `nginx:alpine` runtime serving only `/app/dist`. No `node_modules` or development dependencies are packaged into the final image.
