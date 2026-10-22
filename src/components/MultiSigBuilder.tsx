@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMultiSig } from '@/hooks/useMultiSig'
+import { useSanitizedInput } from '@/hooks/useSanitizedInput'
 
 export function MultiSigBuilder() {
   const {
@@ -16,12 +17,16 @@ export function MultiSigBuilder() {
 
   const [transactionXdr, setTransactionXdr] = useState('')
   const [threshold, setThreshold] = useState('2')
-  const [signers, setSigners] = useState('')
-  const [currentSigner, setCurrentSigner] = useState('')
+  // #491: signer addresses are free text the user pastes and later renders and
+  // exports, so they are sanitized on every change. The XDR and signature
+  // fields below are base64 payloads validated by the Stellar SDK downstream
+  // (sanitizing them as HTML text would corrupt legitimate base64).
+  const signersInput = useSanitizedInput('')
+  const currentSignerInput = useSanitizedInput('', { maxLength: 64 })
   const [currentSignature, setCurrentSignature] = useState('')
 
   const handleInitialize = () => {
-    const signersList = signers
+    const signersList = signersInput.value
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean)
@@ -45,13 +50,13 @@ export function MultiSigBuilder() {
   }
 
   const handleAddSignature = () => {
-    if (!currentSigner.trim() || !currentSignature.trim()) {
+    if (!currentSignerInput.value.trim() || !currentSignature.trim()) {
       alert('Both signer and signature are required')
       return
     }
 
-    addSignature(currentSigner, currentSignature)
-    setCurrentSigner('')
+    addSignature(currentSignerInput.value, currentSignature)
+    currentSignerInput.setValue('')
     setCurrentSignature('')
   }
 
@@ -107,10 +112,12 @@ export function MultiSigBuilder() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Signers (one per line)</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Signers (one per line)
+            </label>
             <textarea
-              value={signers}
-              onChange={(e) => setSigners(e.target.value)}
+              value={signersInput.value}
+              onChange={signersInput.onChange}
               className="w-full p-2 bg-slate-900 border border-slate-700 rounded text-white font-mono text-xs"
               rows={4}
               placeholder="G..."
@@ -167,11 +174,13 @@ export function MultiSigBuilder() {
               <h3 className="text-lg font-semibold text-cyan-400 mb-3">Add Signature</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Signer Address</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Signer Address
+                  </label>
                   <input
                     type="text"
-                    value={currentSigner}
-                    onChange={(e) => setCurrentSigner(e.target.value)}
+                    value={currentSignerInput.value}
+                    onChange={currentSignerInput.onChange}
                     className="w-full p-2 bg-slate-800 border border-slate-700 rounded text-white font-mono text-xs"
                     placeholder="G..."
                   />
@@ -198,7 +207,9 @@ export function MultiSigBuilder() {
 
           {readyToExecute && (
             <div className="p-4 bg-green-900 rounded border border-green-700">
-              <p className="text-green-100 font-semibold mb-3">Ready to execute - all signatures collected</p>
+              <p className="text-green-100 font-semibold mb-3">
+                Ready to execute - all signatures collected
+              </p>
               <button
                 onClick={handleExport}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded mb-2"

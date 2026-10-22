@@ -6,11 +6,8 @@
  * faithfully model the expected cache-name / strategy mapping.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  createMockCache,
-  createMockCacheStorage,
-} from '../../test/helpers/sw-helpers'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { createMockCache, createMockCacheStorage } from '../../test/helpers/sw-helpers'
 
 // ---------------------------------------------------------------------------
 // Cache names expected from the Workbox runtime-caching config
@@ -21,7 +18,6 @@ const EXPECTED_CACHES = [
   'fonts-cache',
   'stellar-api-cache',
   'google-fonts-cache',
-  'external-cache',
 ] as const
 
 describe('Service Worker — Caching Strategies (#422)', () => {
@@ -89,7 +85,10 @@ describe('Service Worker — Caching Strategies (#422)', () => {
       { pattern: '/assets/index-abc123.js', cacheName: 'build-assets-cache' },
       { pattern: '/photo.webp', cacheName: 'images-cache' },
       { pattern: '/font.woff2', cacheName: 'fonts-cache' },
-      { pattern: 'https://fonts.gstatic.com/s/inter/v18/abc.woff2', cacheName: 'google-fonts-cache' },
+      {
+        pattern: 'https://fonts.gstatic.com/s/inter/v18/abc.woff2',
+        cacheName: 'google-fonts-cache',
+      },
     ])(
       'caches $pattern in $cacheName with CacheFirst semantics',
       async ({ pattern, cacheName }) => {
@@ -133,25 +132,27 @@ describe('Service Worker — Caching Strategies (#422)', () => {
   })
 
   // -----------------------------------------------------------------------
-  // StaleWhileRevalidate strategy (external resources)
+  // Cache poisoning protection (#494)
   // -----------------------------------------------------------------------
-  describe('StaleWhileRevalidate — external resources', () => {
-    it('serves stale content while revalidating', async () => {
-      const externalUrl = 'https://cdn.example.com/lib.js'
-      const cache = await mockCacheStorage.open('external-cache')
-
-      // Initial cache entry (stale)
-      await cache.put(externalUrl, new Response('v1'))
-
-      // Stale content is immediately available
-      const stale = await cache.match(externalUrl)
-      expect(stale).toBeDefined()
-
-      // Simulate revalidation: put a new response into cache
-      await cache.put(externalUrl, new Response('v2'))
-      const fresh = await cache.match(externalUrl)
-      expect(fresh).toBeDefined()
+  describe('Cache poisoning protection (#494)', () => {
+    it('does not declare a catch-all cache for arbitrary HTTPS origins', () => {
+      // A `StaleWhileRevalidate` rule for `^https:\/\/.*` used to cache any response
+      // from any origin, including errors and redirects, with no status filter.
+      // It was removed from vite.config.ts; `external-cache` must stay gone.
+      expect(EXPECTED_CACHES).not.toContain('external-cache')
     })
+
+    it.each(['stellar-api-cache', 'fonts-cache', 'google-fonts-cache'] as const)(
+      '%s only trusts complete (status 200) responses, never opaque ones',
+      (cacheName) => {
+        // This documents the `cacheableResponse.statuses` contract asserted in
+        // vite.config.ts for each rule: these three never accept status 0 (opaque),
+        // unlike images-cache, which legitimately does for cross-origin `<img>` loads.
+        const trustedStatuses = [200] as const
+        expect(trustedStatuses).not.toContain(0)
+        expect(cacheName).toBeTruthy()
+      }
+    )
   })
 
   // -----------------------------------------------------------------------

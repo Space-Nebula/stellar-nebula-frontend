@@ -209,7 +209,12 @@ export default defineConfig({
               },
             },
           },
-          // Cache-first for static assets (#259)
+          // Cache-first for static assets (#259).
+          // #494: status 0 (opaque) is kept here, not removed, because images such as
+          // NFT artwork are loaded cross-origin from IPFS gateways via `<img>`, which
+          // the browser always fetches in `no-cors` mode — a real, unreadable-by-design
+          // response, not a blind trust decision. The content type is still constrained
+          // by the file-extension match and the image-only CSP `img-src`.
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
             handler: 'CacheFirst',
@@ -224,7 +229,10 @@ export default defineConfig({
               },
             },
           },
-          // Cache-first for fonts
+          // Cache-first for fonts.
+          // #494: `cacheableResponse` stops a transient error/redirect response (e.g.
+          // from a captive portal or a flaky CDN edge) from being cached as a valid
+          // font for a year.
           {
             urlPattern: /\.(?:woff|woff2|ttf|eot)$/i,
             handler: 'CacheFirst',
@@ -234,9 +242,16 @@ export default defineConfig({
                 maxEntries: 20,
                 maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
               },
+              cacheableResponse: {
+                statuses: [200],
+              },
             },
           },
-          // Network-first for API calls (#259)
+          // Network-first for API calls (#259).
+          // #494: Horizon/RPC requests are same-origin-CORS `fetch()` calls (never
+          // `no-cors`), so a legitimate response is always status 200. Caching an
+          // opaque (status 0) response here would mean trusting unreadable financial
+          // data the Service Worker cannot validate, so only 200 is cacheable.
           {
             urlPattern: /^https:\/\/[^/]+\.stellar\.org\/.*/i,
             handler: 'NetworkFirst',
@@ -248,11 +263,13 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 5, // 5 minutes
               },
               cacheableResponse: {
-                statuses: [0, 200],
+                statuses: [200],
               },
             },
           },
-          // Cache-first for external fonts
+          // Cache-first for external fonts.
+          // #494: `cacheableResponse` ensures an error/redirect response from the
+          // fonts host is never mistaken for a valid font and cached for a year.
           {
             urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',
@@ -262,17 +279,8 @@ export default defineConfig({
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
               },
-            },
-          },
-          // StaleWhileRevalidate for other external resources
-          {
-            urlPattern: /^https:\/\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'external-cache',
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24, // 1 day
+              cacheableResponse: {
+                statuses: [200],
               },
             },
           },
