@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWallet } from '@/contexts/WalletContext'
 import { Spinner } from '@components/UI/Spinner'
+import { WalletConnectModal } from '@components/WalletConnectModal'
 import type { WalletType } from '@/types'
 
 // ─── Wallet option descriptors ────────────────────────────────────────────────
@@ -55,6 +56,7 @@ interface ConnectModalProps {
 export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
   const {
     connect,
+    walletState,
     isLoading,
     error,
     isFreighterInstalled,
@@ -66,6 +68,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
   } = useWallet()
 
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const [isWalletConnectOpen, setIsWalletConnectOpen] = useState(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -105,14 +108,27 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
 
   const handleConnect = useCallback(
     async (type: WalletType) => {
-      await connect(type)
-      // Only close modal on success (error stays visible until resolved)
-      if (!error) {
+      // WalletConnect needs the QR/deep-link modal, which drives the same
+      // context connect flow (#458). Hand over instead of connecting blind.
+      if (type === 'walletconnect') {
+        clearError()
         onClose()
+        setIsWalletConnectOpen(true)
+        return
       }
+
+      await connect(type)
+      // The modal closes from the `walletState.isConnected` effect below, so a
+      // failed attempt keeps the error visible instead of unmounting it.
     },
-    [connect, error, onClose]
+    [clearError, connect, onClose]
   )
+
+  useEffect(() => {
+    if (isOpen && walletState.isConnected) {
+      onClose()
+    }
+  }, [isOpen, onClose, walletState.isConnected])
 
   const isAvailable = useCallback(
     (type: WalletType): boolean => {
@@ -132,7 +148,14 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
     ]
   )
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    return (
+      <WalletConnectModal
+        isOpen={isWalletConnectOpen}
+        onClose={() => setIsWalletConnectOpen(false)}
+      />
+    )
+  }
 
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions

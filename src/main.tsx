@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Buffer } from 'buffer'
 import './index.css'
 import './styles/base.css'
 import './styles/mobile.css'
@@ -10,6 +11,12 @@ import { repairCorruptedSaveData } from './services/saveLoad'
 import { initWebVitalsMonitoring } from './hooks/useWebVitals'
 import { env } from './config'
 import { preloadCriticalAssets } from './utils/preload'
+
+// @stellar/stellar-sdk expects a global Buffer in the browser; Vite does not
+// polyfill Node globals automatically.
+if (typeof globalThis.Buffer === 'undefined') {
+  globalThis.Buffer = Buffer
+}
 
 // Preload critical fonts, icons, and hero assets early to improve LCP and CLS (#379, #354)
 preloadCriticalAssets()

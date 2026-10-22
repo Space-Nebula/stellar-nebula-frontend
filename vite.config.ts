@@ -23,6 +23,17 @@ const STELLAR_SDK_DEPENDENCIES = [
 ]
 
 /**
+ * Security headers for the dev server and production preview. Mirrors the
+ * headers nginx applies to the built app (#487, #489).
+ */
+const SECURITY_HEADERS = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Content-Security-Policy': "frame-ancestors 'none'",
+}
+
+/**
  * Inlines src/styles/critical.css into index.html so first paint does not wait
  * for the bundled stylesheet.
  */
