@@ -47,6 +47,11 @@
 
     <!-- LogRocket Session Replay - Load early for maximum coverage (with SRI) -->
     <!-- SRI hash auto-generated via `node scripts/generate-sri.mjs --update` -->
+    <!-- #490: the `sandbox` attribute only exists on <iframe>, so it cannot apply to
+         this <script> element. The equivalent "minimum necessary permissions" for a
+         script are: a CSP script-src allowlist (see the meta tag above), an SRI hash
+         that fails closed, crossorigin + referrerPolicy to withhold credentials and
+         the referring URL, and async loading so it never blocks rendering. -->
     <script>
       // Only load LogRocket in production/staging environments
       if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
@@ -55,6 +60,8 @@
           script.src = 'https://cdn.logrocket.io/LogRocket.min.js'
           script.async = true
           script.crossOrigin = 'anonymous'
+          // Withhold this page's URL from the CDN request (#490).
+          script.referrerPolicy = 'no-referrer'
           // Subresource Integrity - prevents CDN compromise attacks
           // Hash generated via `npm run sri:generate` - see scripts/generate-sri.mjs
           script.integrity = 'sha384-8Sg4qcZfgEKs89yaA8MMPQeVhXkzYIYp++A+tf+FjCYRfc6dJKwq2NPrRhP0F0A9'

@@ -8,6 +8,13 @@
  *
  * This service ensures monitoring is initialized safely and consistently
  * across different environments.
+ *
+ * Third-party loading review (#490): Sentry ships as an npm dependency and is
+ * reached only through the dynamic `import()` in `./sentryClient`, so it is
+ * bundled and verified like the rest of the app's code — it is never fetched
+ * from a third-party CDN at runtime. LogRocket is the one third-party script
+ * actually loaded over the network, from `index.html`; its SRI, CSP, and
+ * referrer/crossorigin attributes are reviewed there.
  */
 
 import { getSentry } from './sentryClient'

@@ -21,6 +21,7 @@ import { retryAsync, isRetryableStellarError } from '@utils/stellar/retry'
 import { haptics } from '@/utils/haptics'
 import { translateContractError } from '@/services/contracts/errorTranslation'
 import { getErrorMessage } from '@utils/error-messages'
+import { useTransactionToast } from '@hooks/useTransactionToast'
 
 interface UseShipUpgradeResult {
   shipNFT: ShipNFTRecord | null
@@ -60,6 +61,9 @@ export function useShipUpgrade(
   config?: StellarNetworkConfig
 ): UseShipUpgradeResult {
   const { walletState, signTransaction } = useWallet()
+  const { showPending, showSuccess, showError } = useTransactionToast(
+    walletState.network ?? 'testnet'
+  )
   const resolvedAccountId = useMemo(
     () => inferAccountId(accountId, walletState.publicKey),
     [accountId, walletState.publicKey]
@@ -180,9 +184,16 @@ export function useShipUpgrade(
     const result = await buildUpgradeTransaction()
     if (!result) return null
 
+    showPending('Submitting ship upgrade…')
+
     try {
       const signedXdr = await signTransaction(result.xdr)
-      if (!signedXdr) return null
+      if (!signedXdr) {
+        showError(new Error('Transaction signing was cancelled'), {
+          message: 'Upgrade cancelled — no signed transaction',
+        })
+        return null
+      }
 
       const rpcServer = new rpc.Server(config?.rpcUrl ?? env.STELLAR_RPC_URL)
       const transaction = TransactionBuilder.fromXDR(
@@ -205,9 +216,12 @@ export function useShipUpgrade(
 
       if (sendStatus === 'SUCCESS') {
         haptics.upgradeSuccess()
-        return typeof (sendResult as { hash?: unknown }).hash === 'string'
-          ? (sendResult as { hash: string }).hash
-          : null
+        const hash =
+          typeof (sendResult as { hash?: unknown }).hash === 'string'
+            ? (sendResult as { hash: string }).hash
+            : null
+        showSuccess(hash, { message: 'Ship upgrade confirmed' })
+        return hash
       }
 
       if (sendStatus !== 'PENDING') {
@@ -230,9 +244,12 @@ export function useShipUpgrade(
       )
 
       haptics.upgradeSuccess()
+      showSuccess(finalResult.txHash, { message: 'Ship upgrade confirmed' })
       return finalResult.txHash
     } catch (err) {
-      setError(translateContractError(err).message)
+      const message = translateContractError(err).message
+      setError(message)
+      showError(err, { message })
       haptics.error()
       return null
     }
@@ -241,6 +258,9 @@ export function useShipUpgrade(
     config,
     shipNFT,
     signTransaction,
+    showError,
+    showPending,
+    showSuccess,
     walletState.isConnected,
     walletState.publicKey,
   ])

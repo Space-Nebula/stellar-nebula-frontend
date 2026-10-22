@@ -231,6 +231,26 @@ hash changed, it opens a `security/sri-refresh-*` PR for review. `vite build` al
 pinned hash does not match the live file, so an unreviewed upstream change cannot ship. Set
 `SKIP_SRI_CHECK=1` only for offline builds.
 
+## Third-Party Script Loading (#490)
+
+The app loads two third-party monitoring integrations, reviewed for minimum necessary permissions:
+
+| Integration | How it loads                                                         | Sandboxed how                                                                                                                                                                                                |
+| :---------- | :------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sentry      | npm dependency, dynamic `import()` in `src/services/sentryClient.ts` | Bundled and built with the rest of the app; never fetched from a third-party CDN at runtime, so there is no external script to sandbox.                                                                      |
+| LogRocket   | `<script>` tag injected in `index.html`, production/staging only     | SRI (`sha384`) fails closed on mismatch, `crossorigin="anonymous"`, `referrerPolicy="no-referrer"`, `async`, and restricted to `https://cdn.logrocket.io` by the `script-src` directive in the CSP meta tag. |
+
+The HTML `sandbox` attribute only exists on `<iframe>`; neither integration is loaded in an
+iframe, so it does not apply here. The equivalent controls for a `<script>` element are:
+
+- **Minimum necessary permissions**: `crossorigin="anonymous"` sends no credentials to the CDN,
+  and `referrerPolicy="no-referrer"` withholds the page URL from the request.
+- **Integrity**: the SRI hash in [Subresource Integrity (SRI)](#subresource-integrity-sri) is
+  verified by the browser before the script executes, and by `vite build` before it ships.
+- **Origin allowlisting**: the CSP `script-src` directive in `index.html` and `vercel.json` allows
+  script execution only from `'self'`, `https://cdn.logrocket.io`, and `https://*.stellar.org`.
+- **Async loading**: `script.async = true` keeps the script off the critical rendering path.
+
 ## Sentry DSN Exposure (#484)
 
 The Sentry DSN in `VITE_SENTRY_DSN` is public and is accepted as exposed. It is embedded in the
@@ -275,6 +295,27 @@ User and session data stored in localStorage includes sensitive information (wal
 - **Helper functions** `encryptSensitiveSlices()` and `decryptSensitiveSlices()` in `src/services/saveLoad.ts` allow manual encryption of game save data.
 - **Monitoring redaction** keeps wallet addresses, secrets and amounts out of Sentry and LogRocket (`src/utils/sanitization.ts`, see [PRIVACY.md](./PRIVACY.md)).
 
+## Input Sanitization (#491)
+
+React escapes text content by default, and the codebase has no `dangerouslySetInnerHTML` calls, so
+stored XSS via rendered JSX was already mitigated. `src/utils/sanitize.ts` adds a defense-in-depth
+layer for free-text fields the user types or pastes, ahead of storage, export, or any future
+name/description field:
+
+- `sanitizeText()` strips control characters and HTML tags, HTML-escapes what remains, trims, and
+  optionally enforces a max length.
+- `containsScriptInjection()` flags an HTML tag, an inline event handler (`onerror=`, …), or a
+  `javascript:`/`vbscript:`/`data:` URI.
+- `sanitizeUrl()` blocks script-executing URL schemes while allowing normal `http(s)`/relative URLs.
+- `useSanitizedInput()` (`src/hooks/useSanitizedInput.ts`) wraps controlled `<input>`/`<textarea>`
+  state so every change is sanitized automatically.
+
+Applied to the multi-signature transaction builder (`src/components/MultiSigBuilder.tsx`): the
+signer-address fields (free text the user pastes, which is later rendered in a list and exported to
+JSON) go through `useSanitizedInput`. The transaction XDR and signature fields are intentionally
+**not** HTML-sanitized — they are base64 payloads parsed and validated by the Stellar SDK
+downstream, and HTML-escaping would corrupt legitimate base64 (e.g. `/` → `&#x2F;`).
+
 ## Content Security Policy
 
 A strict Content Security Policy is enforced via both Vercel headers and HTML meta tag:
@@ -314,21 +355,54 @@ The app must not be embeddable in another site's frame, which would allow clickj
 
 Every response, including SPA routes, sends the following headers:
 
-| Header | Value | Purpose |
-| :--- | :--- | :--- |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` | HTTPS only (`vercel.json`) |
-| `X-Content-Type-Options` | `nosniff` | Stops MIME-type sniffing |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits the referrer sent to other sites |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()` | Disables device APIs the app does not use |
-| `X-XSS-Protection` | `0` | Turns off the legacy browser XSS auditor, which can introduce vulnerabilities. CSP is the XSS control. |
-| `X-Frame-Options` | `DENY` | See Clickjacking Protection |
-| `Content-Security-Policy` | See Content Security Policy below | XSS and framing protection |
+| Header                      | Value                                                                                                           | Purpose                                                                                                |
+| :-------------------------- | :-------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload`                                                                  | HTTPS only (`vercel.json`)                                                                             |
+| `X-Content-Type-Options`    | `nosniff`                                                                                                       | Stops MIME-type sniffing                                                                               |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin`                                                                               | Limits the referrer sent to other sites                                                                |
+| `Permissions-Policy`        | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()` | Disables device APIs the app does not use                                                              |
+| `X-XSS-Protection`          | `0`                                                                                                             | Turns off the legacy browser XSS auditor, which can introduce vulnerabilities. CSP is the XSS control. |
+| `X-Frame-Options`           | `DENY`                                                                                                          | See Clickjacking Protection                                                                            |
+| `Content-Security-Policy`   | See Content Security Policy below                                                                               | XSS and framing protection                                                                             |
 
 Notes:
 
 - `nginx.conf` must repeat `add_header` in every location that sets its own `add_header`. Otherwise
   nginx drops the server-level headers. The `/` and `/assets/` locations do this.
 - The `X-XSS-Protection` value is `0` on purpose. Setting `1; mode=block` is no longer recommended.
+
+## Service Worker Cache Security (#494)
+
+The Service Worker (`vite-plugin-pwa` / Workbox, configured in `vite.config.ts`) caches responses
+for offline use. Two changes closed a cache-poisoning gap:
+
+- **Removed the catch-all external rule.** A `StaleWhileRevalidate` rule previously matched
+  `^https:\/\/.*` — any HTTPS origin, any response, with no `cacheableResponse` filter at all. That
+  meant an error page, a redirect, or an injected response from a compromised intermediary (e.g. a
+  malicious captive-portal proxy) on **any** host would be cached and later replayed as if it were
+  legitimate content. The app has no `fetch()` calls to arbitrary cross-origin hosts — the real
+  destinations (Stellar APIs, Google Fonts, same-origin assets) already have their own scoped
+  rules below — so the wildcard rule was removed instead of narrowed.
+- **Restricted `cacheableResponse.statuses` to what a legitimate response can be**, on every
+  remaining rule:
+  - `stellar-api-cache`: `[200]` only (not `[0, 200]`). Horizon/RPC requests are CORS `fetch()`
+    calls, so a real response is never opaque (status `0`); accepting an opaque response here
+    would mean caching unreadable data for Horizon-sourced financial data (balances, transactions)
+    with no way to validate it.
+  - `fonts-cache` and `google-fonts-cache`: `[200]` only, added where it was previously unset. Without
+    it, Workbox's default `CacheFirst` behavior caches _any_ response — including a transient
+    404/5xx — and serves that error for the full 1-year expiration.
+  - `images-cache` keeps `[0, 200]`: NFT artwork is loaded cross-origin from IPFS gateways via
+    `<img>`, which the browser always fetches in `no-cors` mode, so an opaque response there is
+    expected, not a blind trust decision — and the blast radius is a wrong/stale image, not
+    executable or financial data.
+- **Only HTTPS is ever cached.** Every cross-origin `urlPattern` is anchored to `https://`; same-origin
+  rules inherit the page's own scheme, which is HTTPS-only in production (see
+  [HTTPS Enforcement](#https-enforcement)).
+- **Cache versioning** is unaffected: `cacheId: 'stellar-nebula'` prefixes every cache name and
+  `cleanupOutdatedCaches: true` removes caches left over from a previous Service Worker version.
+
+See [docs/PWA.md](./PWA.md#cache-validation-494) for the full caching-strategy table.
 
 ## CORS and Horizon Access (#488)
 
@@ -341,6 +415,28 @@ Notes:
   authentication headers.
 - CORS headers are set by the Horizon server. This app does not require `Access-Control-Allow-Credentials`.
 - Full details are in [API_INTEGRATION.md](./API_INTEGRATION.md).
+
+## Responsible Disclosure (#495)
+
+[`public/.well-known/security.txt`](../public/.well-known/security.txt) follows
+[RFC 9116](https://www.rfc-editor.org/rfc/rfc9116) so security researchers can find how to report a
+vulnerability without first finding a human to ask:
+
+- **Contact**: a link to open a private [GitHub Security Advisory](https://github.com/Space-Nebula/stellar-nebula-frontend/security/advisories/new)
+  on this repository — advisories are visible only to maintainers until a fix is ready, unlike a
+  public issue.
+- **Expires**: set about a year out; the file must be re-reviewed and re-dated before it expires,
+  or scanners will treat it as stale.
+- **Policy**: links back to this document.
+
+Both hosting configs serve it:
+
+- `vercel.json`'s rewrite falls back to `index.html` only for paths with no matching static file,
+  so the real `security.txt` is served as-is.
+- `nginx.conf` denies any path starting with a dot (`location ~ /\.`) to block access to things
+  like `.env` or `.git`. Since `/.well-known/` also starts with a dot, it needs its own `location
+^~ /.well-known/` rule placed so it is matched first — otherwise the hidden-file rule would
+  404/403 `security.txt` along with everything else under it.
 
 ## Recommendations
 
@@ -367,3 +463,9 @@ Notes:
 - Security headers applied to Vercel, nginx (including SPA routes) and the dev and preview servers, verified by `security-headers.yml` (#489).
 - `npm audit` was run on 2026-10-18; high/critical findings were resolved or reviewed as described in
   [Dependency Security Review](#dependency-security-review), and the CI gate now enforces the policy.
+- Third-party script loading (LogRocket, Sentry) reviewed for minimum necessary permissions (#490).
+- Input sanitization utilities and a `useSanitizedInput` hook added and applied to free-text
+  fields; see [Input Sanitization](#input-sanitization-491) (#491).
+- Service worker cache poisoning gap closed by removing the unrestricted external cache rule and
+  restricting `cacheableResponse` statuses on the remaining rules (#494).
+- `security.txt` published at `/.well-known/security.txt` for responsible disclosure (#495).

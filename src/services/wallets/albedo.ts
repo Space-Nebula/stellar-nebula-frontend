@@ -21,6 +21,39 @@ export interface AlbedoIntentApi {
   info?: () => Promise<{ network?: string; supported_intents?: string[] }>
 }
 
+/**
+ * Albedo rejects intents with a plain `{ code, message }` object rather than an
+ * `Error`. Normalise it so error classification and logging see a real message
+ * instead of `[object Object]`.
+ */
+export function toAlbedoError(error: unknown): Error {
+  if (error instanceof Error) return error
+
+  if (typeof error === 'object' && error !== null) {
+    // The intent transport rejects with `{ error: { code, message } }`, while
+    // some versions reject with the inner object directly.
+    const nested = (error as { error?: unknown }).error
+    if (typeof nested === 'object' && nested !== null) {
+      return toAlbedoError(nested)
+    }
+
+    const { message, code, ext } = error as { message?: unknown; code?: unknown; ext?: unknown }
+    const text =
+      typeof message === 'string' && message.length > 0
+        ? message
+        : typeof ext === 'string' && ext.length > 0
+          ? ext
+          : 'Albedo request failed'
+    const normalized = new Error(text)
+    if (typeof code === 'number') {
+      ;(normalized as Error & { code?: number }).code = code
+    }
+    return normalized
+  }
+
+  return new Error(String(error))
+}
+
 async function loadAlbedo(): Promise<AlbedoIntentApi> {
   const module = (await import('@albedo-link/intent')) as unknown as {
     default?: AlbedoIntentApi
@@ -37,10 +70,12 @@ export function isAlbedoAvailable(): boolean {
   return typeof window !== 'undefined'
 }
 
-function getAlbedoNetworkParam(networkPassphrase: string): 'testnet' | 'futurenet' | undefined {
+export function getAlbedoNetworkParam(
+  networkPassphrase: string
+): 'testnet' | 'futurenet' | undefined {
   const normalized = networkPassphrase.toLowerCase()
 
-  if (normalized.includes('futurenet')) return 'futurenet'
+  if (normalized.includes('future')) return 'futurenet'
   if (normalized.includes('test') || normalized === 'testnet') return 'testnet'
   return undefined
 }
@@ -51,32 +86,40 @@ function getAlbedoNetworkParam(networkPassphrase: string): 'testnet' | 'futurene
  * @returns The user's Stellar public key.
  */
 export async function connectAlbedo(): Promise<PublicKey> {
-  const albedo = await loadAlbedo()
-  const result = await albedo.publicKey()
+  try {
+    const albedo = await loadAlbedo()
+    const result = await albedo.publicKey()
 
-  if (!result.pubkey) {
-    throw new Error('Albedo did not return a public key')
+    if (!result.pubkey) {
+      throw new Error('Albedo did not return a public key')
+    }
+
+    return result.pubkey
+  } catch (err) {
+    throw toAlbedoError(err)
   }
-
-  return result.pubkey
 }
 
 /**
  * Sign a transaction XDR with Albedo.
  */
 export async function signTransactionWithAlbedo(xdr: XDR, networkPassphrase: string): Promise<XDR> {
-  const albedo = await loadAlbedo()
-  const result = await albedo.tx({
-    xdr,
-    network: getAlbedoNetworkParam(networkPassphrase),
-    network_passphrase: networkPassphrase,
-  })
+  try {
+    const albedo = await loadAlbedo()
+    const result = await albedo.tx({
+      xdr,
+      network: getAlbedoNetworkParam(networkPassphrase),
+      network_passphrase: networkPassphrase,
+    })
 
-  if (!result.signed_envelope_xdr) {
-    throw new Error('Albedo did not return a signed transaction')
+    if (!result.signed_envelope_xdr) {
+      throw new Error('Albedo did not return a signed transaction')
+    }
+
+    return result.signed_envelope_xdr
+  } catch (err) {
+    throw toAlbedoError(err)
   }
-
-  return result.signed_envelope_xdr
 }
 
 /**

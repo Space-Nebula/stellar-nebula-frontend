@@ -164,6 +164,16 @@ Encountering issues with setup, wallet connections, or transactions?
 - [Common Errors and Solutions](docs/COMMON_ERRORS.md) — Fast lookups for error messages and fixes
 
 ## Contributing
+## Security
+
+Found a vulnerability? Please report it privately via a
+[GitHub Security Advisory](https://github.com/Space-Nebula/stellar-nebula-frontend/security/advisories/new)
+rather than a public issue. Contact details also live at `/.well-known/security.txt`
+([RFC 9116](https://www.rfc-editor.org/rfc/rfc9116)). See [docs/SECURITY.md](docs/SECURITY.md) for
+the full security review and policy.
+
+Contributing
+We welcome contributions! Fork, branch (feat/your-feature), and submit PRs.
 
 We welcome contributions! Fork the repo, branch from `main` (`feat/your-feature`, `fix/bug-name`, `docs/your-doc`), and submit a PR.
 
