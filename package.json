@@ -107,7 +107,7 @@
     "autoprefixer": "^10.5.0",
     "axe-core": "^4.12.0",
     "chromatic": "^17.2.0",
-    "eslint": "^9.39.1",
+    "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.0.1",
