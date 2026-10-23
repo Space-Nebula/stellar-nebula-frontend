@@ -37,6 +37,9 @@ The frontend is a **single-page application (SPA)** built with React and TypeScr
 
 ## Architecture Diagrams
 
+> Each diagram below also lives as its own file under
+> [`docs/diagrams/`](diagrams/), for linking or viewing standalone.
+
 ### High-Level System Structure
 
 ```mermaid
@@ -298,6 +301,10 @@ Uses Zustand for client-side state with localStorage persistence:
 
 Stores are persisted selectively—only stable data is saved to localStorage, while transient state (like loading flags) is excluded.
 
+> This list is illustrative; `achievementStore` and the non-persisted
+> `renderStatsStore` also exist. For the full, current field-by-field
+> reference, see [`docs/STATE_MANAGEMENT.md`](STATE_MANAGEMENT.md).
+
 #### 7. **Context Providers** (`src/contexts/`)
 
 React contexts provide global state for cross-cutting concerns:
@@ -350,6 +357,9 @@ Services are stateless and testable, accepting dependencies as parameters.
 ---
 
 ## Data Flow
+
+> For a deeper, code-grounded walkthrough of specific flows (wallet connect,
+> a contract call, WebSocket updates), see [`docs/DATA_FLOW.md`](DATA_FLOW.md).
 
 ### User Interaction Lifecycle
 
