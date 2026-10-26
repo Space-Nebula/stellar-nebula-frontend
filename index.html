@@ -64,7 +64,7 @@
           script.referrerPolicy = 'no-referrer'
           // Subresource Integrity - prevents CDN compromise attacks
           // Hash generated via `npm run sri:generate` - see scripts/generate-sri.mjs
-          script.integrity = 'sha384-8Sg4qcZfgEKs89yaA8MMPQeVhXkzYIYp++A+tf+FjCYRfc6dJKwq2NPrRhP0F0A9'
+          script.integrity = 'sha384-1CK3ZOSfDuwgIEP7cNJMXPSiIYdGWF7liyHOgxHmk9xg/zEj7VFWW6vkKTVKGeM4'
           // Fail closed on SRI failures (integrity mismatch or network). Re-requesting the
           // script without its integrity hash would run an unverified copy, so session
           // replay is disabled instead.

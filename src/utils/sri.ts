@@ -50,7 +50,7 @@ export const SRI_RESOURCES: Record<string, SRIResource> = {
     url: 'https://cdn.logrocket.io/LogRocket.min.js',
     // Placeholder hash - regenerated via `npm run sri:generate`
     // To update: node scripts/generate-sri.mjs --update
-    integrity: 'sha384-8Sg4qcZfgEKs89yaA8MMPQeVhXkzYIYp++A+tf+FjCYRfc6dJKwq2NPrRhP0F0A9',
+    integrity: 'sha384-1CK3ZOSfDuwgIEP7cNJMXPSiIYdGWF7liyHOgxHmk9xg/zEj7VFWW6vkKTVKGeM4',
     crossorigin: 'anonymous',
     description: 'LogRocket session replay',
   },
