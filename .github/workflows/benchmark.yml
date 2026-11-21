@@ -1,0 +1,152 @@
+name: Benchmarks
+
+# Records bundle sizes and Lighthouse results for every push to main and keeps
+# their history in the gh-pages branch (dev/bench), charted by
+# benchmark-action/github-action-benchmark. See docs/BENCHMARKS.md.
+#
+# Budgets are enforced by performance.yml and ci.yml. This workflow only
+# records, so a regression still gets its data point.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  # push benchmark data to the gh-pages branch
+  contents: write
+  deployments: write
+
+# One run at a time so two pushes to gh-pages never race; queued runs still record.
+concurrency:
+  group: benchmarks
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 20
+
+jobs:
+  benchmark:
+    name: Record benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Type checking and the CDN integrity check are enforced by ci.yml. They are
+      # skipped here so a type error or a changed third-party script does not
+      # leave a gap in the benchmark history; nothing built here is deployed.
+      - name: Build
+        run: npx vite build
+        env:
+          SKIP_SRI_CHECK: '1'
+
+      - name: Measure bundle sizes
+        continue-on-error: true
+        run: node scripts/bundle-analysis.mjs
+
+      - name: Run Lighthouse
+        continue-on-error: true
+        run: node scripts/performance-ci.mjs
+
+      # Converts bundle-report.json (bundle-analysis.mjs) and the representative
+      # Lighthouse run (.lighthouseci) into github-action-benchmark's custom JSON:
+      # benchmark-smaller.json (sizes, timings) and benchmark-bigger.json (scores).
+      # A missing input is skipped, so one failed tool still records the other.
+      - name: Collect results
+        run: |
+          node --input-type=module <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import { readFileSync, writeFileSync } from 'node:fs'
+          import { isAbsolute, join } from 'node:path'
+
+          const read = (path) => {
+            try { return JSON.parse(readFileSync(path, 'utf8')) } catch { console.error(`Skipping ${path}`); return null }
+          }
+          const kb = (bytes) => Math.round((bytes / 1024) * 10) / 10
+          const smaller = []
+          const bigger = []
+
+          const bundle = read('bundle-report.json')
+          if (bundle) {
+            smaller.push(
+              { name: 'Bundle total (gzip)', unit: 'KB', value: kb(bundle.total.gzip) },
+              { name: 'Bundle total (brotli)', unit: 'KB', value: kb(bundle.total.brotli) },
+              { name: 'CSS (gzip)', unit: 'KB', value: kb(bundle.css.gzip) },
+            )
+            // Chunk file names carry content hashes; categories are stable across builds.
+            const byCategory = {}
+            for (const c of bundle.chunks) byCategory[c.category] = (byCategory[c.category] ?? 0) + c.gzip
+            for (const [category, gzip] of Object.entries(byCategory).sort((a, b) => b[1] - a[1])) {
+              smaller.push({ name: `JS ${category} (gzip)`, unit: 'KB', value: kb(gzip) })
+            }
+          }
+
+          const manifest = read('.lighthouseci/manifest.json')
+          const run = manifest?.find((r) => r.isRepresentativeRun) ?? manifest?.[0]
+          const lhr = run && read(isAbsolute(run.jsonPath) ? run.jsonPath : join('.lighthouseci', run.jsonPath))
+          if (lhr) {
+            const timings = {
+              'first-contentful-paint': 'First Contentful Paint',
+              'largest-contentful-paint': 'Largest Contentful Paint',
+              'speed-index': 'Speed Index',
+              interactive: 'Time to Interactive',
+              'total-blocking-time': 'Total Blocking Time',
+            }
+            for (const [key, label] of Object.entries(timings)) {
+              const v = lhr.audits?.[key]?.numericValue
+              if (typeof v === 'number') smaller.push({ name: `Lighthouse ${label}`, unit: 'ms', value: Math.round(v) })
+            }
+            const cls = lhr.audits?.['cumulative-layout-shift']?.numericValue
+            if (typeof cls === 'number') smaller.push({ name: 'Lighthouse Cumulative Layout Shift', unit: 'score', value: Math.round(cls * 1000) / 1000 })
+            const weight = lhr.audits?.['total-byte-weight']?.numericValue
+            if (typeof weight === 'number') smaller.push({ name: 'Lighthouse total byte weight', unit: 'KB', value: kb(weight) })
+            for (const category of ['performance', 'accessibility', 'best-practices', 'seo']) {
+              const score = lhr.categories?.[category]?.score
+              if (typeof score === 'number') bigger.push({ name: `Lighthouse ${category} score`, unit: 'score', value: Math.round(score * 100) })
+            }
+          }
+
+          if (smaller.length) writeFileSync('benchmark-smaller.json', JSON.stringify(smaller, null, 2))
+          if (bigger.length) writeFileSync('benchmark-bigger.json', JSON.stringify(bigger, null, 2))
+          console.log('## Benchmark results\n\n| Metric | Value | Better |\n|--------|------:|--------|')
+          for (const r of smaller) console.log(`| ${r.name} | ${r.value} ${r.unit} | lower |`)
+          for (const r of bigger) console.log(`| ${r.name} | ${r.value} / 100 | higher |`)
+          if (!smaller.length && !bigger.length) process.exit(1)
+          EOF
+
+      - name: Store sizes and timings
+        if: hashFiles('benchmark-smaller.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Bundle size and load time (lower is better)
+          tool: customSmallerIsBetter
+          output-file-path: benchmark-smaller.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Lighthouse timings are noisy; flag only large jumps.
+          alert-threshold: '150%'
+          comment-on-alert: true
+
+      - name: Store Lighthouse scores
+        if: hashFiles('benchmark-bigger.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Lighthouse scores (higher is better)
+          tool: customBiggerIsBetter
+          output-file-path: benchmark-bigger.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '150%'
+          comment-on-alert: true
