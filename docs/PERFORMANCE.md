@@ -83,3 +83,16 @@ Three.js objects, geometries, textures, and WebGL contexts do not automatically 
    - `useThreeScene.ts`: Reusable hook with built-in automatic resource tracking and teardown.
 3. **Automated Memory Leak Testing (`test/performance/memory.test.ts`)**:
    - Automated unit tests verify all geometries, multi-material arrays, textures, object hierarchies, renderers, and hooks release resources without leaks.
+
+## 4. Benchmark Results (#505)
+
+Latest measurement (2026-11-21, commit `1ef8f53`). Details, history and how to rerun are in [BENCHMARKS.md](BENCHMARKS.md).
+
+| Measure                      |     Result | Change since 2026-10-18 baseline |
+| ---------------------------- | ---------: | -------------------------------: |
+| Total JS (gzip)              | 1,101.9 KB |                            +5.6% |
+| Total JS (brotli)            |   921.6 KB |                            +5.8% |
+| CSS (gzip)                   |     8.9 KB |                            +0.8% |
+| `feature-three` chunk (gzip) |   277.3 KB |                            +8.5% |
+
+Every push to `main` records bundle sizes and Lighthouse results through `.github/workflows/benchmark.yml`. The history is kept in `dev/bench/data.js` on the `gh-pages` branch.

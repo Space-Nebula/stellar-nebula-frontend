@@ -140,6 +140,8 @@ npm run build # Outputs to /dist
 
 See [docs/performance-testing.md](docs/performance-testing.md) for thresholds, local commands, and Lighthouse report interpretation.
 
+Latest results and their history: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
 ### Deployment
 
 - **Vercel**: Connected via `vercel.json`; pushes to `main` deploy automatically.
@@ -164,6 +166,7 @@ Encountering issues with setup, wallet connections, or transactions?
 - [Common Errors and Solutions](docs/COMMON_ERRORS.md) — Fast lookups for error messages and fixes
 
 ## Contributing
+
 ## Security
 
 Found a vulnerability? Please report it privately via a
