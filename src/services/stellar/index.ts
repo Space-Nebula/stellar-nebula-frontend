@@ -21,4 +21,6 @@ export {
   releaseTransactionLock,
 } from './transaction'
 export type { QueuedTransaction } from './transaction'
+export { fetchAccountBalances, fetchUserAssetBalance } from './asset-balance'
+
 

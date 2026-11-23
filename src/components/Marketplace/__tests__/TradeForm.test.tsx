@@ -81,4 +81,53 @@ describe('TradeForm validation', () => {
     await userEvent.click(screen.getByRole('button', { name: 'MAX' }))
     expect(screen.getByLabelText(/amount/i)).toHaveValue(75)
   })
+
+  it('enforces minimum trade amount of 0.0000001 XLM', async () => {
+    const onSubmit = renderForm(vi.fn(), 100)
+    const amount = screen.getByLabelText(/amount/i)
+
+    await userEvent.type(amount, '0.00000001')
+    await userEvent.tab()
+
+    expect(await screen.findByText(/minimum trade amount is 0.0000001/i)).toBeInTheDocument()
+    const submitBtn = screen.getByRole('button', { name: /place buy order/i })
+    expect(submitBtn).toBeDisabled()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('handles scientific notation input properly', async () => {
+    const onSubmit = renderForm(vi.fn(), 100)
+    const amount = screen.getByLabelText(/amount/i)
+
+    // 1e-5 is 0.00001 which has 5 decimals and >= 0.0000001
+    await userEvent.type(amount, '1e-5')
+    await userEvent.tab()
+
+    expect(screen.queryByText(/decimal place/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/minimum trade amount/i)).not.toBeInTheDocument()
+
+    const submitBtn = screen.getByRole('button', { name: /place buy order/i })
+    expect(submitBtn).not.toBeDisabled()
+
+    await userEvent.click(submitBtn)
+    expect(onSubmit).toHaveBeenCalledWith('buy', 0.05, 0.00001)
+  })
+
+  it('disables submit button and shows error when amount exceeds balance', async () => {
+    renderForm(vi.fn(), 25)
+    const amount = screen.getByLabelText(/amount/i)
+
+    await userEvent.type(amount, '30')
+    await userEvent.tab()
+
+    expect(await screen.findByText(/cannot exceed your balance of 25/i)).toBeInTheDocument()
+    const submitBtn = screen.getByRole('button', { name: /place buy order/i })
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('displays real-time balance in the form header', () => {
+    renderForm(vi.fn(), 50)
+    expect(screen.getByText(/balance:/i)).toBeInTheDocument()
+    expect(screen.getByText(/50 DUST/i)).toBeInTheDocument()
+  })
 })
