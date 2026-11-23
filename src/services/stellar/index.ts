@@ -13,3 +13,12 @@ export type {
   SorobanResourceEstimate,
   FeeWarning,
 } from './gasEstimation'
+export {
+  TransactionQueue,
+  globalTransactionQueue,
+  isTransactionLocked,
+  acquireTransactionLock,
+  releaseTransactionLock,
+} from './transaction'
+export type { QueuedTransaction } from './transaction'
+
