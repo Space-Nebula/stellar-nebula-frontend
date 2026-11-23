@@ -5,6 +5,7 @@ import { getActiveStellarConfig } from '@/config/stellar'
 import { simulateContractTransaction } from '@utils/stellar/simulate'
 import type { ParsedSimulationResult, ContractNativeValue } from '@utils/stellar/responseParser'
 import type { ScanNebulaParams, ScanNebulaResult } from '@services/contracts'
+import { parseStellarError } from '@/utils/stellar-errors'
 import type { XDR } from '@/types'
 
 export interface UseNebulaScanOptions {
@@ -82,13 +83,8 @@ export function useNebulaScan({
         haptics.scanSuccess()
         return scanResult
       } catch (err) {
-        const message =
-          err instanceof ContractError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Scan failed due to an unknown error'
-        setError(message)
+        const parsed = parseStellarError(err)
+        setError(parsed.message)
         haptics.error()
         return null
       } finally {
