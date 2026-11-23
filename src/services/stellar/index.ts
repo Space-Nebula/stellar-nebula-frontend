@@ -21,4 +21,11 @@ export {
   FEE_CACHE_TTL_MS,
 } from './fee-service'
 export type { HorizonFeeStatsResponse, CachedFeeData } from './fee-service'
+export {
+  submitStellarTransaction,
+  executeWithFriendlyError,
+  StellarTransactionExecutionError,
+} from './transaction'
+export type { SubmitTransactionOptions, TransactionSubmissionResult } from './transaction'
+
 
