@@ -18,6 +18,9 @@ export interface DetailedFeeEstimate extends FeeBreakdown {
 
 const STROOPS_PER_LUMEN = 10_000_000
 
+/** The SDK exports `BASE_FEE` as a string ("100"); fee maths here is numeric. */
+export const DEFAULT_NETWORK_RATE = Number(BASE_FEE)
+
 export function calculateFeeBreakdown(transaction: Transaction): FeeBreakdown {
   const operationCount = transaction.operations.length
   const baseFeeInStroops = parseInt(transaction.fee)
@@ -46,14 +49,14 @@ export function formatFeeInLumens(stroops: number, decimalPlaces: number = 7): s
 
 export function estimateTransactionFee(
   operationCount: number,
-  networkRate: number = BASE_FEE
+  networkRate: number = DEFAULT_NETWORK_RATE
 ): number {
   return operationCount * networkRate
 }
 
 export function getDetailedFeeEstimate(
   transaction: Transaction,
-  networkRate: number = BASE_FEE
+  networkRate: number = DEFAULT_NETWORK_RATE
 ): DetailedFeeEstimate {
   const breakdown = calculateFeeBreakdown(transaction)
   const totalFeeStroops = estimateTransactionFee(breakdown.operationCount, networkRate)

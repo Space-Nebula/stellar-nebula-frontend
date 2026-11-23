@@ -13,6 +13,8 @@ interface LogRocketClient {
   getSessionURL(callback: (sessionURL: string) => void): void
   captureException(error: Error, options?: { extra?: Record<string, unknown> }): void
   captureMessage(message: string, options?: { extra?: Record<string, unknown> }): void
+  /** Custom event tracking; checked with `typeof === 'function'` before use. */
+  track?(eventName: string, properties?: Record<string, unknown>): void
 }
 
 interface Window {

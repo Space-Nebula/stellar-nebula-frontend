@@ -1,10 +1,11 @@
 import type { Horizon } from '@stellar/stellar-sdk'
 import { createScopedLogger } from '@/services/logging'
 import { getErrorMessage } from '@utils/error-messages'
+import { nextCursorFromPage } from '@utils/horizon-utils'
 
 const log = createScopedLogger('TransactionCache')
 
-export interface CachedTransaction extends Horizon.TransactionResponse {
+export interface CachedTransaction extends Horizon.ServerApi.TransactionRecord {
   _cachedAt: number
 }
 
@@ -50,7 +51,9 @@ export class TransactionCacheService {
         this.clearCache()
       }
     } catch (err) {
-      log.warn('Failed to restore transaction cache from storage', err)
+      log.warn('Failed to restore transaction cache from storage', {
+        error: err instanceof Error ? err.message : String(err),
+      })
       this.clearCache()
     }
   }
@@ -59,7 +62,9 @@ export class TransactionCacheService {
     try {
       localStorage.setItem('stellar-nebula:tx-cache', JSON.stringify(this.state))
     } catch (err) {
-      log.warn('Failed to save transaction cache to storage', err)
+      log.warn('Failed to save transaction cache to storage', {
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 
@@ -109,7 +114,7 @@ export class TransactionCacheService {
       }))
 
       this.state.transactions = transactions
-      this.state.cursor = response.next ? response.next.split('cursor=')[1] : null
+      this.state.cursor = nextCursorFromPage(response)
       this.state.lastFetch = now
       this.state.isLoading = false
 
@@ -161,7 +166,7 @@ export class TransactionCacheService {
       }))
 
       this.state.transactions = [...this.state.transactions, ...newTransactions]
-      this.state.cursor = response.next ? response.next.split('cursor=')[1] : null
+      this.state.cursor = nextCursorFromPage(response)
       this.state.isLoading = false
 
       this.saveToStorage()
@@ -209,7 +214,7 @@ export class TransactionCacheService {
       const actuallyNew = newTransactions.filter((tx) => !existingIds.has(tx.id))
 
       this.state.transactions = [...actuallyNew, ...this.state.transactions]
-      this.state.cursor = response.next ? response.next.split('cursor=')[1] : null
+      this.state.cursor = nextCursorFromPage(response)
       this.state.lastFetch = Date.now()
       this.state.isLoading = false
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Transaction } from '@stellar/stellar-sdk'
-import { BASE_FEE } from '@stellar/stellar-sdk'
 import {
+  DEFAULT_NETWORK_RATE,
   calculateFeeBreakdown,
   getDetailedFeeEstimate,
   type DetailedFeeEstimate,
@@ -29,7 +29,7 @@ export function useFeeEstimation(
   estimateFee: () => void
   clearError: () => void
 } {
-  const { networkRate = BASE_FEE, autoEstimate = true } = options
+  const { networkRate = DEFAULT_NETWORK_RATE, autoEstimate = true } = options
 
   const [state, setState] = useState<FeeEstimationState>({
     estimate: null,

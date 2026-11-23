@@ -6,7 +6,12 @@
  */
 export function SkeletonNebulaView() {
   return (
-    <div className="skeleton-nebula" aria-busy="true" aria-label="Loading nebula view">
+    <div
+      className="skeleton-nebula"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading nebula view"
+    >
       {/* Page header */}
       <div className="skeleton skeleton-block skeleton-nebula-header" />
 

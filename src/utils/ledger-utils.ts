@@ -3,7 +3,10 @@ import { createScopedLogger } from '@/services/logging'
 
 const log = createScopedLogger('LedgerUtils')
 
-const STELLAR_HD_PATH = "44'/148'/0'"
+/** SLIP-0044 coin type 148 (Stellar) under BIP-44; the account index is appended. */
+const STELLAR_HD_PATH_PREFIX = "44'/148'"
+
+const errorContext = (err: unknown) => ({ error: err instanceof Error ? err.message : String(err) })
 
 export interface LedgerDeviceInfo {
   modelId: string
@@ -30,7 +33,7 @@ export async function checkLedgerSupport(): Promise<boolean> {
     log.info('Ledger support check', { isSupported })
     return isSupported
   } catch (err) {
-    log.debug('Ledger support check failed', err instanceof Error ? err : new Error(String(err)))
+    log.debug('Ledger support check failed', errorContext(err))
     return false
   }
 }
@@ -55,14 +58,15 @@ export async function getLedgerDeviceInfo(): Promise<LedgerDeviceInfo | null> {
     const info: LedgerDeviceInfo = {
       modelId: deviceInfo.id,
       modelName: deviceInfo.productName,
-      firmwareVersion: transport.firmwareVersion || 'unknown',
+      firmwareVersion:
+        (transport as typeof transport & { firmwareVersion?: string }).firmwareVersion || 'unknown',
       isLocked: false,
     }
 
     log.info('Retrieved Ledger device info', { modelName: info.modelName })
     return info
   } catch (err) {
-    log.warn('Failed to get Ledger device info', err instanceof Error ? err : new Error(String(err)))
+    log.warn('Failed to get Ledger device info', errorContext(err))
     return null
   }
 }
@@ -77,7 +81,7 @@ export function getNetworkPassphrase(network: StellarNetwork): string {
 }
 
 export function getDerivationPath(accountIndex: number = 0): string {
-  return `44'/148'/${accountIndex}'`
+  return `${STELLAR_HD_PATH_PREFIX}/${accountIndex}'`
 }
 
 export function validatePublicKey(publicKey: string): boolean {
@@ -115,7 +119,7 @@ export async function isLedgerConnected(): Promise<boolean> {
 
     return isConnected
   } catch (err) {
-    log.debug('Ledger not connected', err instanceof Error ? err : new Error(String(err)))
+    log.debug('Ledger not connected', errorContext(err))
     return false
   }
 }

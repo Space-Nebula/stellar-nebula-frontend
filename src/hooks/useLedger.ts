@@ -1,6 +1,12 @@
 import { useCallback, useState, useEffect } from 'react'
 import type { StellarNetwork } from '@/config/stellar'
 import { createScopedLogger } from '@/services/logging'
+import {
+  connectLedger,
+  disconnectLedger,
+  isLedgerAvailable,
+  signTransactionWithLedger,
+} from '@/services/wallets/ledger'
 import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('useLedger')
@@ -14,11 +20,22 @@ export interface LedgerConnectionState {
 
 export interface UseLedgerOptions {
   network?: StellarNetwork
+  /** Reserved for a future on-device confirmation prompt; not used yet. */
   requiresConfirmation?: boolean
 }
 
+const NETWORK_PASSPHRASES: Record<StellarNetwork, string> = {
+  testnet: 'Test SDF Network ; September 2015',
+  futurenet: 'Test SDF Future Network ; October 2022',
+  mainnet: 'Public Global Stellar Network ; September 2015',
+}
+
+/**
+ * Ledger connection and signing state for components. All device access goes
+ * through `@/services/wallets/ledger`, which uses `@ledgerhq/hw-app-str`.
+ */
 export function useLedger(options: UseLedgerOptions = {}) {
-  const { network = 'testnet', requiresConfirmation = false } = options
+  const { network = 'testnet' } = options
 
   const [state, setState] = useState<LedgerConnectionState>({
     isConnected: false,
@@ -30,19 +47,13 @@ export function useLedger(options: UseLedgerOptions = {}) {
   // Check Ledger availability
   const checkAvailability = useCallback(async (): Promise<boolean> => {
     try {
-      const TransportWebUSB =
-        (await import('@ledgerhq/hw-transport-webusb').then((m) => m.default)) || null
-
-      if (!TransportWebUSB) {
-        log.warn('Ledger WebUSB transport not available')
-        return false
-      }
-
-      const isSupported = await TransportWebUSB.isSupported()
+      const isSupported = await isLedgerAvailable()
       log.info('Ledger WebUSB support check', { isSupported })
       return isSupported
     } catch (err) {
-      log.warn('Failed to check Ledger availability', err instanceof Error ? err : new Error(String(err)))
+      log.warn('Failed to check Ledger availability', {
+        error: err instanceof Error ? err.message : String(err),
+      })
       return false
     }
   }, [])
@@ -52,24 +63,7 @@ export function useLedger(options: UseLedgerOptions = {}) {
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const TransportWebUSB =
-        (await import('@ledgerhq/hw-transport-webusb').then((m) => m.default)) || null
-
-      if (!TransportWebUSB) {
-        throw new Error('Ledger WebUSB transport not available in this browser')
-      }
-
-      const transport = await TransportWebUSB.create()
-      const Str = await import('@stellar/ledger-sdk').then((m) => m.default)
-
-      if (!Str) {
-        throw new Error('Stellar Ledger SDK not available')
-      }
-
-      const stellar = new Str(transport)
-      const result = await stellar.getPublicKey("44'/148'/0'")
-
-      const publicKey = result.publicKey
+      const publicKey = await connectLedger()
       log.info('Connected to Ledger', { publicKey: publicKey.slice(0, 8) })
 
       setState({
@@ -98,6 +92,7 @@ export function useLedger(options: UseLedgerOptions = {}) {
   // Disconnect from Ledger
   const disconnect = useCallback(async () => {
     try {
+      await disconnectLedger()
       setState({
         isConnected: false,
         publicKey: null,
@@ -107,11 +102,13 @@ export function useLedger(options: UseLedgerOptions = {}) {
 
       log.info('Disconnected from Ledger')
     } catch (err) {
-      log.warn('Error during Ledger disconnect', err instanceof Error ? err : new Error(String(err)))
+      log.warn('Error during Ledger disconnect', {
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }, [])
 
-  // Sign transaction
+  // Sign a transaction on the device. Resolves to the signed transaction XDR.
   const signTransaction = useCallback(
     async (transactionXdr: string): Promise<string | null> => {
       if (!state.isConnected || !state.publicKey) {
@@ -125,37 +122,16 @@ export function useLedger(options: UseLedgerOptions = {}) {
       setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
       try {
-        const TransportWebUSB =
-          (await import('@ledgerhq/hw-transport-webusb').then((m) => m.default)) || null
-
-        if (!TransportWebUSB) {
-          throw new Error('Ledger WebUSB transport not available')
-        }
-
-        const transport = await TransportWebUSB.create()
-        const Str = await import('@stellar/ledger-sdk').then((m) => m.default)
-
-        if (!Str) {
-          throw new Error('Stellar Ledger SDK not available')
-        }
-
-        const stellar = new Str(transport)
-        const passphraseMap: Record<StellarNetwork, string> = {
-          testnet: 'Test SDF Network ; September 2015',
-          futurenet: 'Test SDF Future Network ; October 2022',
-          mainnet: 'Public Global Stellar Network ; September 2015',
-        }
-
-        const result = await stellar.signTransaction(
-          "44'/148'/0'",
+        const signedXdr = await signTransactionWithLedger(
           transactionXdr,
-          passphraseMap[network]
+          NETWORK_PASSPHRASES[network],
+          state.publicKey
         )
 
         log.info('Transaction signed with Ledger')
         setState((prev) => ({ ...prev, isLoading: false }))
 
-        return result.signature
+        return signedXdr
       } catch (err) {
         const message = getErrorMessage(err, 'Failed to sign transaction')
         log.error('Ledger signing failed', err instanceof Error ? err : new Error(message))

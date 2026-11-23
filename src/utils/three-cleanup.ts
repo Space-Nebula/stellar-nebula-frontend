@@ -117,25 +117,31 @@ export function disposeMaterial(material?: THREE.Material | THREE.Material[] | n
 export function disposeHierarchy(root?: THREE.Object3D | null): void {
   if (!root) return
 
-  root.traverse((child) => {
-    const mesh = child as THREE.Mesh & {
-      geometry?: THREE.BufferGeometry
-      material?: THREE.Material | THREE.Material[]
-    }
+  // This runs from effect cleanup, where throwing would break unmounting. A
+  // scene-like object without `traverse` or a `children` array (a partial test
+  // double, or one that is already torn down) is therefore skipped, not crashed on.
+  if (typeof root.traverse === 'function') {
+    root.traverse((child) => {
+      const mesh = child as THREE.Mesh & {
+        geometry?: THREE.BufferGeometry
+        material?: THREE.Material | THREE.Material[]
+      }
 
-    if (mesh.geometry) {
-      disposeGeometry(mesh.geometry)
-    }
+      if (mesh.geometry) {
+        disposeGeometry(mesh.geometry)
+      }
 
-    if (mesh.material) {
-      disposeMaterial(mesh.material)
-    }
-  })
+      if (mesh.material) {
+        disposeMaterial(mesh.material)
+      }
+    })
+  }
 
-  // Detach children
-  while (root.children.length > 0) {
-    const child = root.children[0]
-    root.remove(child)
+  // Detach children. Iterate a snapshot: `remove` mutates `root.children`.
+  if (Array.isArray(root.children) && typeof root.remove === 'function') {
+    for (const child of [...root.children]) {
+      root.remove(child)
+    }
   }
 }
 

@@ -332,7 +332,7 @@ export function clearAllGameData(sliceNames?: SliceName[]) {
  * Encrypt sensitive user and session data before export.
  * Provides a secure way to share game saves without exposing wallet addresses.
  */
-export async function encryptSensitiveSlices(password: string): Promise<void> {
+export async function encryptSensitiveSlices(_password: string): Promise<void> {
   const sensitiveSluces = ['user', 'session']
 
   for (const sliceName of sensitiveSluces) {
@@ -354,7 +354,7 @@ export async function encryptSensitiveSlices(password: string): Promise<void> {
  * Decrypt sensitive user and session data after import.
  * Restores encrypted wallet addresses and session information securely.
  */
-export async function decryptSensitiveSlices(password: string): Promise<void> {
+export async function decryptSensitiveSlices(_password: string): Promise<void> {
   const sensitiveSluces = ['user', 'session']
 
   for (const sliceName of sensitiveSluces) {

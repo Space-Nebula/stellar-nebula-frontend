@@ -51,7 +51,7 @@ describe('Service Worker — Update Flow (#422)', () => {
   // -----------------------------------------------------------------------
   describe('onNeedRefresh callback', () => {
     it('calls the updateSW function with `true` to activate the new worker', () => {
-      const updateSW = vi.fn(async () => {})
+      const updateSW = vi.fn(async (_reloadPage?: boolean) => {})
       // Simulate calling updateSW(true) to activate the waiting worker
       updateSW(true)
       expect(updateSW).toHaveBeenCalledWith(true)
@@ -112,12 +112,11 @@ describe('Service Worker — Update Flow (#422)', () => {
 
     it('does not auto-apply if manual update is triggered first', () => {
       const applyUpdate = vi.fn()
-      let timer: ReturnType<typeof setTimeout> | null = setTimeout(applyUpdate, AUTO_APPLY_IDLE_MS)
+      const timer = setTimeout(applyUpdate, AUTO_APPLY_IDLE_MS)
 
       // Simulate manual update (user clicks Refresh) before idle expires
       vi.advanceTimersByTime(AUTO_APPLY_IDLE_MS / 2)
       clearTimeout(timer)
-      timer = null
 
       // Full idle period passes — no auto-apply since timer was cleared
       vi.advanceTimersByTime(AUTO_APPLY_IDLE_MS)
@@ -159,7 +158,7 @@ describe('Service Worker — Update Flow (#422)', () => {
   // -----------------------------------------------------------------------
   describe('cleanup on component unmount', () => {
     it('clears idle timer and removes event listeners on cleanup', () => {
-      const cleanupIdleRef = { current: vi.fn() }
+      const cleanupIdleRef: { current: () => void } = { current: vi.fn() }
       const removeEventListener = vi.fn()
 
       // Simulate the cleanup function the hook stores
