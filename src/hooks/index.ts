@@ -52,3 +52,6 @@ export {
   LANGUAGE_STORAGE_KEY,
 } from './useLanguage'
 export type { SupportedLanguageCode, UseLanguageReturn } from './useLanguage'
+export { useTransactionFee } from './useTransactionFee'
+export type { UseTransactionFeeOptions, UseTransactionFeeResult } from './useTransactionFee'
+

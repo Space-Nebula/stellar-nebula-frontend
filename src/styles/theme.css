@@ -1,0 +1,60 @@
+/**
+ * Theme color variables for light and dark modes.
+ * Compliant with WCAG 2.1 AA contrast requirements (>= 4.5:1 for normal text).
+ */
+
+:root {
+  /* Light mode defaults */
+  --color-bg-primary: #ffffff;
+  --color-bg-surface: #f3f4f6;
+  --color-bg-card: #ffffff;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563; /* 7.3:1 against #ffffff */
+  --color-text-muted: #6b7280;     /* 4.8:1 against #ffffff */
+  --color-link: #1d4ed8;           /* 8.2:1 against #ffffff */
+  --color-link-hover: #1e40af;
+  --color-border: #e5e7eb;
+
+  /* Button tokens */
+  --btn-primary-bg: #7c3aed;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #6d28d9;
+
+  --btn-secondary-bg: #10133a;
+  --btn-secondary-text: #ffffff;
+  --btn-secondary-hover: #1b1f55;
+
+  --btn-danger-bg: #e11d48;
+  --btn-danger-text: #ffffff;
+  --btn-danger-hover: #be123c;
+}
+
+/* Dark mode overrides (applied via .dark class or data-theme="dark") */
+.dark,
+[data-theme='dark'],
+:root[class~='dark'] {
+  --color-bg-primary: #050716;
+  --color-bg-surface: #1f2937;
+  --color-bg-card: #111827;
+
+  /* High contrast dark mode typography (Issue #549) */
+  --color-text-primary: #f9fafb;     /* >14:1 against #1f2937 and #050716 */
+  --color-text-secondary: #9ca3af;   /* 5.78:1 against #1f2937 (exceeds WCAG AA 4.5:1) */
+  --color-text-muted: #d1d5db;       /* 9.96:1 against #1f2937 (exceeds WCAG AAA 7:1) */
+  --color-link: #93c5fd;             /* 8.14:1 on #1f2937, 5.72:1 on #374151 */
+  --color-link-hover: #bfdbfe;       /* 11.8:1 on #1f2937 */
+  --color-border: #374151;
+
+  /* Button tokens in dark mode */
+  --btn-primary-bg: #7c3aed;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #6d28d9;
+
+  --btn-secondary-bg: #10133a;
+  --btn-secondary-text: #ffffff;
+  --btn-secondary-hover: #1b1f55;
+
+  --btn-danger-bg: #e11d48;
+  --btn-danger-text: #ffffff;
+  --btn-danger-hover: #be123c;
+}

@@ -14,13 +14,26 @@ export type {
   FeeWarning,
 } from './gasEstimation'
 export {
+  fetchHorizonFeeStats,
+  getCurrentBaseFee,
+  clearFeeCache,
+  extractBaseFeeFromStats,
+  FEE_CACHE_TTL_MS,
+} from './fee-service'
+export type { HorizonFeeStatsResponse, CachedFeeData } from './fee-service'
+export {
+  submitStellarTransaction,
+  executeWithFriendlyError,
+  StellarTransactionExecutionError,
   TransactionQueue,
   globalTransactionQueue,
   isTransactionLocked,
   acquireTransactionLock,
   releaseTransactionLock,
 } from './transaction'
-export type { QueuedTransaction } from './transaction'
+export type {
+  SubmitTransactionOptions,
+  TransactionSubmissionResult,
+  QueuedTransaction,
+} from './transaction'
 export { fetchAccountBalances, fetchUserAssetBalance } from './asset-balance'
-
-

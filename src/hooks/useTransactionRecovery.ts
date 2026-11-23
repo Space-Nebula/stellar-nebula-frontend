@@ -94,7 +94,11 @@ export function useTransactionRecovery<TPayload = unknown>({
   const isDismissed = dismissedId !== null && dismissedId === currentFailureId
 
   const report = useCallback(
-    (outcome: Omit<RecoveryOutcome, 'operationId' | 'transactionId'>) => {
+    (
+      outcome: Omit<RecoveryOutcome, 'operationId' | 'transactionId' | 'errorType'> & {
+        errorType?: string | null
+      }
+    ) => {
       const payload: RecoveryOutcome = {
         ...outcome,
         operationId: failedOperation?.id ?? null,
@@ -196,17 +200,6 @@ export function useTransactionRecovery<TPayload = unknown>({
       })
     }
   }, [failedOperation, report, retryState])
-
-  const hasFailure =
-    !isDismissed &&
-    (retryState.lastFailure !== null || (failedOperation !== undefined && !hasSucceeded))
-
-  const currentError =
-    lastError instanceof Error
-      ? lastError.message
-      : typeof lastError === 'string'
-        ? lastError
-        : (retryState.lastFailure?.error ?? failedOperation?.error ?? null)
 
   return useMemo(
     () => ({

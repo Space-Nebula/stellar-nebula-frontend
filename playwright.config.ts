@@ -27,7 +27,9 @@ export default defineConfig({
     navigationTimeout: 30_000,
     // Deterministic rendering: reduce motion to avoid animation-driven flakes.
     reducedMotion: 'reduce',
-    trace: 'on-first-retry',
+    // Keep the trace of every failed attempt (not only the first retry) so the
+    // CI artifact always has one for the failing test.
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },

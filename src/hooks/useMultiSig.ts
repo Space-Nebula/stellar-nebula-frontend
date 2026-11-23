@@ -15,7 +15,7 @@ import { getErrorMessage } from '@utils/error-messages'
 export function useMultiSig() {
   const [transaction, setTransaction] = useState<MultiSigTransaction | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading] = useState(false)
 
   const initializeTransaction = useCallback(
     (xdr: string, threshold: number, signers: string[]) => {

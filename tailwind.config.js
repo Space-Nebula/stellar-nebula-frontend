@@ -26,6 +26,17 @@ export default {
           dust: '#38bdf8',
           void: '#020617',
         },
+        dark: {
+          bg: '#050716',
+          surface: '#1f2937',
+          card: '#111827',
+          text: '#f9fafb',
+          'text-secondary': '#9ca3af', // WCAG AA >= 4.5:1 on #1f2937 (5.78:1)
+          'text-muted': '#d1d5db',     // WCAG AAA >= 7.0:1 on #1f2937 (9.96:1)
+          link: '#93c5fd',             // WCAG AA >= 4.5:1 on #1f2937 (8.14:1) and #374151 (5.72:1)
+          'link-hover': '#bfdbfe',     // 11.8:1 on #1f2937
+          border: '#374151',
+        },
       },
       backgroundImage: {
         'nebula-radial':

@@ -24,10 +24,10 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-cosmic-violet hover:bg-cosmic-purple text-white border border-transparent shadow-nebula-glow',
-  secondary: 'bg-space-800 hover:bg-space-700 text-white border border-space-600',
-  ghost: 'bg-transparent hover:bg-space-800 text-white border border-transparent',
-  danger: 'bg-rose-600 hover:bg-rose-500 text-white border border-transparent',
+    'bg-cosmic-violet hover:bg-violet-700 active:bg-violet-800 text-white border border-transparent shadow-nebula-glow',
+  secondary: 'bg-space-800 hover:bg-space-700 active:bg-space-600 text-white border border-space-600',
+  ghost: 'bg-transparent hover:bg-space-800 active:bg-space-700 text-white border border-transparent',
+  danger: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white border border-transparent',
 }
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

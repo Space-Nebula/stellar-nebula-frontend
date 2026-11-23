@@ -20,6 +20,7 @@ export type AnalyticsEventName =
   | 'pwa_install_deferred'
   | 'sw_update_available'
   | 'sw_update_applied'
+  | 'network_switched'
 
 export interface AnalyticsEventPayload {
   [key: string]: string | number | boolean | null | undefined

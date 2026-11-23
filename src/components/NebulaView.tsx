@@ -1,32 +1,36 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { NebulaCanvas, type NebulaCanvasProps } from './Canvas/NebulaCanvas'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { useDevicePerformance, type QualitySetting } from '@/hooks/useDevicePerformance'
+import { PerformanceMonitor } from '@/utils/performance-monitor'
+import { NebulaParticles } from './NebulaParticles'
 import { cleanScene } from '@/utils/three-cleanup'
 import { useNebulaScene } from '@/hooks/useNebulaScene'
 import type { ResourceType } from '@/types/game'
 
-export interface NebulaViewProps extends NebulaCanvasProps {
+export interface NebulaViewProps {
+  onQualityChange?: (quality: QualitySetting) => void
+  initialQuality?: QualitySetting
+  showFpsOverlay?: boolean
   initialSectorSeed?: string
   onSectorChange?: (seed: string) => void
   onCleanup?: () => void
+  onScanComplete?: (resourceType: ResourceType, amount: number, pointId: string) => void
 }
 
-/**
- * NebulaView component with comprehensive lifecycle & memory leak disposal (#544).
- * Ensures Three.js scenes, geometries, materials, shaders, and event listeners
- * are fully disposed when changing sectors or unmounting.
- */
-export function NebulaView({
+export const NebulaView: React.FC<NebulaViewProps> = ({
+  onQualityChange,
+  initialQuality,
+  showFpsOverlay = true,
   initialSectorSeed,
   onSectorChange,
   onCleanup,
   onScanComplete,
-  ...canvasProps
-}: NebulaViewProps) {
+}) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeSector, setActiveSector] = useState(initialSectorSeed ?? 'sector-alpha-01')
 
   const {
-    scene,
+    scene: lifecycleScene,
     changeNebula,
     recordScan,
     clearTrackedResources,
@@ -35,7 +39,52 @@ export function NebulaView({
     onSceneChange: onSectorChange,
   })
 
-  // Handle sector transitions safely disposing previous sector's assets
+  const {
+    tier,
+    quality,
+    setQuality,
+    isMobile,
+    particleBudget,
+    isAutoAdjusted,
+    setIsAutoAdjusted,
+  } = useDevicePerformance()
+
+  const [fps, setFps] = useState<number>(60)
+  const [qualityOverride, setQualityOverride] = useState<QualitySetting>(initialQuality || quality)
+
+  // Initialize performance monitor with auto-adjust threshold < 30 FPS
+  const monitor = useMemo(() => {
+    return new PerformanceMonitor({
+      minFpsThreshold: 30,
+      sampleWindowMs: 3000,
+      onQualityReduce: (newQ, dropFps) => {
+        setQualityOverride(newQ)
+        setQuality(newQ)
+        setIsAutoAdjusted(true)
+        console.warn(`[PerformanceMonitor] FPS dropped to ${dropFps}; automatically adjusted quality to ${newQ}`)
+      },
+    })
+  }, [setQuality, setIsAutoAdjusted])
+
+  // Sync internal quality state with hook quality changes
+  useEffect(() => {
+    if (!initialQuality) {
+      setQualityOverride(quality)
+    }
+  }, [quality, initialQuality])
+
+  // Manual override handler
+  const handleQualityChange = useCallback(
+    (newQuality: QualitySetting) => {
+      setQualityOverride(newQuality)
+      setQuality(newQuality)
+      monitor.reset()
+      onQualityChange?.(newQuality)
+    },
+    [setQuality, monitor, onQualityChange]
+  )
+
+  // Sector switch handler with resource disposal
   const handleSectorSwitch = useCallback(
     (newSeed: string) => {
       setActiveSector(newSeed)
@@ -44,35 +93,96 @@ export function NebulaView({
     [changeNebula]
   )
 
-  const handleScan = useCallback(
-    (resourceType: ResourceType, amount: number, pointId: string) => {
-      recordScan()
-      onScanComplete?.(resourceType, amount, pointId)
-    },
-    [recordScan, onScanComplete]
-  )
-
-  // Comprehensive unmount cleanup
+  // Comprehensive unmount cleanup (#544)
   useEffect(() => {
     return () => {
       clearTrackedResources()
-      if (scene) {
-        cleanScene(scene)
+      if (lifecycleScene) {
+        cleanScene(lifecycleScene)
       }
       onCleanup?.()
     }
-  }, [scene, clearTrackedResources, onCleanup])
+  }, [lifecycleScene, clearTrackedResources, onCleanup])
 
   return (
     <div
       ref={containerRef}
-      className="nebula-view-container relative w-full h-full min-h-[400px] overflow-hidden"
+      className="nebula-view-container relative w-full h-[600px] min-h-[400px] rounded-xl overflow-hidden bg-space-950 border border-space-800"
       data-sector-seed={activeSector}
     >
-      <NebulaCanvas
-        {...canvasProps}
-        onScanComplete={handleScan}
-      />
+      {/* 3D Canvas with batched InstancedMesh particles */}
+      <Canvas
+        camera={{ position: [0, 20, 50], fov: 60 }}
+        dpr={qualityOverride === 'low' ? 1.0 : [1, 1.5]}
+        gl={{ antialias: qualityOverride !== 'low', powerPreference: 'high-performance' }}
+        onCreated={({ gl, scene }) => {
+          // Track render loop to monitor FPS
+          const originalRender = gl.render.bind(gl)
+          gl.render = (s, camera) => {
+            monitor.recordFrame()
+            setFps(monitor.getAverageFps())
+            monitor.checkAutoAdjust(qualityOverride)
+            originalRender(s, camera)
+          }
+        }}
+      >
+        <ambientLight intensity={0.4} />
+        <pointLight position={[0, 0, 0]} intensity={1.5} color="#e879f9" />
+        <NebulaParticles
+          quality={qualityOverride}
+          simplifiedShaders={qualityOverride === 'low' || isMobile}
+        />
+      </Canvas>
+
+      {/* Floating Quality Settings & Performance Controls */}
+      <div
+        className="absolute top-4 right-4 z-20 flex flex-col gap-2 p-3 rounded-lg bg-space-900/90 backdrop-blur-md border border-space-700 text-white shadow-lg text-xs"
+        data-testid="performance-overlay"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <span className="font-semibold text-gray-300">Graphics Quality</span>
+          <span className="text-[10px] text-cosmic-cyan uppercase font-bold">
+            {tier} Tier {isMobile ? '(Mobile)' : '(Desktop)'}
+          </span>
+        </div>
+
+        {/* User Quality Toggle Buttons */}
+        <div className="flex gap-1 bg-space-950 p-1 rounded border border-space-800" role="group" aria-label="Quality settings">
+          {(['low', 'medium', 'high'] as QualitySetting[]).map((q) => {
+            const isSelected = qualityOverride === q
+            return (
+              <button
+                key={q}
+                type="button"
+                onClick={() => handleQualityChange(q)}
+                aria-pressed={isSelected}
+                data-testid={`quality-btn-${q}`}
+                className={`px-2.5 py-1 rounded capitalize font-medium transition ${
+                  isSelected
+                    ? 'bg-cosmic-violet text-white shadow'
+                    : 'text-gray-400 hover:text-white hover:bg-space-800'
+                }`}
+              >
+                {q}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Diagnostics & FPS Monitor */}
+        {showFpsOverlay && (
+          <div className="pt-2 border-t border-space-800 flex justify-between items-center text-gray-400">
+            <span>FPS: <strong className={fps < 30 ? 'text-rose-400' : 'text-emerald-400'}>{fps}</strong></span>
+            <span>Particles: <strong className="text-gray-200">{particleBudget.toLocaleString()}</strong></span>
+          </div>
+        )}
+
+        {isAutoAdjusted && (
+          <div className="text-[11px] text-amber-300 bg-amber-950/60 px-2 py-1 rounded border border-amber-800/80">
+            Auto-reduced to preserve ≥30 FPS
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Component } from 'react'
 import { trackEvent } from '../../services/analytics'
 import { captureError } from '../../services/errorTracking'
 import { createScopedLogger } from '../../services/logging'
+import { parseStellarError } from '../../utils/stellar-errors'
 
 const log = createScopedLogger('ErrorBoundary')
 
@@ -80,6 +81,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         return this.props.fallback
       }
 
+      const stellarError = this.state.error ? parseStellarError(this.state.error, { logToSentry: false }) : null
+
       return (
         <div
           role="alert"
@@ -94,7 +97,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             backgroundColor: '#242424',
           }}
         >
-          <h2 style={{ marginBottom: 16, fontSize: '1.5em' }}>Something went wrong</h2>
+          <h2 style={{ marginBottom: 16, fontSize: '1.5em' }}>
+            {stellarError?.isStellarError ? stellarError.title : 'Something went wrong'}
+          </h2>
           <p
             style={{
               marginBottom: 16,
@@ -106,8 +111,36 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               textAlign: 'center',
             }}
           >
-            {this.state.error?.message ?? 'An unexpected error occurred'}
+            {stellarError ? stellarError.message : this.state.error?.message ?? 'An unexpected error occurred'}
           </p>
+
+          {stellarError?.isStellarError && stellarError.recoveryStep && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: 12,
+                borderRadius: 8,
+                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                border: '1px solid rgba(96, 165, 250, 0.3)',
+                maxWidth: 480,
+                textAlign: 'center',
+                fontSize: '0.9em',
+              }}
+            >
+              <strong>Recovery Action: </strong>
+              <span>{stellarError.recoveryStep}</span>
+              <div style={{ marginTop: 8 }}>
+                <a
+                  href={stellarError.learnMoreUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#93c5fd', textDecoration: 'underline' }}
+                >
+                  Learn More in Troubleshooting Guide ↗
+                </a>
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
               type="button"

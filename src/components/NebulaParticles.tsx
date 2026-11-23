@@ -2,21 +2,22 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import {
   AdditiveBlending,
-  BufferAttribute,
-  BufferGeometry,
   Color,
-  type Points,
-  ShaderMaterial,
+  DynamicDrawUsage,
+  type InstancedMesh,
+  MeshBasicMaterial,
+  Object3D,
+  SphereGeometry,
+  Vector3,
 } from 'three'
-import {
-  particleVertexShader,
-  particleFragmentShader,
-  particlePerfFragmentShader,
-} from './Nebula/shaders'
+import type { QualitySetting } from '@/hooks/useDevicePerformance'
+import { PARTICLE_BUDGETS } from '@/hooks/useDevicePerformance'
 import { disposeGeometry, disposeMaterial } from '@/utils/three-cleanup'
 
 export interface NebulaParticlesProps {
+  quality?: QualitySetting
   particleCount?: number
+  simplifiedShaders?: boolean
   performanceMode?: boolean
   radius?: number
   colorPalette?: Color[]
@@ -35,133 +36,141 @@ const DEFAULT_PALETTE = [
   new Color('#22d3ee'),
 ]
 
-function samplePaletteColor(palette: Color[], t: number): Color {
+function sampleNebulaColor(palette: Color[], t: number): Color {
   const clamped = Math.max(0, Math.min(1, t))
   const idx = clamped * (palette.length - 1)
   const lo = Math.floor(idx)
   const hi = Math.min(lo + 1, palette.length - 1)
   const frac = idx - lo
-  const c1 = palette[lo]
-  const c2 = palette[hi]
-  return new Color(c1.r + (c2.r - c1.r) * frac, c1.g + (c2.g - c1.g) * frac, c1.b + (c2.b - c1.b) * frac)
+  const a = palette[lo]
+  const b = palette[hi]
+  return new Color(a.r + (b.r - a.r) * frac, a.g + (b.g - a.g) * frac, a.b + (b.b - a.b) * frac)
 }
 
 /**
- * NebulaParticles component with explicit Three.js resource disposal (#544).
- * Prevents memory leaks by ensuring geometries, shader materials, and buffer
- * attributes are properly disposed on unmount or particle count change.
+ * NebulaParticles component utilizing THREE.InstancedMesh for batched particle rendering
+ * with explicit resource disposal on unmount (#544, #548).
+ *
+ * Collapses thousands of draw calls into a single batched call while preventing memory
+ * leaks by thoroughly disposing geometries and materials on cleanup.
  */
 export function NebulaParticles({
-  particleCount = 12000,
+  quality = 'medium',
+  particleCount,
+  simplifiedShaders = false,
   performanceMode = false,
-  radius = 40,
+  radius: customRadius = 45,
   colorPalette = DEFAULT_PALETTE,
-  rotationSpeed = 0.05,
+  rotationSpeed,
   onDisposed,
 }: NebulaParticlesProps) {
-  const pointsRef = useRef<Points>(null)
-  const materialRef = useRef<ShaderMaterial>(null)
-  const geometryRef = useRef<BufferGeometry | null>(null)
+  const meshRef = useRef<InstancedMesh>(null)
+  const dummy = useMemo(() => new Object3D(), [])
+  const nebulaCenter = useMemo(() => new Vector3(0, 0, 0), [])
 
-  // Construct BufferGeometry
-  const geometry = useMemo(() => {
-    // If there was a previous geometry, dispose it before creating a new one
-    if (geometryRef.current) {
-      disposeGeometry(geometryRef.current)
+  // Acceptance Criterion: "Low" quality mode uses <= 3k particles
+  const baseBudget = PARTICLE_BUDGETS[quality] ?? 6000
+  const maxInstances = particleCount ?? (performanceMode ? Math.min(3000, baseBudget) : baseBudget)
+
+  // Shared low-poly geometry for instancing (drastically lowers vertex processing on mobile)
+  const sphereSegments = quality === 'low' || simplifiedShaders || performanceMode ? 4 : 6
+  const geometry = useMemo(() => new SphereGeometry(0.35, sphereSegments, sphereSegments), [sphereSegments])
+
+  const material = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        transparent: true,
+        opacity: quality === 'low' || performanceMode ? 0.75 : 0.85,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }),
+    [quality, performanceMode]
+  )
+
+  // Precompute instance transformation matrices and vertex colors
+  const particleTransforms = useMemo(() => {
+    const transforms: { x: number; y: number; z: number; scale: number; color: Color; speed: number }[] = []
+
+    for (let i = 0; i < maxInstances; i++) {
+      const radius = 5 + Math.random() * customRadius
+      const angle = Math.random() * Math.PI * 2
+      const y = (Math.random() - 0.5) * 16 * (1 - radius / (customRadius + 10))
+      const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 6
+      const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 6
+      const scale = 0.6 + Math.random() * (quality === 'low' || performanceMode ? 1.4 : 2.0)
+      const colorT = Math.min(1, radius / customRadius)
+      const color = sampleNebulaColor(colorPalette, colorT)
+      const speed = 0.005 + Math.random() * 0.015
+
+      transforms.push({ x, y, z, scale, color, speed })
     }
 
-    const geom = new BufferGeometry()
-    const positions = new Float32Array(particleCount * 3)
-    const sizes = new Float32Array(particleCount)
-    const colors = new Float32Array(particleCount * 3)
-    const opacities = new Float32Array(particleCount)
+    return transforms
+  }, [maxInstances, quality, performanceMode, customRadius, colorPalette])
 
-    for (let i = 0; i < particleCount; i++) {
-      const u = Math.random()
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
-      const r = Math.cbrt(u) * radius
-
-      const x = r * Math.sin(phi) * Math.cos(theta)
-      const y = r * Math.sin(phi) * Math.sin(theta) * 0.7
-      const z = r * Math.cos(phi)
-
-      const pi = i * 3
-      positions[pi] = x
-      positions[pi + 1] = y
-      positions[pi + 2] = z
-
-      sizes[i] = performanceMode ? 1.0 + Math.random() * 2.0 : 1.5 + Math.random() * 3.5
-      opacities[i] = 0.3 + Math.random() * 0.7
-
-      const col = samplePaletteColor(colorPalette, r / radius)
-      colors[pi] = col.r
-      colors[pi + 1] = col.g
-      colors[pi + 2] = col.b
-    }
-
-    geom.setAttribute('position', new BufferAttribute(positions, 3))
-    geom.setAttribute('aSize', new BufferAttribute(sizes, 1))
-    geom.setAttribute('aColor', new BufferAttribute(colors, 3))
-    geom.setAttribute('aOpacity', new BufferAttribute(opacities, 1))
-    geom.computeBoundingSphere()
-
-    geometryRef.current = geom
-    return geom
-  }, [particleCount, performanceMode, radius, colorPalette])
-
-  // Construct ShaderMaterial
-  const material = useMemo(() => {
-    if (materialRef.current) {
-      disposeMaterial(materialRef.current)
-    }
-
-    const mat = new ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uRotationSpeed: { value: rotationSpeed },
-      },
-      vertexShader: particleVertexShader,
-      fragmentShader: performanceMode ? particlePerfFragmentShader : particleFragmentShader,
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-      blending: AdditiveBlending,
-    })
-
-    materialRef.current = mat
-    return mat
-  }, [performanceMode, rotationSpeed])
-
-  // Lifecycle disposal cleanup
+  // Initialize instances on mount or count change
   useEffect(() => {
-    const currentGeom = geometry
-    const currentMat = material
+    const mesh = meshRef.current
+    if (!mesh) return
 
+    for (let i = 0; i < particleTransforms.length; i++) {
+      const p = particleTransforms[i]
+      dummy.position.set(p.x, p.y, p.z)
+      dummy.scale.set(p.scale, p.scale, p.scale)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+      mesh.setColorAt(i, p.color)
+    }
+
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) {
+      mesh.instanceColor.needsUpdate = true
+    }
+  }, [particleTransforms, dummy])
+
+  // Level-of-Detail (LOD) and rotation per frame
+  useFrame(({ camera, clock }) => {
+    const mesh = meshRef.current
+    if (!mesh) return
+
+    // LOD: Adjust visible particle count based on camera distance
+    const dist = camera.position.distanceTo(nebulaCenter)
+    let lodFactor = 1.0
+
+    if (dist > 70) {
+      lodFactor = 0.5 // Far away: draw 50% particles
+    } else if (dist > 40) {
+      lodFactor = 0.75 // Mid distance: draw 75% particles
+    }
+
+    const visibleCount = Math.floor(maxInstances * lodFactor)
+    if (mesh.count !== visibleCount) {
+      mesh.count = visibleCount
+    }
+
+    // Gentle orbit rotation
+    const defaultRate = quality === 'low' || simplifiedShaders || performanceMode ? 0.02 : 0.04
+    const rate = rotationSpeed ?? defaultRate
+    mesh.rotation.y = clock.elapsedTime * rate * 0.1
+  })
+
+  // Cleanup WebGL resources on unmount (#544)
+  useEffect(() => {
     return () => {
-      disposeGeometry(currentGeom)
-      disposeMaterial(currentMat)
-      if (geometryRef.current === currentGeom) {
-        geometryRef.current = null
-      }
-      if (materialRef.current === currentMat) {
-        materialRef.current = null
-      }
+      disposeGeometry(geometry)
+      disposeMaterial(material)
       onDisposed?.()
     }
   }, [geometry, material, onDisposed])
 
-  // Frame animation
-  useFrame(({ clock }) => {
-    if (materialRef.current?.uniforms?.uTime) {
-      materialRef.current.uniforms.uTime.value = clock.elapsedTime
-    }
-    if (pointsRef.current) {
-      pointsRef.current.rotation.y += rotationSpeed * 0.016
-    }
-  })
-
-  return <points ref={pointsRef} geometry={geometry} material={material} frustumCulled={false} />
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[geometry, material, maxInstances]}
+      frustumCulled={false}
+      usage={DynamicDrawUsage}
+    />
+  )
 }
 
 export default NebulaParticles
