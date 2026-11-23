@@ -46,3 +46,14 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+      # Traces, screenshots and videos are written to test-results/, not to
+      # playwright-report/, so they need their own artifact to debug CI failures.
+      - name: Upload Playwright traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
