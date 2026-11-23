@@ -20,8 +20,11 @@ function getOrCreateEncryptionKey(): string {
     const newKey = generateEncryptionKey()
     sessionStorage.setItem(ENCRYPTION_KEY_STORAGE, newKey)
     return newKey
-  } catch {
-    logger.error('Failed to manage encryption key')
+  } catch (error) {
+    logger.error(
+      'Failed to manage encryption key',
+      error instanceof Error ? error : new Error(String(error))
+    )
     return generateEncryptionKey()
   }
 }

@@ -75,16 +75,6 @@ function initializeDeferredServices() {
     })
   }
 
-  // Direct Sentry initialization
-  const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN
-  if (SENTRY_DSN) {
-    initErrorTracking({
-      dsn: SENTRY_DSN,
-      environment: import.meta.env.VITE_APP_ENV ?? 'development',
-      release: import.meta.env.VITE_APP_VERSION || undefined,
-    })
-  }
-
   // Web Vitals monitoring
   initWebVitalsMonitoring()
 

@@ -10,7 +10,7 @@ export interface EncryptedData {
   salt: string
 }
 
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   const encoder = new TextEncoder()
   const passwordKey = await window.crypto.subtle.importKey(
     'raw',
@@ -38,7 +38,7 @@ function uint8ArrayToBase64(arr: Uint8Array): string {
   return btoa(String.fromCharCode(...arr))
 }
 
-function base64ToUint8Array(str: string): Uint8Array {
+function base64ToUint8Array(str: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(str), (c) => c.charCodeAt(0))
 }
 

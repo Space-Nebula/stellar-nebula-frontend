@@ -4,6 +4,9 @@ import { getErrorMessage } from '@utils/error-messages'
 
 const log = createScopedLogger('HorizonUtils')
 
+/** A transaction as returned by `server.transactions()....call()` (SDK 17 type names). */
+export type TransactionRecord = Horizon.ServerApi.TransactionRecord
+
 export interface TransactionFetchOptions {
   limit?: number
   cursor?: string
@@ -14,7 +17,7 @@ export async function fetchAccountTransactions(
   horizonServer: Horizon.Server,
   accountId: string,
   options: TransactionFetchOptions = {}
-): Promise<Horizon.CollectionPage<Horizon.TransactionResponse>> {
+): Promise<Horizon.ServerApi.CollectionPage<TransactionRecord>> {
   const { limit = 50, cursor, order = 'desc' } = options
 
   try {
@@ -47,7 +50,7 @@ export async function fetchIncrementalTransactions(
   accountId: string,
   lastSeenId: string | null,
   limit: number = 50
-): Promise<Horizon.TransactionResponse[]> {
+): Promise<TransactionRecord[]> {
   try {
     const options: TransactionFetchOptions = {
       limit,
@@ -79,7 +82,7 @@ export async function fetchIncrementalTransactions(
 export async function getLatestTransaction(
   horizonServer: Horizon.Server,
   accountId: string
-): Promise<Horizon.TransactionResponse | null> {
+): Promise<TransactionRecord | null> {
   try {
     const result = await horizonServer
       .transactions()
@@ -104,7 +107,7 @@ export async function getLatestTransaction(
 export async function getTransactionById(
   horizonServer: Horizon.Server,
   transactionId: string
-): Promise<Horizon.TransactionResponse> {
+): Promise<TransactionRecord> {
   try {
     const tx = await horizonServer.transactions().transaction(transactionId).call()
     log.info('Transaction fetched by ID', { transactionId: transactionId.slice(0, 8) })
@@ -114,6 +117,18 @@ export async function getTransactionById(
     log.error('Failed to fetch transaction by ID', err instanceof Error ? err : new Error(message))
     throw err
   }
+}
+
+/**
+ * The cursor for the page after `page`: the paging token of its last record, which is exactly
+ * what Horizon's `next` link encodes. (`page.next` itself is a function in the SDK, not a URL.)
+ * `null` when the page is empty, so there is nothing to continue from.
+ */
+export function nextCursorFromPage(page: {
+  records: ReadonlyArray<{ paging_token: string }>
+}): string | null {
+  const last = page.records[page.records.length - 1]
+  return last ? last.paging_token : null
 }
 
 export function extractNextCursor(response: { next?: string | null }): string | null {
@@ -225,15 +240,20 @@ export function saveCachedBalances(accountId: string, balances: FormattedBalance
   }
 }
 
-export function parseTransactionResponse(tx: Horizon.TransactionResponse) {
+export function parseTransactionResponse(
+  tx: Horizon.HorizonApi.TransactionResponse | TransactionRecord
+) {
   return {
     id: tx.id,
     hash: tx.hash,
-    ledger: tx.ledger,
+    // A record from a call builder keeps the ledger number in `ledger_attr`
+    // (`ledger` is then a link function); a raw response has it in `ledger`.
+    ledger: 'ledger_attr' in tx ? tx.ledger_attr : tx.ledger,
     createdAt: new Date(tx.created_at),
     operationCount: tx.operation_count,
     sourceAccount: tx.source_account,
-    fee: parseInt(tx.fee),
+    // Horizon reports the fee actually charged as `fee_charged` (there is no `fee`).
+    fee: Number(tx.fee_charged),
     successful: tx.successful,
   }
 }

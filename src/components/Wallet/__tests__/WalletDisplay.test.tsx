@@ -134,6 +134,7 @@ describe('WalletDisplay', () => {
         },
       ],
       isLoading: false,
+      isRefreshing: false,
       error: null,
       isUnfunded: false,
       refresh: vi.fn(),
@@ -157,6 +158,7 @@ describe('WalletDisplay', () => {
     vi.mocked(useAccountBalances).mockReturnValue({
       balances: [],
       isLoading: false,
+      isRefreshing: false,
       error: null,
       isUnfunded: true,
       refresh: vi.fn(),
