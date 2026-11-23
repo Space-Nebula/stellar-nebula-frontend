@@ -100,6 +100,26 @@ function LoadedShip({
     return cloned
   }, [model.scene])
 
+  useEffect(() => {
+    return () => {
+      if (clonedScene) {
+        clonedScene.traverse((child: Object3D) => {
+          if (child instanceof Mesh) {
+            child.geometry?.dispose?.()
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat) => mat.dispose?.())
+            } else {
+              child.material?.dispose?.()
+            }
+          }
+        })
+        while (clonedScene.children.length > 0) {
+          clonedScene.remove(clonedScene.children[0])
+        }
+      }
+    }
+  }, [clonedScene])
+
   useFrame((_, delta) => {
     if (groupRef.current && autoRotate) {
       groupRef.current.rotation.y += delta * rotationSpeed
@@ -188,3 +208,11 @@ export function ShipModel({
     </group>
   )
 }
+
+ShipModel.preload = (shipClass: ShipClass) => {
+  const path = SHIP_MODEL_PATHS[shipClass]
+  return loadShipModel(path)
+}
+
+export { loadShipModel }
+

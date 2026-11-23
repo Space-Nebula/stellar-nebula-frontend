@@ -121,6 +121,7 @@ export function CameraControls({
       canvas.removeEventListener('blur', handleBlur)
       canvas.removeEventListener('keydown', handleKeyDown)
       canvas.removeEventListener('keyup', handleKeyUp)
+      controlsRef.current?.dispose?.()
     }
   }, [gl, handleKeyDown, handleKeyUp])
 
