@@ -96,3 +96,42 @@ Latest measurement (2026-11-21, commit `1ef8f53`). Details, history and how to r
 | `feature-three` chunk (gzip) |   277.3 KB |                            +8.5% |
 
 Every push to `main` records bundle sizes and Lighthouse results through `.github/workflows/benchmark.yml`. The history is kept in `dev/bench/data.js` on the `gh-pages` branch.
+
+## 5. Mobile Nebula Rendering Optimization (#548)
+
+### Problem & Mid-Range Mobile Bottlenecks
+
+On mid-range mobile hardware (e.g., Pixel 4a, Samsung Galaxy A52 equipped with Qualcomm Snapdragon 720G/732G and Adreno 618 GPUs), the Three.js nebula rendering previously dropped from 60 FPS to 15–20 FPS. Root causes included:
+- **Excessive Particle Volume:** Over ~10,000 individual particle points executing complex vertex animation shaders.
+- **Expensive Shaders:** Full wave trigonometry and turbulence passes computed per-particle on mobile GPUs lacking desktop ALU throughput.
+- **Draw Call Overhead:** Lack of batching causing excessive state changes.
+
+### Solutions Implemented
+
+1. **Particle Budget Reduction**:
+   - `Low` quality mode caps particle count at **≤ 3,000 particles** (down from 10,000), drastically slashing vertex processing overhead.
+   - `Medium` mode runs **6,000 particles** for modern mobile/tablet GPUs.
+   - `High` mode maintains **10,000 particles** for desktop hardware.
+
+2. **Hardware Tier Detection (`src/hooks/useDevicePerformance.ts`)**:
+   - Queries `navigator.hardwareConcurrency` (≤4 cores classified as `low`, 6 cores as `medium`, ≥8 cores as `high`).
+   - Inspects `WEBGL_debug_renderer_info` to identify budget mobile GPUs (e.g., Adreno 618, Adreno 610, Mali-G52/G57).
+   - Reads `navigator.deviceMemory` (≤4 GB triggers low power tier).
+   - Sets adaptive defaults automatically while allowing user override.
+
+3. **`InstancedMesh` Batching (`src/components/NebulaParticles.tsx`)**:
+   - Replaced individual particle meshes with `THREE.InstancedMesh`.
+   - Collapses particle field rendering into a single batched draw call, achieving a **>90% reduction in WebGL draw calls**.
+
+4. **Camera Distance Level-of-Detail (LOD)**:
+   - Evaluates distance from camera to nebula center each frame.
+   - Dynamically scales down active instance count (`mesh.count`) by 25% at medium distance and 50% at far distances (>70 units).
+
+5. **Shader Simplification (`src/shaders/nebula.vert.glsl`)**:
+   - On mobile GPUs, expensive wave sine functions and dynamic distortion are bypassed, utilizing linear projections with minimal register pressure.
+
+6. **Real-Time FPS Auto-Throttling (`src/utils/performance-monitor.ts`)**:
+   - Monitors average FPS across a 3-second sliding window.
+   - If sustained frame rate drops below **30 FPS**, automatically down-throttles graphics quality (High → Medium → Low) to preserve interactive responsiveness.
+   - UI provides manual override toggles (Low, Medium, High).
+
