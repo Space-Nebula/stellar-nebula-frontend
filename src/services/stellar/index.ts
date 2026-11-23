@@ -13,3 +13,12 @@ export type {
   SorobanResourceEstimate,
   FeeWarning,
 } from './gasEstimation'
+export {
+  fetchHorizonFeeStats,
+  getCurrentBaseFee,
+  clearFeeCache,
+  extractBaseFeeFromStats,
+  FEE_CACHE_TTL_MS,
+} from './fee-service'
+export type { HorizonFeeStatsResponse, CachedFeeData } from './fee-service'
+
