@@ -1,20 +1,44 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useDevicePerformance, type QualitySetting } from '@/hooks/useDevicePerformance'
 import { PerformanceMonitor } from '@/utils/performance-monitor'
 import { NebulaParticles } from './NebulaParticles'
+import { cleanScene } from '@/utils/three-cleanup'
+import { useNebulaScene } from '@/hooks/useNebulaScene'
+import type { ResourceType } from '@/types/game'
 
 export interface NebulaViewProps {
   onQualityChange?: (quality: QualitySetting) => void
   initialQuality?: QualitySetting
   showFpsOverlay?: boolean
+  initialSectorSeed?: string
+  onSectorChange?: (seed: string) => void
+  onCleanup?: () => void
+  onScanComplete?: (resourceType: ResourceType, amount: number, pointId: string) => void
 }
 
 export const NebulaView: React.FC<NebulaViewProps> = ({
   onQualityChange,
   initialQuality,
   showFpsOverlay = true,
+  initialSectorSeed,
+  onSectorChange,
+  onCleanup,
+  onScanComplete,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [activeSector, setActiveSector] = useState(initialSectorSeed ?? 'sector-alpha-01')
+
+  const {
+    scene: lifecycleScene,
+    changeNebula,
+    recordScan,
+    clearTrackedResources,
+  } = useNebulaScene({
+    initialSeed: activeSector,
+    onSceneChange: onSectorChange,
+  })
+
   const {
     tier,
     quality,
@@ -60,21 +84,45 @@ export const NebulaView: React.FC<NebulaViewProps> = ({
     [setQuality, monitor, onQualityChange]
   )
 
+  // Sector switch handler with resource disposal
+  const handleSectorSwitch = useCallback(
+    (newSeed: string) => {
+      setActiveSector(newSeed)
+      changeNebula(newSeed)
+    },
+    [changeNebula]
+  )
+
+  // Comprehensive unmount cleanup (#544)
+  useEffect(() => {
+    return () => {
+      clearTrackedResources()
+      if (lifecycleScene) {
+        cleanScene(lifecycleScene)
+      }
+      onCleanup?.()
+    }
+  }, [lifecycleScene, clearTrackedResources, onCleanup])
+
   return (
-    <div className="nebula-view-container relative w-full h-[600px] min-h-[400px] rounded-xl overflow-hidden bg-space-950 border border-space-800">
+    <div
+      ref={containerRef}
+      className="nebula-view-container relative w-full h-[600px] min-h-[400px] rounded-xl overflow-hidden bg-space-950 border border-space-800"
+      data-sector-seed={activeSector}
+    >
       {/* 3D Canvas with batched InstancedMesh particles */}
       <Canvas
         camera={{ position: [0, 20, 50], fov: 60 }}
         dpr={qualityOverride === 'low' ? 1.0 : [1, 1.5]}
         gl={{ antialias: qualityOverride !== 'low', powerPreference: 'high-performance' }}
-        onCreated={({ gl }) => {
+        onCreated={({ gl, scene }) => {
           // Track render loop to monitor FPS
           const originalRender = gl.render.bind(gl)
-          gl.render = (scene, camera) => {
+          gl.render = (s, camera) => {
             monitor.recordFrame()
             setFps(monitor.getAverageFps())
             monitor.checkAutoAdjust(qualityOverride)
-            originalRender(scene, camera)
+            originalRender(s, camera)
           }
         }}
       >

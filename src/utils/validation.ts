@@ -21,12 +21,38 @@ export const required =
   (value) =>
     isEmpty(value) ? message : null
 
-/** Value must parse to a finite number. Empty values pass (combine with `required`). */
+export const MIN_STELLAR_TRADE_AMOUNT = 0.0000001
+export const STELLAR_MAX_DECIMALS = 7
+
+/**
+ * Normalizes an amount string, correctly expanding scientific notation (e.g. "1e-5" -> "0.00001")
+ * so decimal places and precision limits can be verified accurately without precision loss (#552).
+ */
+export function normalizeAmountString(value: string | number | unknown): string {
+  if (value == null) return ''
+  const str = String(value).trim()
+  if (!str) return ''
+
+  if (/[eE]/.test(str)) {
+    const num = Number(str)
+    if (!Number.isFinite(num)) return str
+    return num.toLocaleString('en-US', {
+      useGrouping: false,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 20,
+    })
+  }
+
+  return str
+}
+
+/** Value must parse to a finite number. Supports scientific notation (e.g. 1e-5) (#552). */
 export const isNumber =
   (message = 'Enter a valid number'): ValidationRule<string> =>
   (value) => {
     if (isEmpty(value)) return null
-    return Number.isFinite(Number(value)) ? null : message
+    const normalized = normalizeAmountString(value)
+    return Number.isFinite(Number(normalized)) ? null : message
   }
 
 /** Numeric value must be strictly greater than zero. */
@@ -34,7 +60,8 @@ export const positive =
   (message = 'Enter an amount greater than zero'): ValidationRule<string> =>
   (value) => {
     if (isEmpty(value)) return null
-    return Number(value) > 0 ? null : message
+    const num = Number(normalizeAmountString(value))
+    return Number.isFinite(num) && num > 0 ? null : message
   }
 
 /** Numeric value must be >= `minValue`. */
@@ -42,7 +69,18 @@ export const min =
   (minValue: number, message?: string): ValidationRule<string> =>
   (value) => {
     if (isEmpty(value)) return null
-    return Number(value) >= minValue ? null : (message ?? `Must be at least ${minValue}`)
+    const num = Number(normalizeAmountString(value))
+    return Number.isFinite(num) && num >= minValue ? null : (message ?? `Must be at least ${minValue}`)
+  }
+
+/** Minimum trade amount rule on Stellar DEX (default: 0.0000001 XLM / 1 stroop) (#552). */
+export const minAmount =
+  (minValue: number = MIN_STELLAR_TRADE_AMOUNT, message?: string): ValidationRule<string> =>
+  (value) => {
+    if (isEmpty(value)) return null
+    const num = Number(normalizeAmountString(value))
+    if (!Number.isFinite(num)) return 'Enter a valid number'
+    return num >= minValue ? null : (message ?? `Minimum trade amount is ${minValue}`)
   }
 
 /** Numeric value must be <= `maxValue`. */
@@ -50,19 +88,34 @@ export const max =
   (maxValue: number, message?: string): ValidationRule<string> =>
   (value) => {
     if (isEmpty(value)) return null
-    return Number(value) <= maxValue ? null : (message ?? `Must be ${maxValue} or less`)
+    const num = Number(normalizeAmountString(value))
+    return Number.isFinite(num) && num <= maxValue ? null : (message ?? `Must be ${maxValue} or less`)
   }
 
-/** Value must have no more than `places` decimal places. */
+/** Value must have no more than `places` decimal places. Correctly handles scientific notation (#552). */
 export const maxDecimals =
-  (places: number, message?: string): ValidationRule<string> =>
+  (places: number = STELLAR_MAX_DECIMALS, message?: string): ValidationRule<string> =>
   (value) => {
     if (isEmpty(value)) return null
-    const [, decimals = ''] = String(value).split('.')
+    const normalized = normalizeAmountString(value)
+    const [, decimals = ''] = normalized.split('.')
     return decimals.length <= places
       ? null
       : (message ?? `Use at most ${places} decimal place${places === 1 ? '' : 's'}`)
   }
+
+/** Validates that amount does not exceed available balance (#552). */
+export const balanceLimit =
+  (availableBalance: number, assetCode = 'XLM', message?: string): ValidationRule<string> =>
+  (value) => {
+    if (isEmpty(value)) return null
+    const num = Number(normalizeAmountString(value))
+    if (!Number.isFinite(num)) return null
+    return num <= availableBalance
+      ? null
+      : (message ?? `Amount cannot exceed your balance of ${availableBalance} ${assetCode}`)
+  }
+
 
 /** String length must be <= `length`. */
 export const maxLength =

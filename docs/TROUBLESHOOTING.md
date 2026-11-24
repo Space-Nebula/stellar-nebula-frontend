@@ -21,7 +21,8 @@ See also:
 ### Wallet is not detected
 
 - Install or enable Freighter, or make Albedo available in the current browser environment.
-- Refresh the page after installing an extension.
+- **Firefox users**: The Freighter extension injects its API (`window.freighter`) asynchronously into page scripts. If the app displays "No wallet detected", wait up to 3 seconds for automatic detection with exponential backoff or click the **Retry Detection** button.
+- If Freighter was just installed or enabled in Firefox, refresh the page or grant extension permissions for the site.
 - Disable competing wallet extensions temporarily if the wrong provider is being selected.
 - Confirm the site is allowed to access the wallet extension.
 

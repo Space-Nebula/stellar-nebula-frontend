@@ -25,7 +25,15 @@ export {
   submitStellarTransaction,
   executeWithFriendlyError,
   StellarTransactionExecutionError,
+  TransactionQueue,
+  globalTransactionQueue,
+  isTransactionLocked,
+  acquireTransactionLock,
+  releaseTransactionLock,
 } from './transaction'
-export type { SubmitTransactionOptions, TransactionSubmissionResult } from './transaction'
-
-
+export type {
+  SubmitTransactionOptions,
+  TransactionSubmissionResult,
+  QueuedTransaction,
+} from './transaction'
+export { fetchAccountBalances, fetchUserAssetBalance } from './asset-balance'

@@ -1,5 +1,6 @@
 export {
   isFreighterInstalled,
+  detectFreighterWithRetry,
   connectFreighter,
   getFreighterNetwork,
   signTransactionWithFreighter,

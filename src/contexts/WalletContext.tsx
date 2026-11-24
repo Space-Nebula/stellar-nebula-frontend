@@ -41,6 +41,12 @@ import { trackEvent } from '@/services/analytics'
 import { purgeApplicationState } from '@/utils/stateCleanup'
 import { setSessionPassphrase, saveEncryptedCopy } from '@/utils/storage'
 import { withTimeout, SIGNING_TIMEOUT_MS, SIGNING_TIMEOUT_MESSAGE } from '@/utils/stellar/timeout'
+import { showError } from '@/utils/toast'
+import {
+  isTransactionLocked,
+  acquireTransactionLock,
+  releaseTransactionLock,
+} from '@/services/stellar/transaction'
 import { useSessionTimeout } from '@/hooks/useSessionTimeout'
 import { SessionTimeoutWarning } from '@/components/Wallet/SessionTimeoutWarning'
 import { getErrorMessage } from '@utils/error-messages'
@@ -68,6 +74,7 @@ interface PersistedWallet {
 export interface WalletContextValue {
   walletState: WalletState
   isLoading: boolean
+  isTransactionPending: boolean
   error: string | null
   isReconnecting: boolean
   reconnectError: string | null
@@ -208,6 +215,7 @@ function buildInitialWalletState(): WalletState {
 export function WalletProvider({ children }: WalletProviderProps) {
   const [walletState, setWalletState] = useState<WalletState>(buildInitialWalletState)
   const [isLoading, setIsLoading] = useState(false)
+  const [isTransactionPending, setIsTransactionPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isReconnecting, setIsReconnecting] = useState(false)
   const [reconnectError, setReconnectError] = useState<string | null>(null)
@@ -511,6 +519,20 @@ export function WalletProvider({ children }: WalletProviderProps) {
         return null
       }
 
+      if (isTransactionPending || isTransactionLocked()) {
+        const message = 'Transaction already pending. Please wait for confirmation.'
+        showError(message)
+        log.warn('Transaction signing blocked: another transaction is pending')
+        return null
+      }
+
+      if (!acquireTransactionLock()) {
+        const message = 'Transaction in progress. Please wait.'
+        showError(message)
+        return null
+      }
+
+      setIsTransactionPending(true)
       log.info('Transaction signing initiated', { walletType: walletState.walletType })
       setIsLoading(true)
       setError(null)
@@ -597,9 +619,11 @@ export function WalletProvider({ children }: WalletProviderProps) {
         return null
       } finally {
         setIsLoading(false)
+        setIsTransactionPending(false)
+        releaseTransactionLock()
       }
     },
-    [walletState, appConfig]
+    [walletState, appConfig, isTransactionPending]
   )
 
   const clearError = useCallback(() => setError(null), [])
@@ -610,6 +634,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     () => ({
       walletState,
       isLoading,
+      isTransactionPending,
       error,
       isReconnecting,
       reconnectError,
@@ -629,6 +654,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     [
       walletState,
       isLoading,
+      isTransactionPending,
       error,
       isReconnecting,
       reconnectError,

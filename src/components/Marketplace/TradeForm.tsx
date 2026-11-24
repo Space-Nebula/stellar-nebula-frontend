@@ -5,6 +5,8 @@ import {
   isNumber,
   max,
   maxDecimals,
+  minAmount,
+  normalizeAmountString,
   positive,
   required,
   validateValues,
@@ -46,6 +48,7 @@ export const TradeForm: React.FC<TradeFormProps> = ({
         required('Enter an amount'),
         isNumber('Amount must be a number'),
         positive('Amount must be greater than zero'),
+        minAmount(0.0000001, `Minimum trade amount is 0.0000001 ${baseAsset.code}`),
         maxDecimals(7, 'Amount supports up to 7 decimal places'),
         max(maxAmount, `Amount cannot exceed your balance of ${maxAmount} ${baseAsset.code}`),
       ],
@@ -54,9 +57,16 @@ export const TradeForm: React.FC<TradeFormProps> = ({
   )
 
   const { values, errors, touched, handleChange, handleBlur, setValue, validateAll, reset } =
-    useFormValidation<TradeFormValues>({ price: currentPrice.toString(), amount: '' }, schema)
+    useFormValidation<TradeFormValues>(
+      { price: currentPrice.toString(), amount: '' },
+      schema,
+      { validateOnChange: true }
+    )
 
-  const total = (parseFloat(values.price || '0') * parseFloat(values.amount || '0')).toFixed(4)
+  const total = (
+    parseFloat(normalizeAmountString(values.price) || '0') *
+    parseFloat(normalizeAmountString(values.amount) || '0')
+  ).toFixed(4)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +76,9 @@ export const TradeForm: React.FC<TradeFormProps> = ({
       if (firstInvalid) document.getElementById(firstInvalid)?.focus()
       return
     }
-    onSubmit(type, parseFloat(values.price), parseFloat(values.amount))
+    const parsedPrice = parseFloat(normalizeAmountString(values.price))
+    const parsedAmount = parseFloat(normalizeAmountString(values.amount))
+    onSubmit(type, parsedPrice, parsedAmount)
     reset({ price: values.price, amount: '' })
   }
 
@@ -129,9 +141,14 @@ export const TradeForm: React.FC<TradeFormProps> = ({
         </div>
 
         <div>
-          <label htmlFor="trade-amount-input" className="block text-sm text-space-100 mb-1">
-            Amount ({baseAsset.code})
-          </label>
+          <div className="flex justify-between items-center mb-1">
+            <label htmlFor="trade-amount-input" className="block text-sm text-space-100">
+              Amount ({baseAsset.code})
+            </label>
+            <span className="text-xs text-space-400">
+              Balance: <span className="font-mono text-cosmic-cyan font-medium">{maxAmount} {baseAsset.code}</span>
+            </span>
+          </div>
           <div className="relative flex items-center">
             <input
               id="trade-amount-input"
@@ -177,12 +194,20 @@ export const TradeForm: React.FC<TradeFormProps> = ({
 
           <button
             type="submit"
+            disabled={Boolean(priceError || amountError)}
+            aria-disabled={Boolean(priceError || amountError)}
             aria-label={
               type === 'buy'
                 ? `Place buy order for ${baseAsset.code}`
                 : `Place sell order for ${baseAsset.code}`
             }
-            className={`w-full py-3 rounded font-bold text-white transition-colors ${type === 'buy' ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'}`}
+            className={`w-full py-3 rounded font-bold text-white transition-colors ${
+              Boolean(priceError || amountError)
+                ? 'opacity-50 cursor-not-allowed bg-space-800 text-space-400'
+                : type === 'buy'
+                ? 'bg-green-600 hover:bg-green-500'
+                : 'bg-red-600 hover:bg-red-500'
+            }`}
           >
             {type === 'buy' ? 'Place Buy Order' : 'Place Sell Order'}
           </button>

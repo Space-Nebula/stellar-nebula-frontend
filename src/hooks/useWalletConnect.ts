@@ -1,6 +1,8 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useWallet } from '@/contexts/WalletContext'
 import { isWalletConnectConfigured } from '@config/walletconnect'
+import { isTransactionLocked, acquireTransactionLock, releaseTransactionLock } from '@/services/stellar/transaction'
+import { showError } from '@/utils/toast'
 import type { PublicKey, StellarNetwork, XDR } from '@/types'
 
 export interface UseWalletConnectReturn {
@@ -12,6 +14,10 @@ export interface UseWalletConnectReturn {
   isConnected: boolean
   /** True while the pairing/approval flow is running. */
   isConnecting: boolean
+  /** Whether a transaction is currently being processed or locked (#545). */
+  isTransactionPending: boolean
+  /** Whether the transaction execution lock is active (#545). */
+  isTransactionLocked: boolean
   publicKey: PublicKey | null
   network: StellarNetwork | null
   error: string | null
@@ -26,17 +32,24 @@ export interface UseWalletConnectReturn {
 }
 
 /**
- * WalletConnect flow for mobile wallets (#458).
- *
- * Session creation, QR/deep-link display and signing live in
- * `services/wallets/walletconnect.ts`; this hook adapts them to the global
- * wallet state so the modal and the header stay in sync with Freighter/Albedo.
+ * WalletConnect flow for mobile wallets with transaction race condition protection (#545).
+ * Gated by a transaction lock and queue to prevent duplicate submissions from rapid clicks.
  */
 export function useWalletConnect(): UseWalletConnectReturn {
-  const { walletState, connect, disconnect, signTransaction, isLoading, error, clearError } =
-    useWallet()
+  const {
+    walletState,
+    connect,
+    disconnect,
+    signTransaction,
+    isLoading,
+    isTransactionPending: contextPending,
+    error,
+    clearError,
+  } = useWallet()
 
+  const [localLocked, setLocalLocked] = useState(false)
   const isConnected = walletState.isConnected && walletState.walletType === 'walletconnect'
+  const isPending = contextPending || localLocked || isTransactionLocked()
 
   const connectWallet = useCallback(async () => {
     await connect('walletconnect')
@@ -45,9 +58,26 @@ export function useWalletConnect(): UseWalletConnectReturn {
   const signWithWalletConnect = useCallback(
     async (xdr: XDR): Promise<XDR | null> => {
       if (!isConnected) return null
-      return signTransaction(xdr)
+
+      if (isPending) {
+        showError('Transaction already in progress. Please wait for confirmation.')
+        return null
+      }
+
+      if (!acquireTransactionLock()) {
+        showError('Transaction in progress. Please wait.')
+        return null
+      }
+
+      setLocalLocked(true)
+      try {
+        return await signTransaction(xdr)
+      } finally {
+        setLocalLocked(false)
+        releaseTransactionLock()
+      }
     },
-    [isConnected, signTransaction]
+    [isConnected, isPending, signTransaction]
   )
 
   return {
@@ -55,6 +85,8 @@ export function useWalletConnect(): UseWalletConnectReturn {
     isConfigured: isWalletConnectConfigured(),
     isConnected,
     isConnecting: isLoading,
+    isTransactionPending: isPending,
+    isTransactionLocked: localLocked || isTransactionLocked(),
     publicKey: isConnected ? walletState.publicKey : null,
     network: isConnected ? walletState.network : null,
     error,
@@ -64,3 +96,5 @@ export function useWalletConnect(): UseWalletConnectReturn {
     clearError,
   }
 }
+
+export default useWalletConnect

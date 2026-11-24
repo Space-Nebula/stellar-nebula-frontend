@@ -4,8 +4,7 @@ import {
   AdditiveBlending,
   Color,
   DynamicDrawUsage,
-  InstancedMesh,
-  Matrix4,
+  type InstancedMesh,
   MeshBasicMaterial,
   Object3D,
   SphereGeometry,
@@ -13,14 +12,20 @@ import {
 } from 'three'
 import type { QualitySetting } from '@/hooks/useDevicePerformance'
 import { PARTICLE_BUDGETS } from '@/hooks/useDevicePerformance'
+import { disposeGeometry, disposeMaterial } from '@/utils/three-cleanup'
 
 export interface NebulaParticlesProps {
   quality?: QualitySetting
   particleCount?: number
   simplifiedShaders?: boolean
+  performanceMode?: boolean
+  radius?: number
+  colorPalette?: Color[]
+  rotationSpeed?: number
+  onDisposed?: () => void
 }
 
-const NEBULA_PALETTE = [
+const DEFAULT_PALETTE = [
   new Color('#fdf4ff'),
   new Color('#f0abfc'),
   new Color('#c084fc'),
@@ -31,49 +36,55 @@ const NEBULA_PALETTE = [
   new Color('#22d3ee'),
 ]
 
-function sampleNebulaColor(t: number): Color {
+function sampleNebulaColor(palette: Color[], t: number): Color {
   const clamped = Math.max(0, Math.min(1, t))
-  const idx = clamped * (NEBULA_PALETTE.length - 1)
+  const idx = clamped * (palette.length - 1)
   const lo = Math.floor(idx)
-  const hi = Math.min(lo + 1, NEBULA_PALETTE.length - 1)
+  const hi = Math.min(lo + 1, palette.length - 1)
   const frac = idx - lo
-  const a = NEBULA_PALETTE[lo]
-  const b = NEBULA_PALETTE[hi]
+  const a = palette[lo]
+  const b = palette[hi]
   return new Color(a.r + (b.r - a.r) * frac, a.g + (b.g - a.g) * frac, a.b + (b.b - a.b) * frac)
 }
 
 /**
- * NebulaParticles component utilizing THREE.InstancedMesh for batched particle rendering.
+ * NebulaParticles component utilizing THREE.InstancedMesh for batched particle rendering
+ * with explicit resource disposal on unmount (#544, #548).
  *
- * Using InstancedMesh collapses what would be thousands of individual draw calls into a
- * single batched draw call (>90% reduction in WebGL draw calls), dramatically improving
- * frame rates from ~15 FPS to >= 30 FPS on mid-range mobile hardware (e.g. Pixel 4a).
+ * Collapses thousands of draw calls into a single batched call while preventing memory
+ * leaks by thoroughly disposing geometries and materials on cleanup.
  */
 export function NebulaParticles({
   quality = 'medium',
   particleCount,
   simplifiedShaders = false,
+  performanceMode = false,
+  radius: customRadius = 45,
+  colorPalette = DEFAULT_PALETTE,
+  rotationSpeed,
+  onDisposed,
 }: NebulaParticlesProps) {
   const meshRef = useRef<InstancedMesh>(null)
   const dummy = useMemo(() => new Object3D(), [])
   const nebulaCenter = useMemo(() => new Vector3(0, 0, 0), [])
 
-  // Acceptance Criterion: "Low" quality mode uses ≤3k particles
-  const maxInstances = particleCount ?? PARTICLE_BUDGETS[quality]
+  // Acceptance Criterion: "Low" quality mode uses <= 3k particles
+  const baseBudget = PARTICLE_BUDGETS[quality] ?? 6000
+  const maxInstances = particleCount ?? (performanceMode ? Math.min(3000, baseBudget) : baseBudget)
 
   // Shared low-poly geometry for instancing (drastically lowers vertex processing on mobile)
-  const sphereSegments = quality === 'low' || simplifiedShaders ? 4 : 6
+  const sphereSegments = quality === 'low' || simplifiedShaders || performanceMode ? 4 : 6
   const geometry = useMemo(() => new SphereGeometry(0.35, sphereSegments, sphereSegments), [sphereSegments])
 
   const material = useMemo(
     () =>
       new MeshBasicMaterial({
         transparent: true,
-        opacity: quality === 'low' ? 0.75 : 0.85,
+        opacity: quality === 'low' || performanceMode ? 0.75 : 0.85,
         blending: AdditiveBlending,
         depthWrite: false,
       }),
-    [quality]
+    [quality, performanceMode]
   )
 
   // Precompute instance transformation matrices and vertex colors
@@ -81,21 +92,21 @@ export function NebulaParticles({
     const transforms: { x: number; y: number; z: number; scale: number; color: Color; speed: number }[] = []
 
     for (let i = 0; i < maxInstances; i++) {
-      const radius = 5 + Math.random() * 45
+      const radius = 5 + Math.random() * customRadius
       const angle = Math.random() * Math.PI * 2
-      const y = (Math.random() - 0.5) * 16 * (1 - radius / 55)
+      const y = (Math.random() - 0.5) * 16 * (1 - radius / (customRadius + 10))
       const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 6
       const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 6
-      const scale = 0.6 + Math.random() * (quality === 'low' ? 1.4 : 2.0)
-      const colorT = Math.min(1, radius / 50)
-      const color = sampleNebulaColor(colorT)
+      const scale = 0.6 + Math.random() * (quality === 'low' || performanceMode ? 1.4 : 2.0)
+      const colorT = Math.min(1, radius / customRadius)
+      const color = sampleNebulaColor(colorPalette, colorT)
       const speed = 0.005 + Math.random() * 0.015
 
       transforms.push({ x, y, z, scale, color, speed })
     }
 
     return transforms
-  }, [maxInstances, quality])
+  }, [maxInstances, quality, performanceMode, customRadius, colorPalette])
 
   // Initialize instances on mount or count change
   useEffect(() => {
@@ -117,7 +128,7 @@ export function NebulaParticles({
     }
   }, [particleTransforms, dummy])
 
-  // Level-of-Detail (LOD) and subtle rotation per frame
+  // Level-of-Detail (LOD) and rotation per frame
   useFrame(({ camera, clock }) => {
     const mesh = meshRef.current
     if (!mesh) return
@@ -138,17 +149,19 @@ export function NebulaParticles({
     }
 
     // Gentle orbit rotation
-    const rotationRate = quality === 'low' || simplifiedShaders ? 0.02 : 0.04
-    mesh.rotation.y = clock.elapsedTime * rotationRate * 0.1
+    const defaultRate = quality === 'low' || simplifiedShaders || performanceMode ? 0.02 : 0.04
+    const rate = rotationSpeed ?? defaultRate
+    mesh.rotation.y = clock.elapsedTime * rate * 0.1
   })
 
-  // Cleanup WebGL resources on unmount
+  // Cleanup WebGL resources on unmount (#544)
   useEffect(() => {
     return () => {
-      geometry.dispose()
-      material.dispose()
+      disposeGeometry(geometry)
+      disposeMaterial(material)
+      onDisposed?.()
     }
-  }, [geometry, material])
+  }, [geometry, material, onDisposed])
 
   return (
     <instancedMesh

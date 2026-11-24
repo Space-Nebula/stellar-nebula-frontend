@@ -16,18 +16,94 @@ async function loadFreighter(): Promise<FreighterClient> {
 }
 
 /**
- * Check whether the Freighter browser extension is installed.
+ * Synchronous / immediate check whether Freighter window object or package is present.
  */
-export async function isFreighterInstalled(): Promise<boolean> {
+async function checkFreighterAvailable(): Promise<boolean> {
   try {
     const freighter = await loadFreighter()
     return Boolean(await freighter.isConnected())
   } catch {
-    // Freighter may not be installed or the module might not be resolvable.
-    // Fall back to checking the global window.
+    if (typeof window === 'undefined') return false
     const anyWindow = window as unknown as Record<string, unknown>
     return typeof anyWindow.freighter !== 'undefined' || typeof anyWindow.stellar !== 'undefined'
   }
+}
+
+/**
+ * Check whether the Freighter browser extension is installed.
+ * Supports an optional parameter to wait for asynchronous injection (e.g. on Firefox) (#546).
+ */
+export async function isFreighterInstalled(waitForInjection: boolean = false): Promise<boolean> {
+  if (waitForInjection) {
+    return detectFreighterWithRetry(3000, 100)
+  }
+  return checkFreighterAvailable()
+}
+
+/**
+ * Detect Freighter with exponential backoff and event listener support (#546).
+ * Solves the Firefox race condition where window.freighter is injected asynchronously after delay.
+ * Waits up to timeoutMs (default: 3000ms) before declaring Freighter absent.
+ */
+export async function detectFreighterWithRetry(
+  timeoutMs: number = 3000,
+  initialDelayMs: number = 100
+): Promise<boolean> {
+  if (await checkFreighterAvailable()) {
+    return true
+  }
+
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return new Promise<boolean>((resolve) => {
+    let resolved = false
+    let currentDelay = initialDelayMs
+    const startTime = Date.now()
+
+    const onFreighterLoaded = () => {
+      if (!resolved) {
+        resolved = true
+        cleanup()
+        resolve(true)
+      }
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('FreighterLoaded', onFreighterLoaded)
+      window.removeEventListener('freighter:ready', onFreighterLoaded)
+    }
+
+    // Listen for custom events dispatched by Freighter extension
+    window.addEventListener('FreighterLoaded', onFreighterLoaded)
+    window.addEventListener('freighter:ready', onFreighterLoaded)
+
+    const poll = async () => {
+      if (resolved) return
+
+      if (await checkFreighterAvailable()) {
+        resolved = true
+        cleanup()
+        resolve(true)
+        return
+      }
+
+      const elapsed = Date.now() - startTime
+      if (elapsed >= timeoutMs) {
+        resolved = true
+        cleanup()
+        resolve(false)
+        return
+      }
+
+      const nextDelay = Math.min(currentDelay * 1.5, Math.max(50, timeoutMs - elapsed))
+      currentDelay = currentDelay * 1.5
+      setTimeout(() => void poll(), Math.max(20, nextDelay))
+    }
+
+    setTimeout(() => void poll(), initialDelayMs)
+  })
 }
 
 /**
