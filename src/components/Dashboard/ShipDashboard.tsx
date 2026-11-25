@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Inventory } from '../Resources/Inventory'
 import { AchievementList } from '../Achievements/AchievementList'
 import { SHIP_UPGRADES, UpgradeModal } from '../Ship/UpgradeModal'
@@ -9,11 +9,18 @@ import { ShipCard } from './ShipCard'
 import { ContractUpgradeConfirmModal } from './ContractUpgradeConfirmModal'
 import { DEMO_INVENTORY, DEMO_SHIPS, hasResources } from './dashboardData'
 import { useShipUpgradeFlow } from './useShipUpgradeFlow'
+import { useRenderCount } from '../../utils/performance-monitor'
 
+// eslint-disable-next-line react-refresh/only-export-components
 function ShipDashboard() {
+  useRenderCount('ShipDashboard')
   const { walletState } = useWallet()
-  const { ships, activeShipId, setShips, setActiveShip } = useShipStore()
-  const { inventory, setInventory } = useResourceStore()
+  const ships = useShipStore((state) => state.ships)
+  const activeShipId = useShipStore((state) => state.activeShipId)
+  const setShips = useShipStore((state) => state.setShips)
+  const setActiveShip = useShipStore((state) => state.setActiveShip)
+  const inventory = useResourceStore((state) => state.inventory)
+  const setInventory = useResourceStore((state) => state.setInventory)
   const seededShips = useRef(false)
   const seededInventory = useRef(false)
 
@@ -57,6 +64,13 @@ function ShipDashboard() {
     handleApplyUpgrade,
     handleConfirmContractUpgrade,
   } = useShipUpgradeFlow(activeShip)
+
+  const handleSelectShip = useCallback((shipId: string) => setActiveShip(shipId), [setActiveShip])
+  const handleCloseUpgrade = useCallback(() => setIsUpgradeOpen(false), [setIsUpgradeOpen])
+  const handleCancelContractUpgrade = useCallback(
+    () => setPendingContractUpgrade(null),
+    [setPendingContractUpgrade]
+  )
 
   const totalCargoCapacity = useMemo(
     () => fleet.reduce((sum, ship) => sum + ship.cargoCapacity, 0),
@@ -163,7 +177,7 @@ function ShipDashboard() {
                 key={ship.id}
                 ship={ship}
                 active={ship.id === activeShip?.id}
-                onSelect={(shipId) => setActiveShip(shipId)}
+                onSelect={handleSelectShip}
               />
             ))}
           </div>
@@ -215,7 +229,7 @@ function ShipDashboard() {
         ship={activeShip}
         inventory={inventory}
         isPending={Boolean(pendingUpgrade)}
-        onClose={() => setIsUpgradeOpen(false)}
+        onClose={handleCloseUpgrade}
         onConfirm={handleApplyUpgrade}
       />
 
@@ -225,7 +239,7 @@ function ShipDashboard() {
         walletPublicKey={walletState.publicKey}
         isPreparing={isPreparingUpgrade}
         onConfirm={handleConfirmContractUpgrade}
-        onCancel={() => setPendingContractUpgrade(null)}
+        onCancel={handleCancelContractUpgrade}
       />
 
       <section className="dashboard-history">
@@ -238,4 +252,4 @@ function ShipDashboard() {
   )
 }
 
-export default ShipDashboard
+export default memo(ShipDashboard) as unknown as typeof ShipDashboard
