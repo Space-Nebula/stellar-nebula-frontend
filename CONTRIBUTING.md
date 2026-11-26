@@ -187,6 +187,13 @@ npm run performance:test
 
 If you have questions, open an issue or ask in the Stellar Discord `#soroban` channel.
 
+## Dependency overrides
+
+Use the single `overrides` object in `package.json` to keep singleton libraries such as React and
+Three.js aligned with the versions declared at the application root. When changing a root version,
+update its matching override (use `$packageName` to reuse the direct dependency's version), then run
+`npm install` and `npm dedupe` to refresh and flatten `package-lock.json`. Run `npm run
+check-duplicates` before committing; CI runs the same check against the lockfile.
 # Image assets
 
 Keep source PNG/JPEG files as fallbacks and run `npm run images:optimize` to generate matching WebP files at quality 85. The build runs this optimizer automatically. Use the shared `Image` or `OptimizedImage` component with `webpSrc` for WebP plus fallback delivery; set `loading="lazy"` for below-the-fold images and provide `sizes`/`srcSet` when image dimensions vary by viewport. Keep responsive variants named consistently and ensure their fallback `srcSet` points to the equivalent PNG/JPEG variants.
