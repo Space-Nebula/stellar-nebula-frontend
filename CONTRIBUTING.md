@@ -187,6 +187,9 @@ npm run performance:test
 
 If you have questions, open an issue or ask in the Stellar Discord `#soroban` channel.
 
+## React performance
+
+Subscribe to Zustand with selectors for the specific state and actions a component uses. Keep selector results referentially stable, memoize expensive derived values with `useMemo`, and use `useCallback` for handlers passed to memoized children. Wrap stable presentational components in `memo`, and keep render-time code free of freshly allocated objects when those values become child props. In development, `useRenderCount` can show committed render counts in the console while profiling.
 ## Dependency overrides
 
 Use the single `overrides` object in `package.json` to keep singleton libraries such as React and

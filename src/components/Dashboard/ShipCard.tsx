@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { Ship } from '../../store'
 
 interface ShipCardProps {
@@ -6,7 +7,7 @@ interface ShipCardProps {
   onSelect: (shipId: string) => void
 }
 
-export function ShipCard({ ship, active, onSelect }: ShipCardProps) {
+function ShipCardComponent({ ship, active, onSelect }: ShipCardProps) {
   return (
     <button
       type="button"
@@ -47,3 +48,5 @@ export function ShipCard({ ship, active, onSelect }: ShipCardProps) {
     </button>
   )
 }
+
+export const ShipCard = memo(ShipCardComponent)

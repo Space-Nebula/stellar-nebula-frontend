@@ -6,10 +6,22 @@
  */
 
 import type { QualitySetting } from '@/hooks/useDevicePerformance'
+import { useEffect, useRef } from 'react'
+
+/** Log committed renders in development so regressions are visible during profiling. */
+export function useRenderCount(componentName: string): void {
+  const count = useRef(0)
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    count.current += 1
+    console.warn(`[render] ${componentName}: ${count.current}`)
+  })
+}
 
 export interface PerformanceMonitorConfig {
-  minFpsThreshold?: number        // Default 30 FPS
-  sampleWindowMs?: number         // Window duration for moving average (default 3000ms)
+  minFpsThreshold?: number // Default 30 FPS
+  sampleWindowMs?: number // Window duration for moving average (default 3000ms)
   consecutiveDropCountLimit?: number // Consecutive windows below threshold before downgrading
   onQualityReduce?: (newQuality: QualitySetting, fps: number) => void
 }
@@ -50,7 +62,9 @@ export class PerformanceMonitor {
   /**
    * Record a single rendered frame tick.
    */
-  public recordFrame(timestamp: number = typeof performance !== 'undefined' ? performance.now() : Date.now()): void {
+  public recordFrame(
+    timestamp: number = typeof performance !== 'undefined' ? performance.now() : Date.now()
+  ): void {
     if (this.frameTimestamps.length > 0) {
       const last = this.frameTimestamps[this.frameTimestamps.length - 1]
       const delta = timestamp - last
@@ -70,7 +84,10 @@ export class PerformanceMonitor {
     if (this.frameTimestamps.length >= 2) {
       const span = this.frameTimestamps[this.frameTimestamps.length - 1] - this.frameTimestamps[0]
       if (span > 0) {
-        this.averageFps = Math.min(120, Math.round(((this.frameTimestamps.length - 1) * 1000) / span))
+        this.averageFps = Math.min(
+          120,
+          Math.round(((this.frameTimestamps.length - 1) * 1000) / span)
+        )
       }
     }
   }
