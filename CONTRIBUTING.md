@@ -190,3 +190,15 @@ If you have questions, open an issue or ask in the Stellar Discord `#soroban` ch
 ## React performance
 
 Subscribe to Zustand with selectors for the specific state and actions a component uses. Keep selector results referentially stable, memoize expensive derived values with `useMemo`, and use `useCallback` for handlers passed to memoized children. Wrap stable presentational components in `memo`, and keep render-time code free of freshly allocated objects when those values become child props. In development, `useRenderCount` can show committed render counts in the console while profiling.
+## Dependency overrides
+
+Use the single `overrides` object in `package.json` to keep singleton libraries such as React and
+Three.js aligned with the versions declared at the application root. When changing a root version,
+update its matching override (use `$packageName` to reuse the direct dependency's version), then run
+`npm install` and `npm dedupe` to refresh and flatten `package-lock.json`. Run `npm run
+check-duplicates` before committing; CI runs the same check against the lockfile.
+# Image assets
+
+Keep source PNG/JPEG files as fallbacks and run `npm run images:optimize` to generate matching WebP files at quality 85. The build runs this optimizer automatically. Use the shared `Image` or `OptimizedImage` component with `webpSrc` for WebP plus fallback delivery; set `loading="lazy"` for below-the-fold images and provide `sizes`/`srcSet` when image dimensions vary by viewport. Keep responsive variants named consistently and ensure their fallback `srcSet` points to the equivalent PNG/JPEG variants.
+
+Run `npm run images:check` before committing. It enforces the image file size budget; the pre-commit hook runs it automatically.
