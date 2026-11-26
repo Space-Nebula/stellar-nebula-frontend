@@ -5,7 +5,7 @@
  * Usage: node scripts/optimize-images.mjs [--max-kb 100]
  *
  * - Fails when any image under public/ or src/assets/ exceeds the budget (default 100 KB)
- * - Warns when a PNG/JPEG has no WebP sibling for OptimizedImage's `webpSrc` fallback
+ * - Fails when a PNG/JPEG has no WebP sibling for the browser fallback pair
  */
 
 import { promises as fs } from 'node:fs'
@@ -42,7 +42,8 @@ for (const file of files) {
     failed = true
   }
   if (/\.(png|jpe?g)$/i.test(file) && !known.has(file.replace(/\.(png|jpe?g)$/i, '.webp'))) {
-    console.warn(`⚠ ${file} has no .webp sibling`)
+    console.error(`✗ ${file} has no .webp sibling (run npm run images:optimize)`)
+    failed = true
   }
 }
 
