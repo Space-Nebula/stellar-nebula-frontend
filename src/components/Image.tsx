@@ -4,6 +4,8 @@ export type ImageVariant = 'informative' | 'decorative'
 
 interface BaseImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'alt' | 'aria-hidden'> {
   src: string
+  /** Optional WebP source. `src` and `srcSet` remain the browser fallback. */
+  webpSrc?: string
 }
 
 interface InformativeImageProps extends BaseImageProps {
@@ -37,12 +39,26 @@ export type ImageProps = InformativeImageProps | DecorativeImageProps
  */
 export function Image(props: ImageProps) {
   if (props.variant === 'decorative') {
-    const { variant: _variant, ...rest } = props
-    return <img {...rest} alt="" aria-hidden="true" />
+    const { variant: _variant, webpSrc, ...rest } = props
+    return webpSrc ? (
+      <picture>
+        <source type="image/webp" srcSet={webpSrc} sizes={props.sizes} />
+        <img {...rest} alt="" aria-hidden="true" />
+      </picture>
+    ) : (
+      <img {...rest} alt="" aria-hidden="true" />
+    )
   }
 
-  const { variant: _variant, alt, ...rest } = props
-  return <img {...rest} alt={alt} />
+  const { variant: _variant, alt, webpSrc, ...rest } = props
+  return webpSrc ? (
+    <picture>
+      <source type="image/webp" srcSet={webpSrc} sizes={props.sizes} />
+      <img {...rest} alt={alt} />
+    </picture>
+  ) : (
+    <img {...rest} alt={alt} />
+  )
 }
 
 export default Image
